@@ -210,7 +210,6 @@ export function TodayAssessmentPractice({
                   question={page}
                   index={questionIndex}
                   total={questions.length}
-                  answered={answered}
                   selected={selections[questionIndex] ?? []}
                   result={result}
                   pending={pendingIndex === questionIndex}
@@ -241,7 +240,6 @@ function QuestionPage({
   question,
   index,
   total,
-  answered,
   selected,
   result,
   pending,
@@ -257,7 +255,6 @@ function QuestionPage({
   question: PracticeQuestion;
   index: number;
   total: number;
-  answered: number;
   selected: string[];
   result: GradeResult | undefined;
   /** This question is being graded. */
@@ -279,7 +276,6 @@ function QuestionPage({
       question={question}
       index={index}
       total={total}
-      answered={answered}
       onOpenList={onOpen}
       selectedOptionIds={selected}
       correctOptionIds={result?.correctOptionIds}

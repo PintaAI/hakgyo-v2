@@ -98,9 +98,6 @@ export function AssessmentResultReview({
       </Card>
     );
 
-  const answeredCount = statuses.filter(
-    (status) => status !== "unanswered",
-  ).length;
   const ranges = groupRanges(assessment.questions);
 
   function renderPage(position: number) {
@@ -127,7 +124,6 @@ export function AssessmentResultReview({
         question={question}
         index={position}
         total={assessment.questions.length}
-        answered={answeredCount}
         onOpenList={openQuestions}
         detail={
           question.type === "WRITTEN"

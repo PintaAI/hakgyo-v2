@@ -142,7 +142,6 @@ export function QuestionPreview({
           question={question}
           index={0}
           total={total}
-          answered={0}
           disabled
           resolveAssetUrl={resolveAssetUrl}
         />

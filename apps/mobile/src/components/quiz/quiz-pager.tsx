@@ -18,7 +18,6 @@ import Animated, {
 import { scheduleOnRN } from "react-native-worklets";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
-import { PageDots } from "../learning-ui";
 import { SymbolIcon } from "../ui/symbol-icon";
 
 export type QuizPagerHandle = { scrollTo: (index: number) => void };
@@ -33,9 +32,6 @@ const PAGE_BLEED = 20;
 const PAGE_GAP = PAGE_BLEED * 2;
 /** Where the arrow sits, level with the question header. */
 const ARROW_TOP = 10;
-
-/** More pages than this show no dots: the question header's count and progress say it. */
-const MAX_DOTS = 10;
 
 /**
  * The horizontal pager of question pages, used wherever questions show one at
@@ -156,16 +152,7 @@ export function QuizPager({
   });
 
   return (
-    <View className="gap-4" onLayout={measureWidth}>
-      {count > 1 && count <= MAX_DOTS ? (
-        <View
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          className="items-center"
-        >
-          <PageDots count={count} position={position} />
-        </View>
-      ) : null}
+    <View onLayout={measureWidth}>
       {pageWidth > 0 ? (
         // Edge to edge: a page slides in from the screen's edge rather than
         // being cut off at the gutter, and nothing clips its content.

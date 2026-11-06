@@ -117,7 +117,6 @@ export function AttemptStartingPreview({
         }
         index={0}
         total={questions.length}
-        answered={0}
         group={
           group
             ? {

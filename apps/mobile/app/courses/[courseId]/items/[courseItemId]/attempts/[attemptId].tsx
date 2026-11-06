@@ -1227,7 +1227,6 @@ function AssessmentAttemptContent({
                     question={page}
                     index={pageIndex}
                     total={assessment.data?.questions.length ?? 0}
-                    answered={answeredCount}
                     group={groupOf(page.id)}
                     selectedOptionIds={answers[page.id]?.optionIds}
                     writtenAnswer={answers[page.id]?.content}

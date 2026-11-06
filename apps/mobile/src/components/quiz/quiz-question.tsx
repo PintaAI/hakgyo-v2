@@ -8,7 +8,7 @@ import {
   type AssetUrlResolver,
   NativeContentRenderer,
 } from "../content-renderer";
-import { Card, Eyebrow, ProgressBar } from "../learning-ui";
+import { Card, Eyebrow } from "../learning-ui";
 import { QuestionGroupHeader } from "../question-group-header";
 import { Skeleton } from "../ui/skeleton";
 import { SymbolIcon } from "../ui/symbol-icon";
@@ -57,7 +57,7 @@ function instructionFor(type: string) {
 /**
  * The one question design of the app: Home's daily challenge, the attempt,
  * the start preview, the tugas intro's sample and the result review. The
- * question sits on the page under its count and progress, then the answer
+ * question sits on the page under its number, then the answer
  * options (or the written answer) as cards. What differs between those
  * places is data, not layout:
  *
@@ -73,7 +73,6 @@ export function QuizQuestion({
   question,
   index,
   total,
-  answered,
   onOpenList,
   detail,
   group,
@@ -94,8 +93,10 @@ export function QuizQuestion({
   /** Zero-based position of the question among `total`. */
   index: number;
   total: number;
-  answered: number;
-  /** Opens the question list; the header shows its button only when set. */
+  /**
+   * Opens the question list from a button next to the count. Screens with
+   * their own list control (the attempt's toolbar) leave it out.
+   */
   onOpenList?: () => void;
   /** A short label above the question, such as "Benar" in the review. */
   detail?: string;
@@ -125,39 +126,31 @@ export function QuizQuestion({
 
   return (
     <View className="gap-4">
-      <View className="gap-2">
-        <View className="flex-row items-center gap-3">
-          <Text
-            className="min-w-0 flex-1 font-bold text-foreground"
-            numberOfLines={1}
+      {/* Where the learner is, once: how much is answered lives with the
+          question list, not here. */}
+      <View className="min-h-9 flex-row items-center gap-3">
+        <Text className="min-w-0 flex-1 text-sm font-bold text-muted-foreground">
+          Soal {index + 1} dari {total}
+        </Text>
+        {onOpenList ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Daftar soal"
+            accessibilityHint="Buka daftar untuk pindah ke soal mana pun."
+            accessibilityState={{ disabled }}
+            disabled={disabled}
+            hitSlop={8}
+            onPress={onOpenList}
+            className="size-9 items-center justify-center rounded-full bg-muted active:opacity-70"
           >
-            Soal {index + 1} dari {total}
-            <Text className="text-sm font-normal text-muted-foreground">
-              {" · "}
-              {answered} dijawab
-            </Text>
-          </Text>
-          {onOpenList ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Daftar soal"
-              accessibilityHint={`${answered} dari ${total} dijawab. Buka daftar untuk pindah ke soal mana pun.`}
-              accessibilityState={{ disabled }}
-              disabled={disabled}
-              hitSlop={8}
-              onPress={onOpenList}
-              className="size-9 items-center justify-center rounded-full bg-muted active:opacity-70"
-            >
-              <SymbolIcon
-                name="square.grid.2x2"
-                size={16}
-                weight="semibold"
-                tintColor={colors.foreground}
-              />
-            </Pressable>
-          ) : null}
-        </View>
-        <ProgressBar value={answered} max={total} />
+            <SymbolIcon
+              name="square.grid.2x2"
+              size={16}
+              weight="semibold"
+              tintColor={colors.foreground}
+            />
+          </Pressable>
+        ) : null}
       </View>
 
       {detail ? <Eyebrow size="xs">{detail}</Eyebrow> : null}
