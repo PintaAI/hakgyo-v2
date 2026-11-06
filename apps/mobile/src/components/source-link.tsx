@@ -12,12 +12,15 @@ export function SourceLink({
   title,
   courseTitle,
   hint,
+  align = "start",
   onPress,
 }: {
   title: string;
   courseTitle: string;
   /** What opening it does, for screen readers. */
   hint: string;
+  /** Where the link sits in its row; Home's vocabulary centres it under the deck. */
+  align?: "start" | "center";
   onPress: () => void;
 }) {
   const { colors } = useAppTheme();
@@ -28,7 +31,7 @@ export function SourceLink({
       accessibilityHint={hint}
       hitSlop={8}
       onPress={onPress}
-      className="flex-row items-center gap-1 self-start active:opacity-60"
+      className={`flex-row items-center gap-1 active:opacity-60 ${align === "center" ? "self-center" : "self-start"}`}
     >
       <Text className="shrink text-xs text-muted-foreground" numberOfLines={1}>
         Dari <Text className="font-semibold text-primary">{title}</Text> ·{" "}

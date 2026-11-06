@@ -1,14 +1,22 @@
 import { displayMeanings, entryMeanings } from "@hakgyo/shared";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { Image } from "expo-image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Platform, Pressable, Text, View } from "react-native";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useApiAssetResolver } from "../content-renderer";
 import { withOpacity } from "../../theme/colors";
-import { Action, Eyebrow } from "../learning-ui";
+import { Action, Eyebrow, ProgressBar } from "../learning-ui";
+import { api } from "../../lib/trpc";
+import {
+  sortByWordStatus,
+  vocabularySetProgress,
+  vocabularyWordStatus,
+  type VocabularyWordStatus,
+} from "../../lib/vocabulary-word-status";
+import { VocabularyWordStatusChip } from "../vocabulary-word-status-chip";
 import { CardFan, HakgyoHero, HERO_TITLE } from "./hakgyo-hero";
 import { StudyAction } from "../study-glass";
 import { VocabularyAudioButton } from "../vocabulary-audio-button";
@@ -133,11 +141,14 @@ function DeckPreview({ terms }: { terms: string[] }) {
 
 function WordGridCard({
   entry,
+  status,
   speakingId,
   onSpeak,
   onOpen,
 }: {
   entry: VocabularySetEntry;
+  /** Shown once the learner's progress has loaded. */
+  status?: VocabularyWordStatus;
   speakingId: string | null;
   onSpeak: (entryId: string | null) => void;
   onOpen: () => void;
@@ -181,6 +192,11 @@ function WordGridCard({
           >
             {displayMeanings(entryMeanings(entry))}
           </Text>
+          {status ? (
+            <View className="pt-1">
+              <VocabularyWordStatusChip status={status} />
+            </View>
+          ) : null}
         </View>
       </Pressable>
       {entry.audioAsset ? (
@@ -222,6 +238,54 @@ export function VocabularySetDetail({
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const total = vocabulary.entries.length;
 
+  // Each word's status, from the saved progress (kept on the device, so it
+  // shows offline too). Without a course placement there is none to show.
+  const progressQuery = api.learning.getVocabularyProgress.useQuery(
+    { vocabularySetId: vocabulary.id, sourceCourseItemId: courseItemId ?? "" },
+    { enabled: Boolean(courseItemId), retry: false },
+  );
+  const { refetch: refetchProgress } = progressQuery;
+  // Back from a lesson: show what it changed.
+  const focusedBefore = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!focusedBefore.current) {
+        focusedBefore.current = true;
+        return;
+      }
+      if (courseItemId) void refetchProgress();
+    }, [courseItemId, refetchProgress]),
+  );
+  const progressItems = progressQuery.data?.items;
+  const statusById = useMemo(
+    () =>
+      progressItems
+        ? new Map(
+            progressItems.map((item) => [
+              item.entryId,
+              vocabularyWordStatus(item),
+            ]),
+          )
+        : undefined,
+    [progressItems],
+  );
+  const statusOf = useCallback(
+    (entry: VocabularySetEntry): VocabularyWordStatus =>
+      statusById?.get(entry.id) ?? "NEW",
+    [statusById],
+  );
+  // Words still to memorise first.
+  const entries = useMemo(
+    () =>
+      statusById
+        ? sortByWordStatus(vocabulary.entries, statusOf)
+        : vocabulary.entries,
+    [statusById, statusOf, vocabulary.entries],
+  );
+  const setProgress = statusById
+    ? vocabularySetProgress(vocabulary.entries.map(statusOf))
+    : undefined;
+
   const setViewMode = useCallback((mode: "list" | "grid") => {
     setViewModeState(mode);
     try {
@@ -253,6 +317,7 @@ export function VocabularySetDetail({
         <View className="min-w-0 flex-1 pb-3">
           <WordGridCard
             entry={entry}
+            status={statusById ? statusOf(entry) : undefined}
             onOpen={() => openEntry(entry)}
             onSpeak={setSpeakingId}
             speakingId={speakingId}
@@ -280,6 +345,9 @@ export function VocabularySetDetail({
                 {displayMeanings(entryMeanings(entry))}
               </Text>
             </View>
+            {statusById ? (
+              <VocabularyWordStatusChip status={statusOf(entry)} />
+            ) : null}
             {entry.imageAsset ? (
               <EntryImage assetId={entry.imageAsset.id} variant="list" />
             ) : null}
@@ -294,7 +362,7 @@ export function VocabularySetDetail({
           ) : null}
         </View>
       ),
-    [openEntry, speakingId, total, viewMode],
+    [openEntry, speakingId, statusById, statusOf, total, viewMode],
   );
 
   return (
@@ -309,7 +377,7 @@ export function VocabularySetDetail({
       // iOS: the hero runs up under the transparent header and status bar,
       // like the cohort cards on Belajar, and pads itself below them.
       contentInsetAdjustmentBehavior={ios ? "never" : "automatic"}
-      data={vocabulary.entries}
+      data={entries}
       initialNumToRender={12}
       keyExtractor={(entry) => entry.id}
       ListEmptyComponent={
@@ -358,17 +426,41 @@ export function VocabularySetDetail({
                 </Text>
               ) : null}
             </View>
+            {setProgress && setProgress.total > 0 ? (
+              <View className="w-full gap-1.5">
+                <View className="flex-row items-baseline justify-between gap-3">
+                  <Text className="text-sm font-bold text-foreground">
+                    {setProgress.learned} dari {setProgress.total} kata
+                    dipelajari
+                  </Text>
+                  <Text className="text-xs font-semibold text-muted-foreground">
+                    {setProgress.mastered} dikuasai
+                  </Text>
+                </View>
+                <ProgressBar
+                  accessibilityLabel={`${setProgress.learned} dari ${setProgress.total} kata dipelajari`}
+                  max={setProgress.total}
+                  value={setProgress.learned}
+                />
+                <Text className="text-xs leading-4 text-muted-foreground">
+                  {setProgress.complete
+                    ? "Semua kata sudah dipelajari. Kosakata ini selesai di kelasmu."
+                    : "Kosakata ini selesai di kelas setelah semua kata dijawab benar sekali dengan mengingat."}
+                </Text>
+              </View>
+            ) : null}
             <Action
               trailingIcon="arrow.right"
               onPress={() => {
-                if (courseId && courseItemId) {
+                // One tap into a short lesson that mixes the games; picking
+                // a game is left to the Latihan tab.
+                if (courseItemId) {
                   router.push({
-                    pathname: "/(home)/(tabs)/assessments",
+                    pathname: "/vocabulary/[vocabularySetId]/lesson",
                     params: {
-                      courseId,
-                      sourceCourseItemId: courseItemId,
                       vocabularySetId: vocabulary.id,
-                      vocabularyTitle: vocabulary.title,
+                      sourceCourseItemId: courseItemId,
+                      ...(courseId ? { courseId } : null),
                     },
                   });
                   return;
@@ -382,7 +474,11 @@ export function VocabularySetDetail({
 
           {total > 0 ? (
             <View className="flex-row items-center justify-between gap-3">
-              <Eyebrow>Daftar kata</Eyebrow>
+              <Eyebrow>
+                {setProgress && !setProgress.complete
+                  ? `Daftar kata · ${setProgress.total - setProgress.learned} perlu dihafal`
+                  : "Daftar kata"}
+              </Eyebrow>
               <View className="flex-row items-center rounded-full bg-muted p-1">
                 <Pressable
                   accessibilityLabel="Tampilan daftar"

@@ -149,6 +149,11 @@ export type LearnerState = {
    * `passEvidence` when absent.
    */
   requirementEvidence?: Record<string, LearnerPassEvidence[]>;
+  /**
+   * Sets whose every word is learned (recalled correctly at least once), which
+   * completes them in a course. Named before the rule tightened from
+   * "practised once"; kept for older app builds.
+   */
   practicedVocabularySetIds: string[];
   /** Keyed by courseId. */
   eligibleCohortsByCourse: Record<string, LearnerEligibleCohort[]>;

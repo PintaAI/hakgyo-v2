@@ -26,7 +26,8 @@ Kumpulan kosakata berisi kata-kata Korea beserta arti, contoh kalimat, gambar, d
 
 ## Kapan kosakata dianggap selesai
 
-- **Selesai:** setiap kata sudah kamu jawab minimal sekali dengan mengetik, benar atau salah. Item kosakata di kurikulum otomatis tercentang.
+- **Dipelajari:** kata itu sudah pernah kamu jawab **benar** saat mengingat, yaitu mengetik atau mengucapkan jawabannya (di aplikasi ponsel juga lewat **Hujan Kata** dan **Susun makna**). Menjawab salah, membuka jawaban, atau sekadar mencocokkan kata di **Cocokkan** belum dihitung.
+- **Selesai:** semua kata di kumpulan itu sudah **dipelajari**. Item kosakata di kurikulum otomatis tercentang, dan tetap tercentang walaupun nanti ada jawaban yang salah.
 - **Dikuasai:** kata itu sudah kamu jawab benar dua kali, masing-masing saat waktunya diulang.
 
 Hakgyo mengatur kapan sebuah kata muncul lagi:
@@ -47,12 +48,14 @@ Di halaman **Hari ini**, bagian **Kosakata hari ini** mengambil hingga 24 kata d
 
 ## Di aplikasi ponsel
 
+- **Mulai latihan** di kumpulan kosakata langsung membuka satu sesi singkat berisi 5 kata: kata yang belum pernah dilatih lebih dulu, lalu kata yang sudah waktunya diulang. Sesi itu terdiri dari beberapa babak yang berjalan sendiri satu per satu: **Cocokkan**, **Kartu**, **Susun makna** (jika katanya punya contoh kalimat), lalu **Hujan Kata**. Di Hujan Kata dalam sesi, setiap kata jatuh sekali dan nyawamu tidak berkurang; artinya terbuka huruf demi huruf saat kata makin dekat ke kapalmu, dan kata yang lolos dihitung salah. Ringkasan di akhir sesi menunjukkan status setiap kata dan menandai kata yang naik status. Di akhir sesi ada ringkasan: klik **Latihan lagi** untuk 5 kata berikutnya, atau **Selesai** untuk kembali ke kumpulan kosakata. Untuk memilih permainan sendiri, buka tab **Latihan**.
 - Kartu bisa digeser. Tarik sudut kartu untuk mengintip jawaban, atau geser ke atas, kiri, atau kanan untuk lanjut.
 - Di **Kosakata hari ini**, tulisan kecil **Dari** di bawah kolom jawaban menunjukkan kumpulan kosakata dan kurikulum asal kata itu. Ketuk tulisan itu, atau tekan dan tahan kartunya, untuk membuka kumpulan kosakata tersebut.
 - Tombol bendera di samping kolom jawaban menunjukkan bahasa jawabanmu: 🇮🇩 untuk menjawab artinya, 🇰🇷 untuk menjawab kata Koreanya. Ketuk untuk menggantinya.
 - Saat pertama kali berlatih, petunjuk singkat menunjukkan cara mengelupas kartu, menggeser kartu, dan mengganti bahasa. Petunjuk itu tidak muncul lagi setelah kamu mencobanya.
 - Kamu bisa menjawab dengan suara, dan ada mode latihan tanpa menyentuh layar. Untuk kata yang punya beberapa arti, cukup ucapkan salah satu artinya.
-- Tab **Latihan** punya permainan tambahan, seperti **Hujan Kata**, **Susun makna**, dan **Cocokkan**. Permainan **Cocokkan** menghitung kata sebagai sudah dilatih, tetapi tidak menambah status dikuasai.
+- Di layar kumpulan kosakata, bar progres menunjukkan berapa kata yang sudah dipelajari dan dikuasai. Setiap kata diberi label **Baru**, **Perlu dihafal**, **Dipelajari**, atau **Dikuasai**, dan kata yang masih perlu dihafal ditaruh paling atas.
+- Tab **Latihan** punya permainan tambahan, seperti **Hujan Kata**, **Susun makna**, dan **Cocokkan**. Permainan **Cocokkan** menghitung kata sebagai sudah dilatih, tetapi belum membuatnya dipelajari atau dikuasai.
 - Di permainan, kata yang punya beberapa arti menampilkan semua artinya sekaligus, dipisahkan titik koma. Di **Hujan Kata**, ketik salah satu artinya. Di **Susun makna**, susun kata-kata menjadi contoh kalimat Korea; arti kalimatnya tampil di atas sebagai petunjuk. Di **Cocokkan**, dua kata yang artinya sama tidak pernah muncul di ronde yang sama, jadi selalu hanya ada satu pasangan yang benar.
 - Jawaban disimpan di ponsel dan dikirim di akhir ronde. Lihat [Aplikasi Ponsel dan Belajar Offline](/docs/murid/aplikasi-ponsel).
 

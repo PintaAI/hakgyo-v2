@@ -59,7 +59,6 @@ import {
 } from "../../../../src/components/learning-ui";
 import { firstParam } from "../../../../src/lib/route-params";
 import { AttemptStartingPreview } from "../../../../src/components/attempt-starting-preview";
-import { AttemptResultDetails } from "../../../../src/components/attempt-result-details";
 import { useTransitionOverride } from "../../../../src/navigation/screen-transition";
 
 export default function CourseItemScreen() {
@@ -441,6 +440,28 @@ function CourseItemContent({
                       : "Mulai tugas"}
                 </Action>
               ) : null}
+              {/* The finished attempt in full, in a sheet: where the learner
+                  lands after finishing, so the attempt has no result screen
+                  of its own. */}
+              {latestAttempt?.status === "GRADED" ? (
+                <Action
+                  variant="outline"
+                  leadingIcon="list.bullet.rectangle.fill"
+                  onPress={() =>
+                    router.push({
+                      pathname:
+                        "/courses/[courseId]/items/[courseItemId]/result",
+                      params: {
+                        courseId,
+                        courseItemId,
+                        attemptId: latestAttempt.id,
+                      },
+                    })
+                  }
+                >
+                  Review jawaban kamu
+                </Action>
+              ) : null}
               {startAssessment.isError ? (
                 <Text className="text-center text-sm text-destructive">
                   {userErrorMessage(
@@ -470,15 +491,6 @@ function CourseItemContent({
               gatesProgress={!assessment.event}
               sections={assessment.sections}
             />
-            {/* The finished attempt in full: where the learner lands after
-                finishing, so the attempt has no result screen of its own. */}
-            {latestAttempt && latestAttempt.status !== "IN_PROGRESS" ? (
-              <AttemptResultDetails
-                key={latestAttempt.id}
-                attemptId={latestAttempt.id}
-                courseItemId={courseItemId}
-              />
-            ) : null}
             {!assessment.event ? (
               <CourseLearningFooter
                 key={courseItemId}

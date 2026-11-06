@@ -89,6 +89,10 @@ function summarizeVocabularyEvidence(
       nextReviewAt: state.nextReviewAt,
       correctRecallCount: state.correctRecallCount,
       practiced: state.practicedAt !== null,
+      // Recalled correctly at least once (Kartu, Hujan Kata, Susun makna):
+      // what completes the set in a course. Recognising it (Cocokkan) only
+      // makes it practised.
+      learned: state.masteredAt !== null || state.correctRecallCount > 0,
       mastered: state.masteredAt !== null,
       due:
         state.practicedAt !== null &&
@@ -98,23 +102,27 @@ function summarizeVocabularyEvidence(
   return {
     items,
     practiced: items.length > 0 && items.every((item) => item.practiced),
+    /** Every word learned: the set counts as completed in its course. */
+    learned: items.length > 0 && items.every((item) => item.learned),
     mastered: items.length > 0 && items.every((item) => item.mastered),
     counts: {
       total: items.length,
       new: items.filter((item) => item.status === "NEW").length,
       learning: items.filter((item) => item.status === "LEARNING").length,
+      learned: items.filter((item) => item.learned).length,
       mastered: items.filter((item) => item.status === "MASTERED").length,
       due: items.filter((item) => item.due).length,
     },
   };
 }
 
-export async function isVocabularySetPracticed(
+/** Whether every word of the set is learned, which completes it in a course. */
+export async function isVocabularySetLearned(
   db: EvidenceDb,
   userId: string,
   vocabularySetId: string,
 ) {
-  return (await getVocabularyEvidence(db, userId, vocabularySetId)).practiced;
+  return (await getVocabularyEvidence(db, userId, vocabularySetId)).learned;
 }
 
 export async function meetsMaterialRequirements(
@@ -165,8 +173,7 @@ export async function meetsMaterialRequirements(
     if (requirement.type === "VOCABULARY_SET") {
       return (
         requirement.vocabularySetId !== null &&
-        (vocabularyEvidence.get(requirement.vocabularySetId)?.practiced ??
-          false)
+        (vocabularyEvidence.get(requirement.vocabularySetId)?.learned ?? false)
       );
     }
     if (!requirement.assessmentId) return false;

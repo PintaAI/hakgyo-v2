@@ -299,7 +299,7 @@ export function createVocabularyProgressService(
         const practicedPlacements = new Map<string, string>();
         const sets = [...scopes].map(([key, scope]) => {
           const evidence = evidenceBySet.get(scope.vocabularySetId)!;
-          if (evidence.practiced) {
+          if (evidence.learned) {
             const { placementId, courseId } = authorized.get(key)!;
             practicedPlacements.set(placementId, courseId);
           }

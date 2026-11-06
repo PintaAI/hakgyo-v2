@@ -28,6 +28,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { GameBackToolbar } from "../game-screens";
 import { GameModal, GameStartModal, GameJourneyFooter } from "../game-modals";
+import type { GameLesson } from "../lesson";
 import { useGameExitGuard } from "../game-navigation";
 import { withOpacity } from "../../theme/colors";
 import type { VocabularyAttempt } from "../../lib/use-vocabulary-progress";
@@ -212,6 +213,7 @@ export function VocabularyMatchScreen({
   onSessionStart,
   courseId,
   sourceCourseItemId,
+  lesson,
 }: {
   words: readonly VocabularyMatchWord[];
   onExit: () => void;
@@ -220,6 +222,8 @@ export function VocabularyMatchScreen({
   onSessionStart: () => void;
   courseId?: string;
   sourceCourseItemId?: string;
+  /** Played as a round of a vocabulary lesson. */
+  lesson?: GameLesson;
 }) {
   const { colors, colorScheme } = useAppTheme();
   const session = useMemo(() => createVocabularyMatchSession(words), [words]);
@@ -375,9 +379,18 @@ export function VocabularyMatchScreen({
       else {
         setPhase("complete");
         void onComplete();
+        lesson?.onRoundComplete();
       }
     }, 520);
-  }, [clearLiveRope, onComplete, roundIndex, session.rounds.length]);
+  }, [clearLiveRope, lesson, onComplete, roundIndex, session.rounds.length]);
+
+  // A lesson round starts at once, without the start sheet.
+  const lessonStarted = useRef(false);
+  useEffect(() => {
+    if (!lesson || lessonStarted.current) return;
+    lessonStarted.current = true;
+    resetGame();
+  }, [lesson, resetGame]);
 
   const handleAttempt = useCallback(
     (termId: string, definitionId: string) => {
@@ -576,7 +589,7 @@ export function VocabularyMatchScreen({
           headerBackVisible: false,
           headerShadowVisible: false,
           headerShown: true,
-          title: "",
+          title: lesson?.title ?? "",
         }}
       />
       <Stack.Toolbar placement="right">
@@ -757,7 +770,7 @@ export function VocabularyMatchScreen({
         onPrimary={resetGame}
         onSecondary={exit}
         title="Cocokkan Kata"
-        visible={phase === "ready"}
+        visible={phase === "ready" && !lesson}
       />
       <GameModal
         content={
@@ -799,7 +812,7 @@ export function VocabularyMatchScreen({
         secondaryLabel="Keluar"
         secondaryDisabled={saving}
         title="Ronde selesai"
-        visible={phase === "complete"}
+        visible={phase === "complete" && !lesson}
       />
     </View>
   );

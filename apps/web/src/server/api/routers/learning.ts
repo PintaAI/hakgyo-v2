@@ -23,7 +23,7 @@ import { hasPassedAssessment } from "@hakgyo/shared/learning/sequential-access";
 import { contentCompletedActivityKey } from "~/server/gamification/activity-keys";
 import { recordGamificationActivity } from "~/server/gamification/record-activity";
 import {
-  isVocabularySetPracticed,
+  isVocabularySetLearned,
   lockLearnerProgress,
   meetsMaterialRequirements,
 } from "~/server/vocabulary/evidence";
@@ -505,7 +505,7 @@ export const learningRouter = createTRPCRouter({
           const allowed =
             item.type === "VOCABULARY_SET"
               ? !!item.vocabularySetId &&
-                (await isVocabularySetPracticed(
+                (await isVocabularySetLearned(
                   tx,
                   ctx.actorUserId,
                   item.vocabularySetId,

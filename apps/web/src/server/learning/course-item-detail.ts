@@ -220,7 +220,7 @@ export async function getCourseItemDetails(
                 requirement.type === "VOCABULARY_SET"
                   ? !!requirement.vocabularySet &&
                     (vocabularyEvidence.get(requirement.vocabularySet.id)
-                      ?.practiced ??
+                      ?.learned ??
                       false)
                   : !!requirement.assessment &&
                     passesAssessmentRequirement(
