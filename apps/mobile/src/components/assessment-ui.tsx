@@ -24,8 +24,9 @@ export function AssessmentQuestion({
   onOpen?: () => void;
   disabled?: boolean;
   /**
-   * The counts on the title line without a separator (Home's daily
-   * challenge) instead of the attempt's header with its progress line.
+   * Home's daily challenge: a card with the counts on the title line. Without
+   * it the question sits on the page background (attempt, result review), so
+   * the options get the room, under the header with its progress line.
    */
   compactHeader?: boolean;
 }) {
@@ -74,10 +75,16 @@ export function AssessmentQuestion({
       {children}
     </>
   );
-  // Content surfaces are solid cards: glass is for the controls floating
-  // over content (headers, tab bars), and a glass view per card made long
-  // quizzes lag.
-  if (!showHeader) return <Card className="gap-4 p-5">{content}</Card>;
+  // Content surfaces are solid or on the page: glass is for the controls
+  // floating over content (headers, tab bars), and a glass view per card made
+  // long quizzes lag.
+  if (!showHeader) {
+    return compactHeader ? (
+      <Card className="gap-4 p-5">{content}</Card>
+    ) : (
+      <View className="gap-4">{content}</View>
+    );
+  }
   const question = (
     <Pressable
       accessibilityRole="button"
@@ -91,7 +98,7 @@ export function AssessmentQuestion({
       {content}
     </Pressable>
   );
-  return <Card className="p-5">{question}</Card>;
+  return compactHeader ? <Card className="p-5">{question}</Card> : question;
 }
 
 // EPS-TOPIK numbers picture options ①–④.

@@ -147,11 +147,6 @@ export default function AssessmentQuestionsScreen() {
                 <Text className="text-xs text-muted-foreground">
                   {labels[status]}
                 </Text>
-                {index === session.current ? (
-                  <Text className="text-xs font-bold text-primary">
-                    Saat ini
-                  </Text>
-                ) : null}
               </Pressable>
             ))}
           </View>

@@ -145,7 +145,13 @@ export function AttemptStartingPreview({
     return (
       <>
         <StartingStatus />
-        <AssessmentQuestion current={0} total={questions.length} disabled>
+        <AssessmentQuestion
+          current={0}
+          total={questions.length}
+          answered={0}
+          onOpen={() => undefined}
+          disabled
+        >
           <TextPlaceholder lines={3} />
         </AssessmentQuestion>
         {typicalOptionCount(questions) > 0 ? (
@@ -170,7 +176,13 @@ export function AttemptStartingPreview({
   return (
     <>
       <StartingStatus />
-      <AssessmentQuestion current={0} total={questions.length} disabled>
+      <AssessmentQuestion
+        current={0}
+        total={questions.length}
+        answered={0}
+        onOpen={() => undefined}
+        disabled
+      >
         {group ? (
           <QuestionGroupHeader
             first={1}
