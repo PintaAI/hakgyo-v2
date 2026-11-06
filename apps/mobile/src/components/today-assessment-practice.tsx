@@ -1,6 +1,6 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { useEffect, useRef, useState } from "react";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { api } from "../lib/trpc";
 import { userErrorMessage } from "../lib/error-message";
@@ -11,11 +11,13 @@ import {
 } from "../lib/question-progress";
 import { useQuestionNavigator } from "../providers/QuestionNavigatorProvider";
 import { NativeContentRenderer, useApiAssetResolver } from "./content-renderer";
-import { Action, Card, Empty, Eyebrow } from "./learning-ui";
+import { Action, Card, Empty } from "./learning-ui";
 import { AssessmentFeedback } from "./assessment-ui";
 import { QuizPager, type QuizPagerHandle } from "./quiz/quiz-pager";
 import { QuizQuestion } from "./quiz/quiz-question";
-import { MarqueeText } from "./ui/marquee-text";
+import { openCourseItem } from "../lib/navigation";
+import { useAppTheme } from "../providers/AppThemeProvider";
+import { SymbolIcon } from "./ui/symbol-icon";
 
 type PracticeQuestion =
   RouterOutputs["practice"]["getAssessmentSample"]["questions"][number];
@@ -194,13 +196,6 @@ export function TodayAssessmentPractice({
           <Text className="text-center text-lg font-bold tracking-tight text-foreground">
             Tantangan Soal hari ini
           </Text>
-          {/* Long assessment and curriculum names slide instead of wrapping,
-              like the vocabulary deck's. */}
-          <MarqueeText align="center">
-            <Eyebrow size="md">
-              {question.assessmentTitle} · {question.courseTitle}
-            </Eyebrow>
-          </MarqueeText>
           <QuizPager
             ref={pager}
             count={questions.length}
@@ -277,6 +272,7 @@ function QuestionPage({
   onCheck: () => void;
   onNext: () => void;
 }) {
+  const { colors } = useAppTheme();
   const failed = failure !== undefined;
   return (
     <QuizQuestion
@@ -334,6 +330,32 @@ function QuestionPage({
               : "Periksa jawaban"}
         </Action>
       ) : null}
+      {/* Where the question comes from, as a quiet link to that tugas. */}
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={`Soal dari ${question.assessmentTitle}, ${question.courseTitle}`}
+        accessibilityHint="Membuka tugas asal soal ini"
+        hitSlop={8}
+        onPress={() =>
+          openCourseItem({
+            courseId: question.courseId,
+            courseItemId: question.sourceCourseItemId,
+          })
+        }
+        className="flex-row items-center gap-1 self-start active:opacity-60"
+      >
+        <Text
+          className="shrink text-xs text-muted-foreground"
+          numberOfLines={1}
+        >
+          Dari{" "}
+          <Text className="font-semibold text-primary">
+            {question.assessmentTitle}
+          </Text>{" "}
+          · {question.courseTitle}
+        </Text>
+        <SymbolIcon name="chevron.right" size={12} tintColor={colors.primary} />
+      </Pressable>
     </QuizQuestion>
   );
 }

@@ -86,4 +86,4 @@ Setelah dinilai, buka **Review jawaban kamu** untuk melihat mana yang **Benar**,
 
 ## Soal harian di Tantangan Soal hari ini
 
-Di halaman **Hari ini**, bagian **Tantangan Soal hari ini** berisi soal untuk mengulang pelajaran. Hasilnya tidak mengubah nilai, percobaan, progres kurikulum, maupun XP-mu.
+Di halaman **Hari ini**, bagian **Tantangan Soal hari ini** berisi soal untuk mengulang pelajaran. Hasilnya tidak mengubah nilai, percobaan, progres kurikulum, maupun XP-mu. Di aplikasi ponsel, di bawah setiap soal ada tulisan kecil **Dari** diikuti nama tugas dan kurikulumnya. Ketuk tulisan itu untuk membuka tugas asal soal tersebut.
