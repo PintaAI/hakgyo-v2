@@ -6,12 +6,13 @@ import { SymbolIcon } from "../ui/symbol-icon";
 import type { SymbolName } from "../ui/symbol-names";
 
 const symbols: Record<
-  Exclude<SyncActivityKind, "downloading" | "preparing">,
+  Exclude<SyncActivityKind, "downloading" | "preparing" | "updating">,
   SymbolName
 > = {
   changed: "checkmark.circle.fill",
   failed: "exclamationmark.triangle.fill",
   waiting: "icloud.slash",
+  update: "arrow.down.circle.fill",
 };
 
 /** A spinner while preparing or downloading, otherwise the symbol of the activity. */
@@ -23,7 +24,7 @@ export function SyncActivityIcon({
   size?: number;
 }) {
   const { colors } = useAppTheme();
-  if (kind === "downloading" || kind === "preparing") {
+  if (kind === "downloading" || kind === "preparing" || kind === "updating") {
     return <ActivityIndicator size="small" color={colors.primary} />;
   }
   const tint =

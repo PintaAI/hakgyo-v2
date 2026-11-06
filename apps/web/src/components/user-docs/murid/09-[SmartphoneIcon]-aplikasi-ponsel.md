@@ -70,19 +70,25 @@ Saat ada yang sedang terjadi, aplikasi memberi tahu kamu:
 - Di iPhone dengan iOS 26 atau lebih baru, muncul bar kecil di atas tab bawah. Isinya misalnya **Mengunduh Hangeul Mastery**, **Indonesia → Korea diperbarui**, atau **3 progres belum terkirim**. Bar ini hilang sendiri setelah selesai.
 - Di Android, muncul pesan singkat di bagian bawah layar. Ketuk **Lihat** untuk melihat detailnya.
 
-Ketuk bar atau **Lihat** untuk membuka **Status sinkron**. Di sana kamu bisa melihat apakah semua progres sudah terkirim, dan keadaan setiap kursus: **Mengunduh…**, **Diperbarui**, **Siap offline**, **Belum diunduh**, atau **Gagal, dicoba lagi**. Kamu juga bisa membukanya dari **Profil**, lalu **Pengaturan**, lalu **Sinkronisasi**.
+Ketuk bar atau **Lihat** untuk membuka **Status sinkron**. Di sana kamu bisa melihat apakah semua progres sudah terkirim, dan keadaan setiap kursus: **Mengunduh…**, **Diperbarui**, **Siap offline**, **Belum diunduh**, atau **Gagal, dicoba lagi**. Kamu juga bisa membukanya dari **Profil**, lalu **Pengaturan**, lalu **Sinkronisasi** di bagian **Akun**.
 
 Untuk menjalankannya sendiri:
 
 1. Buka **Profil**, lalu **Pengaturan**.
-2. Ketuk **Sinkronisasi**, lalu **Sinkronkan sekarang**. Bisa juga dengan menarik halaman Pengaturan ke bawah.
+2. Di bagian **Akun**, ketuk **Sinkronisasi**, lalu **Sinkronkan sekarang**. Bisa juga dengan menarik halaman Pengaturan ke bawah.
 3. Tunggu sampai di baris **Sinkronisasi** muncul **Sudah terbaru**. Jika ada tulisan seperti "3 perubahan menunggu sinkronisasi", artinya masih ada kemajuan yang belum terkirim.
 
 Jika muncul **Pembaruan diperlukan**, ikuti petunjuk di layar. Biasanya aplikasi mengunduh pembaruan sendiri lalu dibuka ulang. Jika pembaruan harus dipasang dari toko aplikasi, ketuk **Buka App Store** atau **Buka Google Play**; layar itu juga menampilkan apa saja yang baru di versi tersebut.
 
 ## Yang baru di aplikasi
 
-Aplikasi Hakgyo sering mendapat pembaruan kecil yang terpasang otomatis saat aplikasi dibuka ulang. Setelah pembaruan terpasang, muncul layar **Yang baru di Hakgyo** berisi daftar perubahannya. Ketuk **Lanjut belajar** untuk menutupnya.
+Aplikasi Hakgyo sering mendapat pembaruan kecil. Aplikasi mengunduhnya sendiri saat kamu membukanya, jadi kamu tidak perlu memeriksanya di Pengaturan.
+
+Selama pembaruan diunduh, muncul **Mengunduh pembaruan aplikasi**: di iPhone dengan iOS 26 atau lebih baru sebagai bar kecil di atas tab bawah, di Android sebagai pesan singkat di bagian bawah layar. Kamu tetap bisa belajar seperti biasa.
+
+Kalau kamu baru membuka aplikasi dan unduhannya cepat selesai, aplikasi langsung dimulai ulang dengan versi baru. Kalau tidak, muncul **Pembaruan aplikasi siap**. Ketuk bar itu atau **Mulai ulang** untuk memasangnya sekarang. Kemajuanmu tetap aman. Kalau kamu biarkan, pembaruan terpasang sendiri saat kamu kembali ke aplikasi setelah meninggalkannya beberapa saat. Pembaruan tidak pernah dipasang sendiri saat kamu sedang membuka materi, latihan, atau tryout. Status pembaruan juga terlihat di **Status sinkron**, di bagian **Aplikasi**.
+
+Setelah pembaruan terpasang, muncul layar **Yang baru di Hakgyo** berisi daftar perubahannya. Ketuk **Lanjut belajar** untuk menutupnya.
 
 Untuk membaca lagi semua catatan pembaruan, buka **Profil**, lalu **Pengaturan**, lalu ketuk **Yang baru**.
 

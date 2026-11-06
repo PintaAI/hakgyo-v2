@@ -9,6 +9,7 @@ import { useEffect, useRef } from "react";
 import { View } from "react-native";
 
 import { openSyncStatus } from "../../lib/navigation";
+import { applyOtaUpdate } from "../../lib/ota-updates";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import type { SyncActivity } from "../../sync/activity";
 import { useSyncActivity } from "../../sync/use-sync-activity";
@@ -28,7 +29,8 @@ function snackbarMessage(activity: SyncActivity) {
 /**
  * Android's sync announcements: a Material 3 snackbar above the tab bar when
  * downloads start, when they finish or fail, and when progress has to wait.
- * "Lihat" opens the sync status sheet.
+ * "Lihat" opens the sync status sheet; for a ready app update, "Mulai ulang"
+ * restarts the app.
  */
 export function SyncSnackbar() {
   const { colorScheme, colors } = useAppTheme();
@@ -46,14 +48,17 @@ export function SyncSnackbar() {
     }
     if (activity.key === lastAnnouncedKey) return;
     lastAnnouncedKey = activity.key;
+    const isUpdate = activity.kind === "update";
     void host.current
       ?.showSnackbar({
         message: snackbarMessage(activity),
-        actionLabel: "Lihat",
-        duration: activity.kind === "failed" ? "long" : "short",
+        actionLabel: isUpdate ? "Mulai ulang" : "Lihat",
+        duration: activity.kind === "failed" || isUpdate ? "long" : "short",
       })
       .then((result) => {
-        if (result === "actionPerformed") openSyncStatus();
+        if (result !== "actionPerformed") return;
+        if (isUpdate) applyOtaUpdate();
+        else openSyncStatus();
       });
     // Announce once per key, not on every progress update.
     // eslint-disable-next-line react-hooks/exhaustive-deps

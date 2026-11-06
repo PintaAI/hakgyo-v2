@@ -10,6 +10,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { authClient } from "../src/lib/auth-client";
 import { TRPCProvider } from "../src/lib/trpc";
 import { ForcedUpdateGate } from "../src/components/forced-update-gate";
+import { OtaUpdateWatcher } from "../src/lib/ota-updates";
 import { WhatsNewPrompt } from "../src/components/whats-new-prompt";
 import { useSyncIndex } from "../src/sync/hooks";
 import {
@@ -381,6 +382,8 @@ function RootNavigator() {
                 </Stack.Protected>
               </Stack>
               {session ? <WhatsNewPrompt /> : null}
+              {/* Not under ForcedUpdateGate, which runs its own update. */}
+              <OtaUpdateWatcher />
             </TourProvider>
           </DrawerProvider>
         </PushNotificationsProvider>

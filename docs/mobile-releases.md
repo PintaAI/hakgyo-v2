@@ -21,6 +21,19 @@ Add a "Yang baru" entry first (see "What's new" below). Without `--message`, the
 
 `apps/mobile/fingerprint.config.js` leaves `package.json` scripts and `eas.json` out of the fingerprint, so editing dev scripts or submit settings does not block updates. If you add a native build hook (`eas-build-*` or `postinstall` scripts), bump `version` yourself.
 
+## How an update reaches the learner
+
+`app.config.ts` keeps the expo-updates defaults: `checkAutomatically: ON_LOAD` checks on every cold start, and `fallbackToCacheTimeout: 0` starts the app at once on the cached bundle while the new one downloads for the next launch. Never make the launch wait for a download; the app is offline-first and learners are often on slow networks.
+
+Cold starts can be days apart while the OS keeps the app suspended, so `OtaUpdateWatcher` (`apps/mobile/src/lib/ota-updates.ts`, mounted in `app/_layout.tsx`) also:
+
+1. checks and downloads every time the app returns to the foreground. A check without a new update fetches only the manifest;
+2. shows the download through the sync activity surfaces: `selectSyncActivity` reports it as `updating` ("Mengunduh pembaruan aplikasi", with a percentage when the server sends sizes), ahead of download summaries and queued progress;
+3. applies the update by itself (`Updates.reloadAsync()`) only on a fresh start, so it never cuts into a study session: when the learner returns after at least 10 minutes in the background and it is already downloaded, or when its download finishes within 20 seconds of a launch or such a return. Either way the learner must be on a tab root (no lesson, attempt, game or sheet open) and no sync may be running. It never reloads while backgrounded, which Expo marks experimental;
+4. otherwise reports it as `update` once sync has nothing else to say, so the iOS 26 tab bar accessory and the Android snackbar ("Mulai ulang") restart the app, and the sync status sheet lists the app version with a restart button.
+
+The outbox is in SQLite, so a reload loses no progress. Pengaturan → Periksa pembaruan stays as the manual path.
+
 ## Forcing an update
 
 Every mobile request sends `x-hakgyo-client: protocol=…;runtime=…;update=…;platform=…`. Sync procedures reject clients older than `MIN_SYNC_PROTOCOL` (`@hakgyo/shared/mobile-sync`) with `UPGRADE_REQUIRED`, and the app shows `ForcedUpdateGate`:
@@ -73,7 +86,7 @@ ORDER BY users DESC;
 
 Test the update path on real `preview` or `production` builds; dev clients skip it. The `development` channel builds are dev clients and cannot run it.
 
-1. Publish an update with `ota:publish` and confirm the build applies it (Profil shows the update id; relaunch twice, because updates download in the background and apply on the next launch).
+1. Publish an update with `ota:publish` and confirm the build applies it (Profil shows the update id). A build that already has `OtaUpdateWatcher` downloads it when brought back to the foreground, shows "Mengunduh pembaruan aplikasi" and then "Pembaruan aplikasi siap", and applies it by itself after 10 minutes in the background. Older builds still need two cold starts.
 2. Trigger the gate with an update available: build a client with a higher `SYNC_PROTOCOL`, raise `MIN_SYNC_PROTOCOL` on the server it talks to, and publish that client as an update. An older build must show the gate, download the update and come back working.
 3. Trigger the gate with no update available (raise the minimum without publishing): the gate must show the store button and open the listing.
 4. Undo both server and channel changes afterwards.

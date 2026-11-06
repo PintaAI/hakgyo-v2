@@ -23,6 +23,7 @@ const idle: SyncActivityInput = {
   refreshPhase: null,
   hasIndex: true,
   courseTitles: { hm: "Hangeul Mastery", ik: "Indonesia → Korea" },
+  appUpdate: null,
   now: 10_000,
 };
 
@@ -152,5 +153,44 @@ describe("selectSyncActivity", () => {
       title: "3 progres belum terkirim",
       detail: "Tersimpan di HP dan dikirim saat online.",
     });
+  });
+
+  test("shows an app update downloading ahead of summaries and queued progress", () => {
+    const downloading = {
+      ...idle,
+      outboxWaiting: "offline" as const,
+      pendingCount: 3,
+      appUpdate: { status: "downloading" as const, progress: 42 },
+    };
+    expect(selectSyncActivity(downloading)).toEqual({
+      kind: "updating",
+      key: "updating",
+      title: "Mengunduh pembaruan aplikasi",
+      detail: "42% · Kamu tetap bisa belajar seperti biasa.",
+    });
+    expect(
+      selectSyncActivity({
+        ...downloading,
+        appUpdate: { status: "downloading", progress: null },
+      })?.detail,
+    ).toBe("Kamu tetap bisa belajar seperti biasa.");
+  });
+
+  test("offers a downloaded app update once sync has nothing to tell", () => {
+    const ready = { status: "ready" as const, id: "abc" };
+    expect(selectSyncActivity({ ...idle, appUpdate: ready })).toEqual({
+      kind: "update",
+      key: "update:abc",
+      title: "Pembaruan aplikasi siap",
+      detail: "Ketuk untuk memulai ulang. Progresmu tetap aman.",
+    });
+    expect(
+      selectSyncActivity({
+        ...idle,
+        appUpdate: ready,
+        outboxWaiting: "offline",
+        pendingCount: 3,
+      })?.kind,
+    ).toBe("waiting");
   });
 });

@@ -1,6 +1,13 @@
+import * as Updates from "expo-updates";
 import { useContext, useEffect, useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 
+import {
+  applyOtaUpdate,
+  otaUpdatesEnabled,
+  useOtaUpdateState,
+} from "../../lib/ota-updates";
+import { APP_VERSION } from "../../lib/release-notes";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useMobileSync } from "../../providers/MobileSyncProvider";
 import { WAITING_DETAIL } from "../../sync/activity";
@@ -102,10 +109,65 @@ function StatusRow({
   );
 }
 
+/** The app's own version and the update downloaded in the background. */
+function AppUpdateSection() {
+  const {
+    currentlyRunning,
+    isUpdateAvailable,
+    lastCheckForUpdateTimeSinceRestart,
+  } = Updates.useUpdates();
+  const checkedUpToDate =
+    Boolean(lastCheckForUpdateTimeSinceRestart) && !isUpdateAvailable;
+  const appUpdate = useOtaUpdateState();
+  const readyUpdate = appUpdate?.status === "ready";
+  const updateId = currentlyRunning.updateId;
+  const status = !otaUpdatesEnabled
+    ? undefined
+    : appUpdate?.status === "ready"
+      ? { label: "Siap dipasang", tone: "primary" as const }
+      : appUpdate?.status === "downloading"
+        ? {
+            label:
+              appUpdate.progress !== null
+                ? `Mengunduh ${appUpdate.progress}%`
+                : "Mengunduh…",
+            tone: "primary" as const,
+          }
+        : checkedUpToDate
+          ? { label: "Terbaru", tone: "default" as const }
+          : undefined;
+
+  return (
+    <View className="gap-3">
+      <SettingsSection title="Aplikasi">
+        <StatusRow
+          symbol={
+            readyUpdate ? "arrow.down.circle.fill" : "checkmark.circle.fill"
+          }
+          tone={status?.tone ?? "default"}
+          label={`Hakgyo ${APP_VERSION}`}
+          subtitle={
+            updateId && !currentlyRunning.isEmbeddedLaunch
+              ? `Pembaruan ${updateId.slice(0, 8)}`
+              : "Versi bawaan"
+          }
+          status={status?.label}
+        />
+      </SettingsSection>
+      {readyUpdate ? (
+        <Action variant="secondary" onPress={applyOtaUpdate}>
+          Mulai ulang untuk memperbarui
+        </Action>
+      ) : null}
+    </View>
+  );
+}
+
 /**
  * What is on this device and what sync is doing: progress waiting to be
  * sent, and each course of the active organization (downloading, just added
- * or updated, failed, ready offline or not downloaded yet).
+ * or updated, failed, ready offline or not downloaded yet), and the app
+ * version with an update waiting for a restart.
  */
 export function SyncStatusContent({ onClose }: { onClose: () => void }) {
   const { colors } = useAppTheme();
@@ -222,6 +284,8 @@ export function SyncStatusContent({ onClose }: { onClose: () => void }) {
           })}
         </SettingsSection>
       ) : null}
+
+      <AppUpdateSection />
 
       <View className="gap-2">
         <Action
