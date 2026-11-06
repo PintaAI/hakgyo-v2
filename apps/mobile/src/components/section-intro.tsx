@@ -32,7 +32,8 @@ export function SectionIntro({
   sectionCount: number;
   questionCount: number;
   timeLimitSeconds: number | null;
-  secondsToAutoStart: number;
+  /** Omitted before the section's countdown exists (the start preview). */
+  secondsToAutoStart?: number;
   busy: boolean;
   resolveAssetUrl: AssetUrlResolver;
   onStart: () => void;
@@ -62,12 +63,14 @@ export function SectionIntro({
       <StudyAction disabled={busy} onPress={onStart}>
         Mulai bagian
       </StudyAction>
-      <Text
-        accessibilityLiveRegion="polite"
-        className="text-center text-xs text-muted-foreground"
-      >
-        Dimulai otomatis dalam {formatRemaining(secondsToAutoStart)}
-      </Text>
+      {secondsToAutoStart !== undefined ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          className="text-center text-xs text-muted-foreground"
+        >
+          Dimulai otomatis dalam {formatRemaining(secondsToAutoStart)}
+        </Text>
+      ) : null}
     </StudyGlass>
   );
 }

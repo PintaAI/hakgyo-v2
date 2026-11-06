@@ -8,6 +8,7 @@ import {
   AssessmentMediaStatus,
   useAssessmentMediaPrefetch,
 } from "../../src/components/assessment-media";
+import { AttemptStartingPreview } from "../../src/components/attempt-starting-preview";
 import {
   Eyebrow,
   QueryState,
@@ -23,7 +24,8 @@ import { useSidebarIndicators } from "../../src/lib/sidebar-indicators";
 import { useMobileSyncActions } from "../../src/providers/MobileSyncProvider";
 import { usePushNotifications } from "../../src/providers/PushNotificationsProvider";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
-import { useLearnerEvent } from "../../src/sync/hooks";
+import { useTransitionOverride } from "../../src/navigation/screen-transition";
+import { useItemAssessment, useLearnerEvent } from "../../src/sync/hooks";
 
 export default function AssessmentEventScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -31,6 +33,7 @@ export default function AssessmentEventScreen() {
   const { saveStartedAttempt } = useMobileSyncActions();
   const { promptInContext } = usePushNotifications();
   const { colors } = useAppTheme();
+  const { fadeNextTransition } = useTransitionOverride();
 
   useEffect(() => {
     const timer = setTimeout(promptInContext, 800);
@@ -39,8 +42,9 @@ export default function AssessmentEventScreen() {
   // Online detail (leaderboard included), persisted for offline reopening.
   const query = useLearnerEvent(eventId);
   const start = api.mobileSyncV2.startEventAssessment.useMutation();
-  // From the tap until the attempt screen replaces this one: the start
-  // request, then saving the questions on the device.
+  // From the tap until the attempt screen replaces this one. Meanwhile the
+  // screen already shows the attempt's first screen from the course bundle
+  // (optimistic); answering waits for the server to register the start.
   const [starting, setStarting] = useState(false);
   // Only a pull shows the refresh spinner. The refresh every open makes runs
   // quietly: a spinner set from code as the screen appears can stay stuck on
@@ -51,6 +55,14 @@ export default function AssessmentEventScreen() {
   const attemptState = assessmentAttemptPresentation(attempt);
   const invalidated = !!event?.participants[0]?.invalidatedAt;
   const assessment = event?.courseItem.assessment;
+  // The questions without answers, already on the device in the course bundle.
+  const bundled = useItemAssessment(
+    event?.course.id,
+    event?.courseItem.id ?? "",
+    {
+      enabled: Boolean(event),
+    },
+  );
   // The server lists the media once the event is open; download it while the connection is good.
   const media = useAssessmentMediaPrefetch(
     event?.media?.map((asset) => asset.assetId) ?? [],
@@ -98,7 +110,9 @@ export default function AssessmentEventScreen() {
       });
       // Persisted locally so the attempt resumes offline.
       await saveStartedAttempt(result);
-      openAttempt(result.attempt.id, true);
+      // The preview already looks like the attempt: swap without a slide.
+      fadeNextTransition();
+      requestAnimationFrame(() => openAttempt(result.attempt.id, true));
     } catch {
       /* Mutation error is shown below. */
       setStarting(false);
@@ -145,161 +159,182 @@ export default function AssessmentEventScreen() {
   return (
     <>
       <Stack.Screen options={{ headerBackButtonDisplayMode: "minimal" }} />
-      <StudyScreen
-        title={event?.title ?? "Latihan & tryout"}
-        refreshing={pulling}
-        onRefresh={() => void pullToRefresh()}
-      >
-        <QueryState
-          pending={query.isPending}
-          pendingLabel="Memuat latihan…"
-          error={query.error}
-          retry={() => void query.refetch()}
-        />
+      {starting && event ? (
+        <StudyScreen
+          contentClassName="gap-4"
+          title={bundled.data?.title ?? assessment?.title ?? event.title}
+        >
+          <AttemptStartingPreview
+            assessment={bundled.data}
+            shuffleQuestions={
+              event.shuffleQuestions ?? bundled.data?.shuffleQuestions ?? true
+            }
+          />
+        </StudyScreen>
+      ) : (
+        <StudyScreen
+          title={event?.title ?? "Latihan & tryout"}
+          refreshing={pulling}
+          onRefresh={() => void pullToRefresh()}
+        >
+          <QueryState
+            pending={query.isPending}
+            pendingLabel="Memuat latihan…"
+            error={query.error}
+            retry={() => void query.refetch()}
+          />
 
-        {event?.entry.destination === "ATTEMPT" ? (
-          <StudyGlass>
-            <Text className="text-lg font-black text-foreground">
-              Melanjutkan tugas kamu…
-            </Text>
-          </StudyGlass>
-        ) : event ? (
-          <>
+          {event?.entry.destination === "ATTEMPT" ? (
             <StudyGlass>
-              {query.isRefetching && !pulling ? (
-                <View
-                  className="flex-row items-center gap-2"
-                  accessibilityLiveRegion="polite"
-                >
-                  <ActivityIndicator size="small" color={colors.primary} />
-                  <Text className="text-xs text-muted-foreground">
-                    Memperbarui status dan hasil…
-                  </Text>
-                </View>
-              ) : null}
-              <Eyebrow tone="primary" size="md">
-                {event.type === "TRYOUT" ? "Tryout" : "Latihan"} ·{" "}
-                {event.cohort?.name ?? event.course.title}
-              </Eyebrow>
-              <Text className="text-2xl font-black leading-8 text-foreground">
-                {assessment?.title ?? event.title}
+              <Text className="text-lg font-black text-foreground">
+                Melanjutkan tugas kamu…
               </Text>
-              {assessment?.description ? (
-                <Text className="text-sm leading-6 text-muted-foreground">
-                  {assessment.description}
-                </Text>
-              ) : null}
-
-              <Text className="text-sm leading-6 text-muted-foreground">
-                {assessment?._count.questions ?? 0} soal ·{" "}
-                {event.durationMinutes} menit
-                {assessment?.passingScore != null
-                  ? ` · lulus ${assessment.passingScore}%`
-                  : ""}
-                {opensAt ? `\nDibuka ${dateLabel(opensAt)}` : ""}
-                {event.closesAt ? `\nDitutup ${dateLabel(event.closesAt)}` : ""}
-                {assessment?.maxAttempts != null
-                  ? `\n${event.attemptCount} dari ${assessment.maxAttempts} percobaan terpakai`
-                  : `\n${event.attemptCount} percobaan terpakai · tanpa batas`}
-              </Text>
-
-              {invalidated ? (
-                <Text className="text-sm text-destructive">
-                  {event.participants[0]?.invalidationReason ??
-                    "Partisipasi tidak tersedia. Hubungi tim kurikulum kamu."}
-                </Text>
-              ) : null}
-
-              {attempt ? (
-                <Text className="text-base font-bold text-foreground">
-                  {/* The detail already carries the score once graded. */}
-                  {attemptState.detail}
-                </Text>
-              ) : null}
-
-              <AssessmentMediaStatus
-                progress={media.progress}
-                sizes={mediaSizes}
-                onRetry={media.retry}
-              />
-
-              {primaryAction ? (
-                <>
-                  <StudyAction loading={starting} onPress={() => void begin()}>
-                    {starting ? "Menyiapkan soal…" : primaryAction}
-                  </StudyAction>
-                  <Text className="text-xs leading-5 text-muted-foreground">
-                    {starting
-                      ? "Mengunduh soal ke HP ini, sebentar lagi soal pertama tampil."
-                      : "Perlu internet untuk mulai. Setelah soal terunduh, kamu bisa lanjut mengerjakan tanpa internet."}
-                  </Text>
-                </>
-              ) : null}
-
-              {attempt && attempt.status !== "IN_PROGRESS" ? (
-                <StudyAction secondary onPress={() => openAttempt(attempt.id)}>
-                  {attempt.status === "GRADED"
-                    ? "Lihat hasil"
-                    : "Lihat jawaban"}
-                </StudyAction>
-              ) : null}
-
-              {!primaryAction && !attempt && !invalidated ? (
-                <Text className="text-sm font-semibold text-muted-foreground">
-                  {event.status === "CANCELLED"
-                    ? "Event ini dibatalkan."
-                    : opensAt
-                      ? `Dibuka ${dateLabel(opensAt)}. Kamu bisa mulai mengerjakan saat itu.`
-                      : "Event ini belum dibuka untuk dikerjakan."}
-                </Text>
-              ) : null}
-
-              {start.error ? (
-                <Text
-                  accessibilityRole="alert"
-                  className="text-sm text-destructive"
-                >
-                  {userErrorMessage(start.error, "Tryout tidak dapat dimulai.")}
-                </Text>
-              ) : null}
             </StudyGlass>
-
-            {event.leaderboard ? (
+          ) : event ? (
+            <>
               <StudyGlass>
-                <Text className="text-xl font-black text-foreground">
-                  Leaderboard
+                {query.isRefetching && !pulling ? (
+                  <View
+                    className="flex-row items-center gap-2"
+                    accessibilityLiveRegion="polite"
+                  >
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text className="text-xs text-muted-foreground">
+                      Memperbarui status dan hasil…
+                    </Text>
+                  </View>
+                ) : null}
+                <Eyebrow tone="primary" size="md">
+                  {event.type === "TRYOUT" ? "Tryout" : "Latihan"} ·{" "}
+                  {event.cohort?.name ?? event.course.title}
+                </Eyebrow>
+                <Text className="text-2xl font-black leading-8 text-foreground">
+                  {assessment?.title ?? event.title}
                 </Text>
-                <Text className="text-sm text-muted-foreground">
-                  Percobaan terbaik yang sudah direview yang dihitung. Nilai
-                  seri ditentukan oleh waktu penyelesaian.
-                </Text>
-                {event.leaderboard.length ? (
-                  event.leaderboard.map((entry) => (
-                    <Row
-                      key={entry.userId}
-                      title={`${entry.rank}. ${entry.name}`}
-                      detail={`${formatScoreOutOf(entry.score, entry.maxScore, " / ")} · ${entry.percentage}%`}
-                    />
-                  ))
-                ) : (
-                  <Text className="text-sm text-muted-foreground">
-                    Belum ada hasil yang sudah direview.
+                {assessment?.description ? (
+                  <Text className="text-sm leading-6 text-muted-foreground">
+                    {assessment.description}
                   </Text>
-                )}
-              </StudyGlass>
-            ) : attempt ? (
-              <StudyGlass>
-                <Text className="text-lg font-black text-foreground">
-                  Leaderboard belum tersedia
+                ) : null}
+
+                <Text className="text-sm leading-6 text-muted-foreground">
+                  {assessment?._count.questions ?? 0} soal ·{" "}
+                  {event.durationMinutes} menit
+                  {assessment?.passingScore != null
+                    ? ` · lulus ${assessment.passingScore}%`
+                    : ""}
+                  {opensAt ? `\nDibuka ${dateLabel(opensAt)}` : ""}
+                  {event.closesAt
+                    ? `\nDitutup ${dateLabel(event.closesAt)}`
+                    : ""}
+                  {assessment?.maxAttempts != null
+                    ? `\n${event.attemptCount} dari ${assessment.maxAttempts} percobaan terpakai`
+                    : `\n${event.attemptCount} percobaan terpakai · tanpa batas`}
                 </Text>
-                <Text className="text-sm text-muted-foreground">
-                  Peringkat muncul setelah hasil direview.
-                </Text>
+
+                {invalidated ? (
+                  <Text className="text-sm text-destructive">
+                    {event.participants[0]?.invalidationReason ??
+                      "Partisipasi tidak tersedia. Hubungi tim kurikulum kamu."}
+                  </Text>
+                ) : null}
+
+                {attempt ? (
+                  <Text className="text-base font-bold text-foreground">
+                    {/* The detail already carries the score once graded. */}
+                    {attemptState.detail}
+                  </Text>
+                ) : null}
+
+                <AssessmentMediaStatus
+                  progress={media.progress}
+                  sizes={mediaSizes}
+                  onRetry={media.retry}
+                />
+
+                {primaryAction ? (
+                  <>
+                    <StudyAction onPress={() => void begin()}>
+                      {primaryAction}
+                    </StudyAction>
+                    <Text className="text-xs leading-5 text-muted-foreground">
+                      Perlu internet untuk mulai. Setelah itu kamu bisa lanjut
+                      mengerjakan tanpa internet.
+                    </Text>
+                  </>
+                ) : null}
+
+                {attempt && attempt.status !== "IN_PROGRESS" ? (
+                  <StudyAction
+                    secondary
+                    onPress={() => openAttempt(attempt.id)}
+                  >
+                    {attempt.status === "GRADED"
+                      ? "Lihat hasil"
+                      : "Lihat jawaban"}
+                  </StudyAction>
+                ) : null}
+
+                {!primaryAction && !attempt && !invalidated ? (
+                  <Text className="text-sm font-semibold text-muted-foreground">
+                    {event.status === "CANCELLED"
+                      ? "Event ini dibatalkan."
+                      : opensAt
+                        ? `Dibuka ${dateLabel(opensAt)}. Kamu bisa mulai mengerjakan saat itu.`
+                        : "Event ini belum dibuka untuk dikerjakan."}
+                  </Text>
+                ) : null}
+
+                {start.error ? (
+                  <Text
+                    accessibilityRole="alert"
+                    className="text-sm text-destructive"
+                  >
+                    {userErrorMessage(
+                      start.error,
+                      "Tryout tidak dapat dimulai.",
+                    )}
+                  </Text>
+                ) : null}
               </StudyGlass>
-            ) : null}
-          </>
-        ) : null}
-      </StudyScreen>
+
+              {event.leaderboard ? (
+                <StudyGlass>
+                  <Text className="text-xl font-black text-foreground">
+                    Leaderboard
+                  </Text>
+                  <Text className="text-sm text-muted-foreground">
+                    Percobaan terbaik yang sudah direview yang dihitung. Nilai
+                    seri ditentukan oleh waktu penyelesaian.
+                  </Text>
+                  {event.leaderboard.length ? (
+                    event.leaderboard.map((entry) => (
+                      <Row
+                        key={entry.userId}
+                        title={`${entry.rank}. ${entry.name}`}
+                        detail={`${formatScoreOutOf(entry.score, entry.maxScore, " / ")} · ${entry.percentage}%`}
+                      />
+                    ))
+                  ) : (
+                    <Text className="text-sm text-muted-foreground">
+                      Belum ada hasil yang sudah direview.
+                    </Text>
+                  )}
+                </StudyGlass>
+              ) : attempt ? (
+                <StudyGlass>
+                  <Text className="text-lg font-black text-foreground">
+                    Leaderboard belum tersedia
+                  </Text>
+                  <Text className="text-sm text-muted-foreground">
+                    Peringkat muncul setelah hasil direview.
+                  </Text>
+                </StudyGlass>
+              ) : null}
+            </>
+          ) : null}
+        </StudyScreen>
+      )}
     </>
   );
 }

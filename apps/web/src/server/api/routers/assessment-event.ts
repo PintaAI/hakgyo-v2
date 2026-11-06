@@ -954,6 +954,9 @@ export const assessmentEventRouter = createTRPCRouter({
           select: {
             ...eventSummarySelect,
             ...learnerEventSelect(ctx.actorUserId, now),
+            // The app previews the first question before the start when the
+            // order is known (null follows the assessment).
+            shuffleQuestions: true,
           },
         }),
         ctx.db.assessmentAttempt.count({

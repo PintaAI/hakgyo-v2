@@ -87,6 +87,17 @@ JSON strings (culture sections).
 - Both clients show a progress bar with bytes (`formatByteSize` in `@hakgyo/shared`), files when
   sizes are unknown, and a retry for failed files.
 
+## Starting on mobile
+
+Starting needs a connection: the server records the start time, checks the attempt limit and the
+event window, opens a due scheduled event and picks the attempt's question order
+(`mobileSyncV2.startEventAssessment`). The questions themselves, without answers, are already on
+the device in the course bundle, so the event screen shows the attempt's first screen from the
+bundle the moment the learner taps "Mulai" (`AttemptStartingPreview`): the first section's intro,
+or the first question when neither the event nor the assessment shuffles questions (shuffled
+options are left out). Nothing can be answered until the start returns; then the attempt screen
+replaces it with a fade. A failed start returns to the event detail with the error.
+
 ## Offline materials (mobile)
 
 The course screen offers "Simpan offline" for every chapter the learner can open, and each open
