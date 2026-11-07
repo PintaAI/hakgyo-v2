@@ -722,7 +722,7 @@ export const m7BatchimBasics: ModuleContent = {
         },
         {
           term: "대박",
-          definition: "mantap! luar biasa!",
+          definition: "mantap; luar biasa",
           romanization: "daebak",
         },
         { term: "팬", definition: "penggemar (fan)", romanization: "paen" },
