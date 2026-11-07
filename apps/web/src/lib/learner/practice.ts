@@ -1,12 +1,8 @@
-export function normalizePracticeAnswer(answer: string) {
-  return answer.normalize("NFKC").trim().replace(/\s+/gu, " ").toLowerCase();
-}
+import { matchesTerm } from "@hakgyo/shared";
 
+/** Typed Korean answer against the term (see `matchesTerm`). */
 export function isPracticeAnswerCorrect(answer: string, expected: string) {
-  const normalized = normalizePracticeAnswer(answer);
-  return (
-    normalized.length > 0 && normalized === normalizePracticeAnswer(expected)
-  );
+  return matchesTerm(answer, expected);
 }
 
 /** Cards in one round of the Today page's vocabulary practice. */

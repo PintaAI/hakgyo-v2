@@ -165,6 +165,8 @@ Hal yang perlu diketahui:
 
 Murid melihat semua arti sebuah kata. Saat latihan, menjawab salah satu artinya sudah dianggap benar.
 
+Saat latihan, keterangan dalam kurung tetap tampil untuk murid tetapi tidak perlu diketik: untuk `Panas (Cuaca)`, jawaban `panas` sudah benar. Tanda baca seperti `!` dan `?` juga diabaikan. Pisahkan beberapa arti dengan titik koma, bukan koma: tulis `capek; lelah`, bukan `capek, lelah`. Koma dianggap bagian dari satu arti, jadi murid harus mengetik `capek lelah` sekaligus.
+
 Bantuan AI:
 
 - **Tambah 3–4 contoh dengan AI** membuat contoh kalimat untuk satu kata.

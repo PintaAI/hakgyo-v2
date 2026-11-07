@@ -22,7 +22,7 @@ Kumpulan kosakata berisi kata-kata Korea beserta arti, contoh kalimat, gambar, d
    - **Lewati** untuk melompat ke kartu berikutnya.
 6. Setelah semua kata dilatih, kamu melihat ringkasan. Klik **Ulangi lagi** untuk berlatih lagi, atau lanjutkan ke item berikutnya.
 
-> **Jawaban harus persis sama** dengan yang ditulis pengajar, tetapi huruf besar-kecil dan spasi berlebih diabaikan. Jika kata itu punya beberapa arti, cukup ketik **salah satu** artinya. Sinonim atau arti dengan kata-kata lain dianggap salah. Jika kamu yakin jawabanmu benar, tanyakan ke pengajarmu.
+> **Jawaban harus sama** dengan yang ditulis pengajar, tetapi huruf besar-kecil, spasi berlebih, dan tanda baca seperti `!`, `?`, dan `.` diabaikan. Tanda hubung boleh diganti spasi, jadi `kupu kupu` sama dengan `kupu-kupu`. Keterangan dalam kurung tidak perlu diketik: untuk `Panas (Cuaca)` cukup ketik `panas`, dan untuk `(건물) 앞` cukup `앞`. Jika ada garis miring, misalnya `Cutter/Pisau`, ketik salah satunya. Jika kata itu punya beberapa arti, cukup ketik **salah satu** artinya. Sinonim atau arti dengan kata-kata lain dianggap salah. Jika kamu yakin jawabanmu benar, tanyakan ke pengajarmu.
 
 ## Kapan kosakata dianggap selesai
 
