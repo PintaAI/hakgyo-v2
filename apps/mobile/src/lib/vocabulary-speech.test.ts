@@ -26,6 +26,12 @@ describe("vocabulary speech helpers", () => {
     expect(isSpeechAnswerCorrect([], ["buku"])).toBeFalse();
   });
 
+  test("ignores notes in brackets and punctuation like typed answers", () => {
+    expect(matchSpeechAlternative(["Panas (Cuaca)"], ["panas"])).toBe("panas");
+    expect(matchSpeechAlternative(["1.000"], ["1000"])).toBe("1000");
+    expect(matchSpeechAlternative("(건물) 앞", ["앞"])).toBe("앞");
+  });
+
   test("rejects non-matches and empty input", () => {
     expect(isSpeechAnswerCorrect("학교", ["책"])).toBeFalse();
     expect(isSpeechAnswerCorrect("학교", [])).toBeFalse();

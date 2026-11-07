@@ -1,4 +1,4 @@
-import { joinMeanings } from "@hakgyo/shared";
+import { joinMeanings, matchesTerm } from "@hakgyo/shared";
 
 export type Word = {
   id: string;
@@ -14,15 +14,9 @@ export type Memory = {
 };
 export type PracticeMemory = Record<string, Memory>;
 
-export function normalizeVocabularyAnswer(answer: string) {
-  return answer.normalize("NFKC").trim().replace(/\s+/gu, " ").toLowerCase();
-}
-
+/** Typed or spoken Korean answer against the term (see `matchesTerm`). */
 export function isVocabularyAnswerCorrect(answer: string, expected: string) {
-  const normalized = normalizeVocabularyAnswer(answer);
-  return (
-    normalized.length > 0 && normalized === normalizeVocabularyAnswer(expected)
-  );
+  return matchesTerm(answer, expected);
 }
 
 export function fingerprint(word: Word) {

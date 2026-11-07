@@ -4,6 +4,7 @@ import {
   entryMeanings,
   joinMeanings,
   matchesMeaning,
+  matchesTerm,
   normalizeMeanings,
   splitMeanings,
   vocabularyMeaningFields,
@@ -65,6 +66,7 @@ describe("vocabulary meanings", () => {
     const meanings = ["Sdr / Sdr.i"];
     expect(matchesMeaning("sdr", meanings)).toBe(true);
     expect(matchesMeaning("Sdr.i", meanings)).toBe(true);
+    expect(matchesMeaning("sdri", meanings)).toBe(true);
     expect(matchesMeaning("sdr / sdr.i", meanings)).toBe(true);
   });
 
@@ -72,5 +74,49 @@ describe("vocabulary meanings", () => {
     const meanings = ["begitu …, langsung"];
     expect(matchesMeaning("begitu", meanings)).toBe(false);
     expect(matchesMeaning("begitu …, langsung", meanings)).toBe(true);
+  });
+
+  test("ignores punctuation a learner would not type", () => {
+    expect(matchesMeaning("oh", ["lima (angka)", "oh!"])).toBe(true);
+    expect(matchesMeaning("bagaimana", ["bagaimana?"])).toBe(true);
+    expect(matchesMeaning("halo", ["Halo? (Diucapkan di telepon)"])).toBe(true);
+    expect(matchesMeaning("1000", ["1.000"])).toBe(true);
+    expect(matchesMeaning("1.000", ["1.000"])).toBe(true);
+    expect(matchesMeaning("begitu langsung", ["begitu …, langsung"])).toBe(
+      true,
+    );
+    expect(matchesMeaning("!?", ["oh!"])).toBe(false);
+  });
+
+  test("reads a hyphen as a space or nothing and & as dan", () => {
+    expect(matchesMeaning("kupu kupu", ["kupu-kupu"])).toBe(true);
+    expect(matchesMeaning("kupukupu", ["kupu-kupu"])).toBe(true);
+    expect(matchesMeaning("Kira-kira", ["Kira-Kira"])).toBe(true);
+    expect(matchesMeaning("daging dan ikan", ["Daging & Ikan"])).toBe(true);
+    expect(matchesMeaning("daging & ikan", ["Daging & Ikan"])).toBe(true);
+    expect(matchesMeaning("daging", ["Daging & Ikan"])).toBe(false);
+  });
+});
+
+describe("matchesTerm", () => {
+  test("still needs the term itself, spacing included", () => {
+    expect(matchesTerm("  학교 ", "학교")).toBe(true);
+    expect(matchesTerm("학 교", "학교")).toBe(false);
+    expect(matchesTerm("책", "학교")).toBe(false);
+    expect(matchesTerm(" ", "")).toBe(false);
+  });
+
+  test("accepts a term without its notes, punctuation or other side", () => {
+    expect(matchesTerm("앞", "(건물) 앞")).toBe(true);
+    expect(matchesTerm("건물 앞", "(건물) 앞")).toBe(true);
+    expect(matchesTerm("나", "나(남자)")).toBe(true);
+    expect(matchesTerm("40분", "40분 (사십 분)")).toBe(true);
+    expect(matchesTerm("반", "30분 (삼십 분)=반")).toBe(true);
+    expect(matchesTerm("30분", "30분 (삼십 분)=반")).toBe(true);
+    expect(matchesTerm("드시다", "잡수시다/드시다")).toBe(true);
+    expect(matchesTerm("여보세요", "여보세요?")).toBe(true);
+    expect(matchesTerm("k팝", "K-팝")).toBe(true);
+    expect(matchesTerm("현금 인출기", "현금 인출기(ATM)")).toBe(true);
+    expect(matchesTerm("건물", "(건물) 앞")).toBe(false);
   });
 });
