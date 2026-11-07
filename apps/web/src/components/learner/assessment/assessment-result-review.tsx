@@ -1,10 +1,9 @@
 "use client";
 
-import { formatScoreOutOf, groupRanges, usesPictureGrid } from "@hakgyo/shared";
+import { formatScoreOutOf, groupRanges } from "@hakgyo/shared";
 
 import { useState } from "react";
 
-import { Button } from "~/components/ui/button";
 import { assessmentResultPolicy } from "~/lib/learner/assessment-state";
 import {
   isQuestionAnswered,
@@ -12,14 +11,12 @@ import {
 } from "~/lib/learner/question-progress";
 import type { RouterOutputs } from "~/trpc/react";
 import { RichContent } from "../practice/rich-content";
-import { QuestionGroupHeader } from "./question-group-header";
-import {
-  AssessmentOption,
-  AssessmentOptions,
-  AssessmentQuestion,
-  QuestionNavigator,
-  StudyCard,
-} from "./assessment-ui";
+import { Eyebrow } from "../eyebrow";
+import { QuizNav } from "../quiz/quiz-nav";
+import { QuizPager } from "../quiz/quiz-pager";
+import { QuizQuestion } from "../quiz/quiz-question";
+import { QuizStatusDots } from "../quiz/quiz-status-dots";
+import { QuestionNavigator, StudyCard } from "./assessment-ui";
 
 type Assessment = RouterOutputs["assessment"]["getForCourseItem"];
 type Attempt = RouterOutputs["assessment"]["getMyAttempt"];
@@ -66,7 +63,7 @@ export function AssessmentResultReview({
   if (attempt.status !== "GRADED") return null;
   if (!policy.showAnswerReview)
     return (
-      <StudyCard>
+      <StudyCard className="rounded-2xl">
         <p className="font-bold">Tryout hanya skor</p>
         <p className="text-muted-foreground text-sm leading-5">
           Hasil tryout berisi skor akhir dan leaderboard. Kunci jawaban dan
@@ -76,138 +73,116 @@ export function AssessmentResultReview({
     );
   if (!assessment.answersRevealed)
     return (
-      <StudyCard>
+      <StudyCard className="rounded-2xl">
         <p className="font-bold">Review jawaban belum tersedia</p>
         <p className="text-muted-foreground text-sm leading-5">
-          Kunci jawaban dan pembahasan tersedia setelah tugas on-demand ini
-          ditutup.
+          Kunci jawaban dan pembahasan tersedia setelah latihan ini ditutup.
         </p>
       </StudyCard>
     );
 
-  const question = assessment.questions[index];
-  if (!question) return null;
-  const answer = attempt.answers.find(
-    (candidate) => candidate.questionId === question.id,
-  );
-  const selected = new Set(
-    answer?.selectedOptions.map((selection) => selection.optionId) ?? [],
-  );
-  const manualScore =
-    answer && "manualScore" in answer ? answer.manualScore : null;
-  const autoScore = answer && "autoScore" in answer ? answer.autoScore : null;
-  const writtenScore =
-    typeof manualScore === "number"
-      ? manualScore
-      : typeof autoScore === "number"
-        ? autoScore
-        : null;
-  const feedback = answer && "feedback" in answer ? answer.feedback : null;
-  const group = question.groupId
-    ? assessment.groups.find(({ id }) => id === question.groupId)
-    : undefined;
-  const groupRange = question.groupId
-    ? groupRanges(assessment.questions).get(question.groupId)
-    : undefined;
-  const pictureGrid = usesPictureGrid(question.options);
+  const ranges = groupRanges(assessment.questions);
+  const total = assessment.questions.length;
 
-  return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-xl font-black">Review jawaban kamu</h2>
-      <AssessmentQuestion
+  function renderPage(position: number) {
+    const question = assessment.questions[position];
+    if (!question) return null;
+    const answer = attempt.answers.find(
+      (candidate) => candidate.questionId === question.id,
+    );
+    const manualScore =
+      answer && "manualScore" in answer ? answer.manualScore : null;
+    const autoScore = answer && "autoScore" in answer ? answer.autoScore : null;
+    const writtenScore =
+      typeof manualScore === "number"
+        ? manualScore
+        : typeof autoScore === "number"
+          ? autoScore
+          : null;
+    const feedback = answer && "feedback" in answer ? answer.feedback : null;
+    const group = question.groupId
+      ? assessment.groups.find(({ id }) => id === question.groupId)
+      : undefined;
+    const range = question.groupId ? ranges.get(question.groupId) : undefined;
+    return (
+      <QuizQuestion
+        question={question}
+        index={position}
+        total={total}
         detail={
           question.type === "WRITTEN"
             ? writtenScore !== null
               ? `${formatScoreOutOf(writtenScore, question.points, " / ")} pt`
               : "Sudah direview"
-            : statuses[index] === "correct"
+            : statuses[position] === "correct"
               ? "Benar"
-              : statuses[index] === "unanswered"
+              : statuses[position] === "unanswered"
                 ? "Tidak dijawab"
                 : "Salah"
         }
-        current={index}
-        total={assessment.questions.length}
-        answered={statuses.filter((status) => status !== "unanswered").length}
-        onOpen={() => setNavigatorOpen(true)}
+        group={
+          group && range
+            ? {
+                instructions: group.instructions,
+                stimulus: group.stimulus,
+                first: range.first,
+                last: range.last,
+              }
+            : null
+        }
+        selectedOptionIds={
+          answer?.selectedOptions.map((selection) => selection.optionId) ?? []
+        }
+        correctOptionIds={question.options
+          .filter((option) => option.isCorrect === true)
+          .map((option) => option.id)}
+        writtenAnswer={
+          typeof answer?.content === "string" ? answer.content : undefined
+        }
       >
-        {group && groupRange ? (
-          <QuestionGroupHeader
-            first={groupRange.first}
-            instructions={group.instructions}
-            last={groupRange.last}
-            stimulus={group.stimulus}
-          />
+        {feedback ? (
+          <StudyCard className="rounded-2xl">
+            <Eyebrow size="md" tone="primary">
+              Feedback pengajar
+            </Eyebrow>
+            <RichContent content={feedback} />
+          </StudyCard>
         ) : null}
-        <RichContent content={question.prompt} />
-      </AssessmentQuestion>
-      {question.type === "WRITTEN" ? (
-        <StudyCard>
-          <p className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
-            Jawaban kamu
-          </p>
-          <p className="text-base leading-6 whitespace-pre-wrap">
-            {typeof answer?.content === "string" && answer.content.trim()
-              ? answer.content
-              : "Tidak dijawab"}
-          </p>
-        </StudyCard>
-      ) : (
-        <AssessmentOptions
-          grid={pictureGrid}
-          multiple={question.type === "MULTIPLE_CHOICE"}
-        >
-          {question.options.map((option, optionIndex) => (
-            <AssessmentOption
-              key={option.id}
-              index={optionIndex}
-              selected={selected.has(option.id)}
-              correct={option.isCorrect === true}
-              multiple={question.type === "MULTIPLE_CHOICE"}
-              tile={pictureGrid}
-            >
-              <RichContent content={option.content} />
-            </AssessmentOption>
-          ))}
-        </AssessmentOptions>
-      )}
-      {feedback ? (
-        <StudyCard>
-          <p className="text-primary text-xs font-bold tracking-wider uppercase">
-            Feedback pengajar
-          </p>
-          <RichContent content={feedback} />
-        </StudyCard>
-      ) : null}
-      {question.explanation ? (
-        <StudyCard>
-          <p className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
-            Pembahasan
-          </p>
-          <RichContent content={question.explanation} />
-        </StudyCard>
-      ) : null}
-      <div className="flex gap-3">
-        <Button
-          variant="secondary"
-          className="flex-1"
-          disabled={index === 0}
-          onClick={() => setIndex(index - 1)}
-        >
-          Sebelumnya
-        </Button>
-        <Button
-          className="flex-1"
-          disabled={index === assessment.questions.length - 1}
-          onClick={() => setIndex(index + 1)}
-        >
-          Berikutnya →
-        </Button>
-      </div>
+        {question.explanation ? (
+          <StudyCard className="rounded-2xl">
+            <Eyebrow size="md">Pembahasan</Eyebrow>
+            <RichContent content={question.explanation} />
+          </StudyCard>
+        ) : null}
+      </QuizQuestion>
+    );
+  }
+
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="text-xl font-black">Review jawaban kamu</h2>
+      <QuizStatusDots
+        statuses={statuses}
+        current={index}
+        onOpenList={() => setNavigatorOpen(true)}
+      />
+      <QuizPager
+        count={total}
+        index={index}
+        onIndexChange={setIndex}
+        renderPage={renderPage}
+      />
+      <QuizNav
+        answered={statuses.filter((status) => status !== "unanswered").length}
+        total={total}
+        onPrevious={index > 0 ? () => setIndex(index - 1) : undefined}
+        onNext={index < total - 1 ? () => setIndex(index + 1) : undefined}
+        onOpenList={() => setNavigatorOpen(true)}
+      />
       <QuestionNavigator
         open={navigatorOpen}
         onOpenChange={setNavigatorOpen}
-        title={`Review · ${assessment.title}`}
+        title={`Pembahasan · ${assessment.title}`}
         current={index}
         statuses={statuses}
         onSelect={(next) => {

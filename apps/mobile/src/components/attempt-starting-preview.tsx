@@ -1,6 +1,6 @@
 import { ActivityIndicator, Text, View } from "react-native";
 
-import { sectionRules } from "../lib/section-rules";
+import { sectionRules } from "@hakgyo/shared";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import type { CourseItemAssessment } from "../sync/hooks";
 import { useApiAssetResolver } from "./content-renderer";

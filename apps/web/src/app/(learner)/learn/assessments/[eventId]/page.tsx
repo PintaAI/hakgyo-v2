@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AssessmentEvent } from "~/components/learner/assessment/assessment-event";
-import { api } from "~/trpc/server";
+import { api, HydrateClient } from "~/trpc/server";
 
 export const metadata: Metadata = { title: "Event tugas" };
 
@@ -21,5 +21,21 @@ export default async function AssessmentEventPage({
     );
   }
 
-  return <AssessmentEvent event={event} />;
+  // A finished attempt shows in full under the result, as the app does: ship
+  // its detail with the page instead of requesting it after hydration.
+  if (attempt?.status === "GRADED" && attempt.score !== null) {
+    await Promise.all([
+      api.assessment.getForCourseItem.prefetch({
+        courseItemId: event.courseItem.id,
+        attemptId: attempt.id,
+      }),
+      api.assessment.getMyAttempt.prefetch({ attemptId: attempt.id }),
+    ]);
+  }
+
+  return (
+    <HydrateClient>
+      <AssessmentEvent event={event} />
+    </HydrateClient>
+  );
 }

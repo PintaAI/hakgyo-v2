@@ -10,6 +10,7 @@ import {
   ruleSectionsFor,
   ruleStateFrom,
   sectionAudioPolicy,
+  sectionRules,
   sectionTimeline,
   sectionView,
   type AttemptLogEntry,
@@ -66,7 +67,6 @@ import {
 import { assessmentTerminalResult } from "../../../../../../src/lib/assessment-state";
 import { useAppTheme } from "../../../../../../src/providers/AppThemeProvider";
 import { toolbarIcons } from "../../../../../../src/theme/toolbar-icons";
-import { sectionRules } from "../../../../../../src/lib/section-rules";
 import { useAutoTour } from "../../../../../../src/tour/tour-provider";
 import { TourTarget } from "../../../../../../src/tour/tour-target";
 import { useMobileSyncActions } from "../../../../../../src/providers/MobileSyncProvider";
