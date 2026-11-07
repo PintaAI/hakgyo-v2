@@ -107,6 +107,20 @@ The event screen uses the course tugas intro's layout (`HakgyoHero` with the que
 `QuestionPreview`, the latest attempt as `AssessmentOverview`), with the leaderboard in the same
 card style below.
 
+## Web screens
+
+The web event and tugas screens mirror the app's (components of the same names under
+`apps/web/src/components/learner/`). The web has no course bundle, so `getForLearner` returns the
+sample as `previewQuestion`: the assessment's first question with its options, without answers or
+explanation, only while the learner can start and has no attempt yet (like `media`, never before
+the event opens). The web starts without the optimistic preview: "Mulai" shows "Memulai…" until the
+server answers.
+
+A finished attempt has no web screen of its own either: the attempt page redirects a submitted or
+graded attempt to its event or tugas page, which shows "Hasil terakhir". The event page prefetches
+the graded attempt's detail with the page and shows `AttemptResultDetails` under the leaderboard;
+the tugas page opens it in a sheet from "Review jawaban kamu".
+
 ## Offline materials (mobile)
 
 The course screen offers "Simpan offline" for every chapter the learner can open, and each open

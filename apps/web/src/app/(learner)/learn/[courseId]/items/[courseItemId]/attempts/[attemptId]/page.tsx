@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { AssessmentAttempt } from "~/components/learner/assessment/assessment-attempt";
 import { api } from "~/trpc/server";
@@ -22,6 +22,16 @@ export default async function AttemptPage({
   ]);
 
   if (attempt.courseItemId !== courseItemId) notFound();
+
+  // Like the app, a finished attempt has no screen of its own: its tugas or
+  // event screen shows the result in full (also for a "Nilai keluar" link).
+  if (attempt.status !== "IN_PROGRESS") {
+    redirect(
+      assessment.event
+        ? `/learn/assessments/${assessment.event.id}`
+        : `/learn/${courseId}/items/${courseItemId}`,
+    );
+  }
 
   return (
     <AssessmentAttempt

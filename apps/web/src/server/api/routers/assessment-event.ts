@@ -17,6 +17,7 @@ import {
 } from "~/server/assessment/event-leaderboard";
 import { openAssessmentEvent } from "~/server/assessment/event-lifecycle";
 import { getEventItemAnalysis } from "~/server/assessment/item-analysis";
+import { loadPreviewQuestion } from "~/server/assessment/learner-view";
 import { timedSectionsSelect } from "~/server/assessment/timing";
 import {
   addCohortsToEvent,
@@ -962,28 +963,34 @@ export const assessmentEventRouter = createTRPCRouter({
       ]);
       if (!event) throw new TRPCError({ code: "NOT_FOUND" });
       const learnerEvent = shapeLearnerEvent(event, attemptCount, now);
-      // Images and audio the learner can download ahead, once the event has opened (never
-      // before, so listening material is not handed out early).
-      const media =
+      const assessmentId = event.courseItem.assessment?.id;
+      // Images and audio the learner can download ahead, and the first question as a sample
+      // before a first attempt, once the event has opened (never before, so listening material
+      // is not handed out early).
+      const [media, previewQuestion] = await Promise.all([
         (learnerEvent.entry.canStart ||
           learnerEvent.entry.canReattempt ||
           learnerEvent.entry.state === "IN_PROGRESS") &&
-        event.courseItem.assessment
-          ? await loadAssessmentMedia(ctx.db, event.courseItem.assessment.id)
-          : [];
+        assessmentId
+          ? loadAssessmentMedia(ctx.db, assessmentId)
+          : [],
+        learnerEvent.entry.canStart && attemptCount === 0 && assessmentId
+          ? loadPreviewQuestion(ctx.db, assessmentId)
+          : null,
+      ]);
       if (
         event.status !== "CLOSED" &&
         (learnerEvent.entry.state === "NOT_STARTED" ||
           learnerEvent.entry.state === "IN_PROGRESS")
       )
-        return { ...learnerEvent, media, leaderboard: null };
+        return { ...learnerEvent, media, previewQuestion, leaderboard: null };
       // Top entries plus the learner's own row, ranked in SQL.
       const leaderboard = await getAssessmentEventLeaderboard(ctx.db, {
         eventId: event.id,
         limit: LEARNER_LEADERBOARD_LIMIT,
         userId: ctx.actorUserId,
       });
-      return { ...learnerEvent, media, leaderboard };
+      return { ...learnerEvent, media, previewQuestion, leaderboard };
     }),
 
   /**

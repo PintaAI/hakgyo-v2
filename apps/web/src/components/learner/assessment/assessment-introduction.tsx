@@ -2,22 +2,47 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon, LoaderCircleIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, LoaderCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { attemptFlowSummary, resolveAssessmentEntry } from "@hakgyo/shared";
+import { resolveAssessmentEntry } from "@hakgyo/shared";
 import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
-import { assessmentAttemptPresentation } from "~/lib/learner/assessment-state";
+import { getLearningPath } from "~/lib/learner/course-learning-path";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
+import { Eyebrow } from "../eyebrow";
 import { CourseLearningFooter } from "../learn/course-learning-footer";
+import { CardFan, HakgyoHero, heroTitleClass } from "../learn/hakgyo-hero";
 import { RichContent } from "../practice/rich-content";
-import { StudyCard } from "./assessment-ui";
+import {
+  AssessmentFacts,
+  AssessmentOverview,
+  QuestionPreview,
+} from "./assessment-overview";
+import { AttemptResultSheet } from "./attempt-result-details";
 
 type Assessment = RouterOutputs["assessment"]["getForCourseItem"];
 
-/** The tugas screen of a course item: details, start / continue / retake, and the learning footer. */
+/** The question count on the top card of the hero's fan. */
+export function QuestionCountFace({ count }: { count: number }) {
+  return (
+    <div className="flex flex-col items-center">
+      <span className="text-4xl font-black tracking-tight tabular-nums">
+        {count}
+      </span>
+      <Eyebrow>soal</Eyebrow>
+    </div>
+  );
+}
+
+/**
+ * The tugas screen of a course item, like the app's: the hero with the
+ * question count, rules and the start / continue / retake action, the first
+ * question as a sample, the latest result, and the learning footer. A
+ * finished attempt lands here, so the full result opens from "Review jawaban
+ * kamu".
+ */
 export function AssessmentIntroduction({
   courseId,
   courseItemId,
@@ -30,6 +55,8 @@ export function AssessmentIntroduction({
   const router = useRouter();
   const utils = api.useUtils();
   const start = api.assessment.startAttempt.useMutation();
+  // Prefetched with the page; tells whether retrying is optional.
+  const outline = api.learning.getCourseOutline.useQuery({ courseId });
   const [selectedCohortId, setSelectedCohortId] = useState<string>();
   const latest = assessment.latestStandaloneAttempt;
   const entry = resolveAssessmentEntry({
@@ -38,6 +65,9 @@ export function AssessmentIntroduction({
     maxAttempts: assessment.maxAttempts ?? null,
     available: true,
   });
+  const itemCompleted = outline.data
+    ? getLearningPath(outline.data, courseItemId)?.item.isCompleted
+    : undefined;
   const attemptHref = (attemptId: string) =>
     `/learn/${courseId}/items/${courseItemId}/attempts/${attemptId}`;
   const cohorts = assessment.eligibleCohorts;
@@ -56,49 +86,53 @@ export function AssessmentIntroduction({
       router.push(attemptHref(attempt.id));
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Tugas belum dapat dimulai.",
+        error instanceof Error ? error.message : "Tugas tidak dapat dimulai.",
       );
     }
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <Link
-        href={`/learn/${courseId}`}
-        className={cn(
-          buttonVariants({ variant: "ghost" }),
-          "text-muted-foreground -mb-2 -ml-2 self-start",
-        )}
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+      <HakgyoHero
+        back={
+          <Link
+            href={`/learn/${courseId}`}
+            aria-label="Kembali ke kurikulum"
+            className={buttonVariants({ variant: "ghost", size: "icon" })}
+          >
+            <ArrowLeftIcon />
+          </Link>
+        }
       >
-        <ArrowLeftIcon /> Kembali ke kurikulum
-      </Link>
-
-      <StudyCard className="p-5 sm:p-6">
-        <div className="flex flex-col gap-2">
-          <p className="text-muted-foreground text-xs font-black tracking-[2px] uppercase">
-            Tugas · {assessment.questions.length} soal
-          </p>
-          <h1 className="text-3xl leading-10 font-black tracking-tight">
-            {assessment.title}
-          </h1>
+        <CardFan
+          faces={[
+            <QuestionCountFace
+              key="count"
+              count={assessment.questions.length}
+            />,
+            <div key="second" />,
+            <div key="third" />,
+          ]}
+        />
+        <div className="flex flex-col items-center gap-2">
+          <Eyebrow size="md" tone="primary">
+            Tugas
+          </Eyebrow>
+          <h1 className={heroTitleClass}>{assessment.title}</h1>
           {assessment.description ? (
-            <p className="text-muted-foreground text-sm leading-6">
+            <p className="text-muted-foreground text-center text-sm leading-6">
               {assessment.description}
             </p>
           ) : null}
         </div>
-
-        {assessment.instructions ? (
-          <div className="border-border flex flex-col gap-2 border-t pt-4">
-            <p className="text-sm font-bold">Petunjuk pengerjaan</p>
-            <div className="text-sm">
-              <RichContent content={assessment.instructions} />
-            </div>
-          </div>
-        ) : null}
-
+        <AssessmentFacts
+          timeLimitMinutes={assessment.timeLimitMinutes}
+          passingScore={assessment.passingScore}
+          maxAttempts={assessment.maxAttempts}
+          attemptsUsed={assessment.standaloneAttemptCount}
+        />
         {picksCohort ? (
-          <div className="border-border flex flex-col gap-2 border-t pt-4">
+          <div className="flex flex-col gap-2">
             <p className="text-sm font-bold">Pilih kelas</p>
             <div role="radiogroup" className="flex flex-col gap-2">
               {cohorts.map((cohort) => (
@@ -112,7 +146,7 @@ export function AssessmentIntroduction({
                     "rounded-xl border px-4 py-3 text-left font-bold transition-colors",
                     selectedCohortId === cohort.id
                       ? "border-primary bg-primary/10"
-                      : "border-border hover:bg-muted/50",
+                      : "border-border bg-background/60 hover:bg-muted/50",
                   )}
                 >
                   {cohort.name}
@@ -120,39 +154,20 @@ export function AssessmentIntroduction({
               ))}
             </div>
           </div>
-        ) : cohorts.length === 1 ? (
-          <p className="text-muted-foreground text-sm">
-            Hasil tugas dicatat untuk group{" "}
-            <span className="text-foreground font-semibold">
-              {cohorts[0]?.name}
-            </span>
-            .
-          </p>
         ) : null}
-
-        <p className="text-muted-foreground text-sm leading-6">
-          {assessment.timeLimitMinutes != null
-            ? `${assessment.timeLimitMinutes} menit`
-            : "Tanpa batas waktu"}{" "}
-          ·{" "}
-          {assessment.maxAttempts == null
-            ? "Percobaan tanpa batas"
-            : `Maks. ${assessment.maxAttempts} percobaan`}
-          {latest ? (
-            <>
-              <br />
-              {assessmentAttemptPresentation(latest).detail}
-            </>
-          ) : null}
-          <br />
-          {attemptFlowSummary(assessment.sections)}
-        </p>
-
         {entry.canStart ||
         entry.canReattempt ||
         entry.destination === "ATTEMPT" ? (
           <Button
             size="lg"
+            // Once the tugas is done, retrying is optional: the footer's
+            // "Lanjutkan belajar" becomes the main action.
+            variant={
+              entry.canReattempt &&
+              (itemCompleted === true || Boolean(assessment.event))
+                ? "secondary"
+                : "default"
+            }
             disabled={
               start.isPending ||
               assessment.questions.length === 0 ||
@@ -173,25 +188,49 @@ export function AssessmentIntroduction({
                 : entry.canReattempt
                   ? "Kerjakan ulang tugas"
                   : "Mulai tugas"}
+            {start.isPending ? null : <ArrowRightIcon data-icon="inline-end" />}
           </Button>
         ) : null}
-        {latest && latest.status !== "IN_PROGRESS" ? (
-          <Link
-            href={attemptHref(latest.id)}
-            className={buttonVariants({
-              size: "lg",
-              variant: entry.canReattempt ? "secondary" : "default",
-            })}
-          >
-            {latest.status === "GRADED" ? "Lihat hasil" : "Lihat jawaban"}
-          </Link>
+        {/* The finished attempt in full, in a sheet: where the learner lands
+            after finishing, so the attempt has no result screen of its own. */}
+        {latest?.status === "GRADED" ? (
+          <AttemptResultSheet
+            attemptId={latest.id}
+            courseItemId={courseItemId}
+          />
         ) : null}
         {start.isError ? (
           <p role="alert" className="text-destructive text-center text-sm">
-            {start.error.message}
+            {start.error.message || "Tugas tidak dapat dimulai."}
           </p>
         ) : null}
-      </StudyCard>
+      </HakgyoHero>
+
+      {assessment.instructions ? (
+        <section className="bg-card flex flex-col gap-2 rounded-2xl border p-4">
+          <Eyebrow size="xs">Petunjuk pengerjaan</Eyebrow>
+          <div className="text-sm">
+            <RichContent content={assessment.instructions} />
+          </div>
+        </section>
+      ) : null}
+
+      {/* What the task is like before starting: its first question, as it
+          will look, but not answerable here. */}
+      {!latest && assessment.questions[0] ? (
+        <QuestionPreview
+          question={assessment.questions[0]}
+          total={assessment.questions.length}
+        />
+      ) : null}
+
+      <AssessmentOverview
+        passingScore={assessment.passingScore}
+        latestAttempt={latest}
+        itemCompleted={itemCompleted}
+        canReattempt={entry.canReattempt}
+        gatesProgress={!assessment.event}
+      />
 
       {!assessment.event ? (
         <div className="border-border border-t pt-8">
