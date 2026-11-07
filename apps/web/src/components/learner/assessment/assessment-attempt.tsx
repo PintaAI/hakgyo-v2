@@ -16,16 +16,15 @@ import {
   groupRanges,
   canFinishSection,
   createLogEntry,
-  formatScoreOutOf,
   isForwardOnly,
   MAX_LOG_ENTRIES_PER_WRITE,
   pacedQuestionEndsAt,
   questionAudioSources,
   sectionAudioPolicy,
+  sectionRules,
   sectionTimeline,
   sectionView,
   stimulusPlaysWith,
-  usesPictureGrid,
   type AttemptLogEntry,
   type TimelineEntry,
 } from "@hakgyo/shared";
@@ -42,8 +41,6 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { Button, buttonVariants } from "~/components/ui/button";
-import { Textarea } from "~/components/ui/textarea";
-import { assessmentTerminalResult } from "~/lib/learner/assessment-state";
 import {
   isQuestionAnswered,
   type QuestionStatus,
@@ -52,27 +49,20 @@ import { formatRemaining } from "~/lib/learner/question-progress";
 import { onPageHidden } from "~/lib/page-hidden";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
-import { RichContent } from "../practice/rich-content";
 import {
   AssessmentMediaStatus,
   useAssessmentMediaPreload,
 } from "./assessment-media";
-import {
-  AssessmentOption,
-  AssessmentOptions,
-  AssessmentQuestion,
-  QuestionNavigator,
-  StudyCard,
-} from "./assessment-ui";
-import { ScoreBandResults } from "~/components/learner/assessment/score-band-results";
-import { TagResults } from "~/components/learner/assessment/tag-results";
+import { QuestionNavigator, StudyCard } from "./assessment-ui";
 import { SectionIntro } from "~/components/learner/assessment/section-intro";
-import { QuestionGroupHeader } from "~/components/learner/assessment/question-group-header";
+import { QuizNav } from "../quiz/quiz-nav";
+import { QuizPager } from "../quiz/quiz-pager";
+import { QuizQuestion } from "../quiz/quiz-question";
+import { QuizStatusDots } from "../quiz/quiz-status-dots";
 import {
   AssessmentAudioPlayer,
   useAttemptAudio,
 } from "~/components/learner/assessment/assessment-audio-player";
-import { AssessmentResultReview } from "./assessment-result-review";
 
 type Assessment = RouterOutputs["assessment"]["getForCourseItem"];
 type Attempt = RouterOutputs["assessment"]["getMyAttempt"];
@@ -81,15 +71,6 @@ type Answer = {
   content?: string;
   optionIds: string[];
 };
-
-// Results wait on a teacher review or on the event closing, which can take
-// hours, so waiting for one polls slowly.
-const AWAITING_REVIEW_POLL_MS = 60_000;
-
-// Audio of the content itself, hidden while a section plays it through the controlled player.
-const hiddenContentAudio =
-  // Important: BlockNote's styles are not in a cascade layer, so they beat Tailwind's utilities.
-  "[&_[data-content-type=assetAudio]]:hidden! [&_[data-content-type=audio]]:hidden!";
 
 /** Device time shifted by the measured offset to the server's clock. */
 function correctedNow(offsetMs: number) {
@@ -112,31 +93,16 @@ export function AssessmentAttempt({
 }) {
   const router = useRouter();
   const utils = api.useUtils();
+  // A finished attempt leaves for its tugas or event screen, which shows the
+  // result, so nothing here waits for a review.
   const attemptQuery = api.assessment.getMyAttempt.useQuery(
     { attemptId: initialAttempt.id },
-    {
-      initialData: initialAttempt,
-      refetchInterval: (query) =>
-        query.state.data?.status === "IN_REVIEW" ||
-        query.state.data?.status === "SUBMITTED"
-          ? AWAITING_REVIEW_POLL_MS
-          : false,
-    },
+    { initialData: initialAttempt },
   );
   const attempt = attemptQuery.data;
-  // Poll only while the result can still change: pending review, or a graded quick assessment
-  // whose answers are revealed once its event closes.
-  const assessmentQueryOptions = {
-    initialData: initialAssessment,
-    refetchInterval: (query: { state: { data?: Assessment } }) =>
-      attempt.status === "IN_REVIEW" ||
-      attempt.status === "SUBMITTED" ||
-      (attempt.status === "GRADED" &&
-        query.state.data?.event?.type === "QUICK_ASSESSMENT" &&
-        query.state.data.event.status === "OPEN")
-        ? AWAITING_REVIEW_POLL_MS
-        : false,
-  };
+  // A finished attempt leaves for its tugas or event screen, which shows the
+  // result, so nothing here waits for a review.
+  const assessmentQueryOptions = { initialData: initialAssessment };
   // Attempts of library events have no course item and load through the attempt alone.
   const itemAssessmentQuery = api.assessment.getForCourseItem.useQuery(
     { courseItemId: courseItemId ?? "", attemptId: attempt.id },
@@ -164,18 +130,6 @@ export function AssessmentAttempt({
         : utils.assessment.getForAttempt.invalidate({ attemptId: attempt.id }),
     [attempt.id, courseItemId, utils],
   );
-  // Grading changes what the assessment query reveals; refresh it once when a review completes
-  // instead of polling it after the attempt is graded.
-  const previousStatus = useRef(attempt.status);
-  useEffect(() => {
-    const wasPendingReview =
-      previousStatus.current === "IN_REVIEW" ||
-      previousStatus.current === "SUBMITTED";
-    previousStatus.current = attempt.status;
-    if (wasPendingReview && attempt.status === "GRADED") {
-      void invalidateAssessment();
-    }
-  }, [attempt.status, invalidateAssessment]);
 
   // Questions show one at a time: fetch every question's media up front so later questions do
   // not depend on the connection.
@@ -185,6 +139,10 @@ export function AssessmentAttempt({
   );
   const [selected, setCurrent] = useState(0);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
+  // Questions the learner has had in view, for the status dots and the list.
+  const [seenQuestionIds, setSeenQuestionIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [answers, setAnswers] = useState<Record<string, Answer>>(() =>
     Object.fromEntries(
@@ -297,13 +255,6 @@ export function AssessmentAttempt({
       ] ?? selected)
     : selected;
   const question = assessment.questions[current];
-  // Groups: a question's shared part. Its stimulus audio plays with the group's first question.
-  const group = question?.groupId
-    ? assessment.groups.find(({ id }) => id === question.groupId)
-    : undefined;
-  const groupRange = question?.groupId
-    ? groupRanges(assessment.questions).get(question.groupId)
-    : undefined;
   const playsOf = (questionId: string) =>
     Math.max(
       assessment.questionProgress.plays[questionId] ?? 0,
@@ -317,7 +268,6 @@ export function AssessmentAttempt({
           stimulusPlaysWith(assessment.questions, current, assessment.groups),
         )
       : [];
-  const pictureGrid = question ? usesPictureGrid(question.options) : false;
   const statuses: QuestionStatus[] = assessment.questions.map((entry) =>
     isQuestionAnswered(answers[entry.id]) ? "answered" : "unanswered",
   );
@@ -652,6 +602,14 @@ export function AssessmentAttempt({
   useEffect(() => {
     if (shownQuestionId) logQuestionShown(shownQuestionId);
   }, [shownQuestionId, viewMode]);
+  // Adjusted while rendering, so the dots show the question as opened at once.
+  if (
+    shownQuestionId &&
+    (!sectioned || viewMode === "answering") &&
+    !seenQuestionIds.has(shownQuestionId)
+  ) {
+    setSeenQuestionIds(new Set(seenQuestionIds).add(shownQuestionId));
+  }
 
   // Sections: tick the clock, keep the question inside the running section, and submit once the
   // last section has ended.
@@ -737,122 +695,85 @@ export function AssessmentAttempt({
     top.current?.scrollIntoView({ block: "start" });
   }, [current]);
 
-  const chooseOption = (optionId: string) => {
-    if (!question || busy || expired || isFinished || answerLocked) return;
-    editAnswer(question.id, (currentAnswers) => {
-      const existing = currentAnswers[question.id]?.optionIds ?? [];
+  /** Answers on the question in view; the neighbouring pages are inert. */
+  const chooseOption = (
+    page: Assessment["questions"][number],
+    optionId: string,
+  ) => {
+    if (
+      page.id !== question?.id ||
+      busy ||
+      expired ||
+      isFinished ||
+      isAnswerLocked(page)
+    )
+      return;
+    editAnswer(page.id, (currentAnswers) => {
+      const existing = currentAnswers[page.id]?.optionIds ?? [];
       const optionIds =
-        question.type === "SINGLE_CHOICE"
+        page.type === "SINGLE_CHOICE"
           ? [optionId]
           : existing.includes(optionId)
             ? existing.filter((id) => id !== optionId)
             : [...existing, optionId];
-      return { questionId: question.id, optionIds };
+      return { questionId: page.id, optionIds };
     });
+  };
+  const writeAnswer = (questionId: string, content: string) => {
+    if (questionId !== question?.id || busy || expired || isFinished) return;
+    editAnswer(questionId, () => ({ questionId, content, optionIds: [] }));
   };
 
   // A locked section keeps the first choice of a single-choice question.
-  const answerLocked = Boolean(
-    activeSection?.lockAnswers &&
-    question?.type === "SINGLE_CHOICE" &&
-    answerHasContent(answers[question.id] ?? {}),
-  );
+  const isAnswerLocked = (page: Assessment["questions"][number]) =>
+    Boolean(
+      activeSection?.lockAnswers &&
+      page.type === "SINGLE_CHOICE" &&
+      answerHasContent(answers[page.id] ?? {}),
+    );
 
-  if (isFinished) {
-    const result = assessmentTerminalResult(attempt);
-    const inReview = result?.status !== "GRADED";
+  // A finished attempt (just submitted, or graded meanwhile) leaves for its
+  // tugas or event screen, which shows the result in full.
+  const leaveForResult = isFinished && !eventEndedIncomplete;
+  useEffect(() => {
+    if (leaveForResult) router.replace(leaveHref);
+  }, [leaveForResult, leaveHref, router]);
+
+  // "Selesaikan tryout", "Selesaikan latihan" or "Selesaikan tugas".
+  const kindLabel =
+    assessment.event?.type === "TRYOUT"
+      ? "tryout"
+      : assessment.event
+        ? "latihan"
+        : "tugas";
+
+  if (eventEndedIncomplete) {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
-        <Link
-          href={leaveHref}
-          className={cn(
-            buttonVariants({ variant: "ghost" }),
-            "text-muted-foreground -ml-2 self-start",
-          )}
-        >
-          <ArrowLeftIcon />
-          {assessment.event ? "Kembali ke event" : "Kembali ke tugas"}
-        </Link>
-        <StudyCard>
-          <span className="bg-primary/10 text-primary flex size-16 items-center justify-center self-center rounded-full text-2xl font-black">
-            ✓
-          </span>
-          <h1 className="text-center text-2xl font-black">
-            {eventEndedIncomplete
-              ? "Attempt tidak selesai"
-              : inReview
-                ? "Menunggu review"
-                : "Tugas sudah direview"}
-          </h1>
-          {eventEndedIncomplete ? (
-            <p className="text-muted-foreground text-center text-sm leading-5">
-              Event telah ditutup sebelum jawaban kamu dikirim.
-            </p>
-          ) : result && !inReview ? (
-            <>
-              <p className="text-muted-foreground text-center text-lg">
-                Skor: {formatScoreOutOf(result.score, result.maxScore)}
-              </p>
-              <ScoreBandResults
-                bands={assessment.scoreBands}
-                className="mx-auto w-full max-w-xs"
-                maxScore={result.maxScore}
-                score={result.score}
-              />
-              {assessment.sectionResults.length ? (
-                <ul className="mx-auto grid w-full max-w-xs gap-1.5 text-sm">
-                  {assessment.sections.map((section) => {
-                    const sectionResult = assessment.sectionResults.find(
-                      (entry) => entry.sectionId === section.id,
-                    );
-                    return sectionResult ? (
-                      <li
-                        key={section.id}
-                        className="flex items-center justify-between gap-3"
-                      >
-                        <span>{section.title}</span>
-                        <span className="tabular-nums">
-                          {formatScoreOutOf(
-                            sectionResult.score,
-                            sectionResult.maxScore,
-                          )}
-                        </span>
-                      </li>
-                    ) : null;
-                  })}
-                </ul>
-              ) : null}
-            </>
-          ) : (
-            <p className="text-muted-foreground text-center text-sm leading-5">
-              Hasil lengkap kamu akan muncul di sini setelah pengajar selesai
-              mereviewnya.
-            </p>
-          )}
-        </StudyCard>
-
-        {/* Scores are withheld (null) for invalidated or cancelled participations. */}
-        {result &&
-        !inReview &&
-        !eventEndedIncomplete &&
-        attempt.score !== null ? (
-          <TagResults
-            answers={attempt.answers}
-            questions={assessment.questions}
-          />
-        ) : null}
-
-        <AssessmentResultReview assessment={assessment} attempt={attempt} />
-
-        {assessment.event ? (
+        <StudyCard className="items-center rounded-2xl text-center">
+          <h1 className="text-2xl font-black">Attempt tidak selesai</h1>
+          <p className="text-muted-foreground text-sm leading-5">
+            Event telah ditutup sebelum jawaban kamu dikirim.
+          </p>
           <Link
-            href={`/learn/assessments/${assessment.event.id}`}
-            className={buttonVariants({ size: "lg" })}
+            href={leaveHref}
+            className={buttonVariants({
+              size: "lg",
+              className: "self-stretch",
+            })}
           >
-            Lihat skor & leaderboard
+            Kembali ke event
           </Link>
-        ) : null}
+        </StudyCard>
       </div>
+    );
+  }
+  if (leaveForResult) {
+    return (
+      <p className="text-muted-foreground flex items-center justify-center gap-2 py-16 text-sm">
+        <LoaderCircleIcon className="size-4 animate-spin" />
+        Membuka hasil…
+      </p>
     );
   }
 
@@ -863,16 +784,91 @@ export function AssessmentAttempt({
       </p>
     );
   }
-  const answer = answers[question.id];
-  const isLast = current === total - 1;
   const isLastInSection = positionInSection === sectionIndexes.length - 1;
+  // The bottom bar moves like the app's toolbar: back within a free section,
+  // on to the next question, and from the last one to the next unanswered.
+  const previousIndex =
+    positionInSection > 0 && !forwardOnly && !paced
+      ? sectionIndexes[positionInSection - 1]
+      : undefined;
+  const nextIndex = paced
+    ? undefined
+    : isLastInSection
+      ? nextUnansweredInSection !== current
+        ? nextUnansweredInSection
+        : undefined
+      : sectionIndexes[positionInSection + 1];
+  // The main action: finish the section, or the whole tugas from the last
+  // section (or one without sections). Always in the same place, at the top
+  // right, and always behind a confirmation.
+  const finish =
+    activeSection && !canFinishSection(activeSection)
+      ? null
+      : activeSection && !isLastSection
+        ? { label: "Selesai bagian", open: () => setFinishSectionOpen(true) }
+        : {
+            label: `Selesaikan ${kindLabel}`,
+            open: () => setConfirmOpen(true),
+          };
+  const ranges = groupRanges(assessment.questions);
+
+  function renderPage(position: number) {
+    const pageIndex = sectionIndexes[position];
+    const page =
+      pageIndex === undefined ? undefined : assessment.questions[pageIndex];
+    if (!page || pageIndex === undefined) return null;
+    const inView = pageIndex === current;
+    const pageGroup = page.groupId
+      ? assessment.groups.find(({ id }) => id === page.groupId)
+      : undefined;
+    const range = page.groupId ? ranges.get(page.groupId) : undefined;
+    return (
+      <QuizQuestion
+        question={page}
+        index={pageIndex}
+        total={total}
+        group={
+          pageGroup && range
+            ? {
+                instructions: pageGroup.instructions,
+                stimulus: pageGroup.stimulus,
+                first: range.first,
+                last: range.last,
+              }
+            : null
+        }
+        selectedOptionIds={answers[page.id]?.optionIds}
+        writtenAnswer={answers[page.id]?.content}
+        onChooseOption={(optionId) => chooseOption(page, optionId)}
+        onChangeWritten={(content) => writeAnswer(page.id, content)}
+        disabled={busy}
+        answersDisabled={expired || isAnswerLocked(page)}
+        hideInlineAudio={Boolean(audioPolicy)}
+        media={
+          // Only the question in view plays: audio counts plays.
+          inView && audioPolicy && audioSources.length ? (
+            <AssessmentAudioPlayer
+              key={page.id}
+              audio={attemptAudio}
+              disabled={busy || expired}
+              onFinished={() => audioFinished(page.id)}
+              onPlayStarted={() => recordPlay(page.id)}
+              playsUsed={playsOf(page.id)}
+              policy={audioPolicy}
+              sources={audioSources}
+            />
+          ) : null
+        }
+      />
+    );
+  }
 
   return (
     <div
       ref={top}
       className="mx-auto flex w-full max-w-2xl scroll-mt-20 flex-col gap-4"
     >
-      <header className="flex items-center gap-3">
+      <header className="flex items-center gap-2">
         <Link
           href={leaveHref}
           className={buttonVariants({ variant: "ghost", size: "icon" })}
@@ -887,6 +883,19 @@ export function AssessmentAttempt({
             {attempt.cohort ? ` · ${attempt.cohort.name}` : ""}
           </p>
         </div>
+        {/* Finishing sits at the top right and moving in the bottom bar, so
+            both stay put whatever the question's length. */}
+        {finish && view?.mode !== "intro" && view?.mode !== "done" ? (
+          <Button size="sm" disabled={busy} onClick={finish.open}>
+            {busy ? (
+              <LoaderCircleIcon
+                data-icon="inline-start"
+                className="animate-spin"
+              />
+            ) : null}
+            {busy ? "Mengirim…" : finish.label}
+          </Button>
+        ) : null}
       </header>
 
       {media.progress &&
@@ -899,7 +908,7 @@ export function AssessmentAttempt({
       ) : null}
 
       {view?.mode === "done" ? (
-        <StudyCard>
+        <StudyCard className="rounded-2xl">
           <h2 className="text-xl font-black">Semua bagian selesai</h2>
           <p className="text-muted-foreground text-sm">
             {busy
@@ -927,6 +936,7 @@ export function AssessmentAttempt({
           onStart={startSection}
           position={view.index + 1}
           questionCount={sectionIndexes.length}
+          rules={sectionRules(activeSection)}
           secondsToAutoStart={introSecondsLeft}
           sectionCount={assessment.sections.length}
           timeLimitSeconds={activeSection.timeLimitSeconds}
@@ -934,20 +944,20 @@ export function AssessmentAttempt({
         />
       ) : (
         <>
-          {activeSection && sectionSecondsLeft !== null ? (
+          {activeSection ? (
             <p
               aria-live={sectionSecondsLeft === 0 ? "polite" : "off"}
               className={cn(
                 "text-sm font-bold tabular-nums",
-                sectionSecondsLeft < 60 ? "text-destructive" : "text-primary",
+                sectionSecondsLeft !== null && sectionSecondsLeft < 60
+                  ? "text-destructive"
+                  : "text-primary",
               )}
             >
-              {activeSection.title} · {formatRemaining(sectionSecondsLeft)}{" "}
-              tersisa
-            </p>
-          ) : activeSection ? (
-            <p className="text-primary text-sm font-bold">
               {activeSection.title}
+              {sectionSecondsLeft !== null
+                ? ` · ${formatRemaining(sectionSecondsLeft)} tersisa`
+                : ""}
             </p>
           ) : secondsLeft !== null ? (
             <p
@@ -965,49 +975,37 @@ export function AssessmentAttempt({
             </p>
           ) : null}
 
-          <AssessmentQuestion
-            current={current}
-            total={total}
-            answered={answeredCount}
-            onOpen={() => setNavigatorOpen(true)}
+          <QuizStatusDots
+            // A new section starts a new row, like its pages. (Sibling keys
+            // must differ from the pager's.)
+            key={`dots-${activeSection?.id ?? "questions"}`}
+            statuses={sectionStatuses}
+            seen={sectionIndexes.map((index) =>
+              seenQuestionIds.has(assessment.questions[index]?.id ?? ""),
+            )}
+            current={Math.max(0, positionInSection)}
+            onOpenList={() => setNavigatorOpen(true)}
             disabled={busy}
-          >
-            {group && groupRange ? (
-              <QuestionGroupHeader
-                contentClassName={cn(audioPolicy && hiddenContentAudio)}
-                first={groupRange.first}
-                instructions={group.instructions}
-                last={groupRange.last}
-                stimulus={group.stimulus}
-              />
-            ) : null}
-            {/* Controlled audio replaces the content's own players. */}
-            <div className={cn(audioPolicy && hiddenContentAudio)}>
-              <RichContent content={question.prompt} />
-            </div>
-          </AssessmentQuestion>
-
-          {audioPolicy && audioSources.length ? (
-            <AssessmentAudioPlayer
-              key={question.id}
-              audio={attemptAudio}
-              disabled={busy || expired}
-              onFinished={() => audioFinished(question.id)}
-              onPlayStarted={() => recordPlay(question.id)}
-              playsUsed={playsOf(question.id)}
-              policy={audioPolicy}
-              sources={audioSources}
-            />
-          ) : null}
+          />
+          <QuizPager
+            // A new section is a new set of pages.
+            key={`pages-${activeSection?.id ?? "questions"}`}
+            count={sectionIndexes.length}
+            index={Math.max(0, positionInSection)}
+            // Forward-only and paced sections move only with their own rules.
+            swipeEnabled={!forwardOnly && !paced && !busy}
+            onIndexChange={(position) => {
+              const next = sectionIndexes[position];
+              if (next !== undefined) goTo(next);
+            }}
+            renderPage={renderPage}
+          />
           {pacedEndsAt ? (
             <p
               aria-live="off"
               className="text-muted-foreground text-sm font-semibold tabular-nums"
             >
-              {positionInSection < sectionIndexes.length - 1
-                ? "Soal berikutnya"
-                : "Bagian selesai"}{" "}
-              dalam{" "}
+              {isLastInSection ? "Bagian selesai" : "Soal berikutnya"} dalam{" "}
               {formatRemaining(
                 Math.max(
                   0,
@@ -1017,104 +1015,27 @@ export function AssessmentAttempt({
             </p>
           ) : null}
 
-          <p className="text-sm font-bold">
-            {question.type === "WRITTEN"
-              ? "Tulis jawaban kamu"
-              : question.type === "MULTIPLE_CHOICE"
-                ? "Pilih semua jawaban yang benar"
-                : "Pilih satu jawaban"}
-          </p>
-          {question.type === "WRITTEN" ? (
-            <StudyCard>
-              <Textarea
-                aria-label={`Jawaban soal ${current + 1}`}
-                value={answer?.content ?? ""}
-                disabled={busy || expired}
-                onChange={(event) => {
-                  const content = event.target.value;
-                  editAnswer(question.id, () => ({
-                    questionId: question.id,
-                    content,
-                    optionIds: [],
-                  }));
-                }}
-                placeholder="Tulis jawaban kamu…"
-                className="min-h-32 resize-y border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
-              />
-            </StudyCard>
-          ) : (
-            <AssessmentOptions
-              grid={pictureGrid}
-              multiple={question.type === "MULTIPLE_CHOICE"}
-            >
-              {question.options.map((option, optionIndex) => (
-                <AssessmentOption
-                  key={option.id}
-                  index={optionIndex}
-                  selected={answer?.optionIds.includes(option.id) ?? false}
-                  multiple={question.type === "MULTIPLE_CHOICE"}
-                  disabled={busy || expired || answerLocked}
-                  tile={pictureGrid}
-                  onPress={() => chooseOption(option.id)}
-                >
-                  <div className={cn(audioPolicy && hiddenContentAudio)}>
-                    <RichContent content={option.content} />
-                  </div>
-                </AssessmentOption>
-              ))}
-            </AssessmentOptions>
-          )}
-
-          <p className="text-muted-foreground text-xs leading-5">
-            {paced
-              ? "Soal berganti sendiri setelah waktunya habis. "
-              : forwardOnly
-                ? "Soal yang sudah dilewati tidak bisa dibuka lagi. "
-                : ""}
-            {activeSection?.lockAnswers
-              ? "Pilihan pertama kamu langsung dikunci."
-              : forwardOnly
-                ? "Jawaban bisa diubah selama soal masih tampil."
-                : "Kamu bisa mengubah jawaban sampai mengirimnya."}{" "}
-            Jawaban tersimpan otomatis selama kamu mengerjakan.
-            {secondsLeft !== null || sectionSecondsLeft !== null
-              ? " Timer tetap berjalan meski kamu keluar."
-              : ""}
-          </p>
-
-          <div className="border-border flex flex-col gap-3 border-t pt-4">
-            <div className="flex gap-3">
-              {positionInSection > 0 && !forwardOnly ? (
-                <Button
-                  variant="secondary"
-                  className="flex-1"
-                  disabled={busy}
-                  onClick={() => goTo(sectionIndexes[positionInSection - 1]!)}
-                >
-                  Sebelumnya
-                </Button>
-              ) : null}
-              {!paced &&
-              (!isLastInSection ||
-                (nextUnansweredInSection !== undefined &&
-                  nextUnansweredInSection !== current)) ? (
-                <Button
-                  className="flex-1"
-                  disabled={busy}
-                  onClick={() =>
-                    goTo(
-                      isLastInSection
-                        ? nextUnansweredInSection!
-                        : sectionIndexes[positionInSection + 1]!,
-                    )
-                  }
-                >
-                  {isLastInSection
-                    ? "Soal belum dijawab berikutnya →"
-                    : "Berikutnya →"}
-                </Button>
-              ) : null}
-            </div>
+          {/* Moving, in the app's toolbar order, within thumb reach. */}
+          <div className="bg-background/95 supports-backdrop-filter:bg-background/80 sticky bottom-0 z-10 -mx-4 mt-2 flex flex-col gap-2 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:mx-0 sm:rounded-t-2xl sm:px-3">
+            <QuizNav
+              answered={sectionAnswered}
+              total={sectionIndexes.length}
+              onPrevious={
+                previousIndex !== undefined
+                  ? () => goTo(previousIndex)
+                  : undefined
+              }
+              onNext={
+                nextIndex !== undefined ? () => goTo(nextIndex) : undefined
+              }
+              nextLabel={
+                isLastInSection
+                  ? "Soal belum dijawab berikutnya"
+                  : "Soal berikutnya"
+              }
+              onOpenList={() => setNavigatorOpen(true)}
+              disabled={busy}
+            />
             {!expired ? (
               <p
                 aria-live="polite"
@@ -1129,40 +1050,6 @@ export function AssessmentAttempt({
                 )}
               </p>
             ) : null}
-            {!isLastSection && activeSection ? (
-              canFinishSection(activeSection) &&
-              (isLastInSection || sectionAnswered === sectionIndexes.length) ? (
-                <Button
-                  size="lg"
-                  disabled={busy}
-                  onClick={() => setFinishSectionOpen(true)}
-                >
-                  Selesai bagian ini
-                </Button>
-              ) : null
-            ) : // A last section that may not end early ends with its time.
-            activeSection &&
-              !canFinishSection(activeSection) ? null : expired ||
-              isLast ||
-              answeredCount === total ? (
-              <Button
-                size="lg"
-                disabled={busy}
-                onClick={() => setConfirmOpen(true)}
-              >
-                {busy ? (
-                  <LoaderCircleIcon
-                    data-icon="inline-start"
-                    className="animate-spin"
-                  />
-                ) : null}
-                {busy
-                  ? "Menyimpan…"
-                  : answeredCount === total
-                    ? "Kirim tugas"
-                    : `Kirim · ${answeredCount}/${total} dijawab`}
-              </Button>
-            ) : null}
           </div>
 
           <QuestionNavigator
@@ -1171,6 +1058,9 @@ export function AssessmentAttempt({
             title={activeSection?.title ?? assessment.title}
             current={Math.max(0, positionInSection)}
             statuses={sectionStatuses}
+            seen={sectionIndexes.map((index) =>
+              seenQuestionIds.has(assessment.questions[index]?.id ?? ""),
+            )}
             onSelect={(index) => {
               // Paced sections move by themselves; forward-only ones only ahead.
               if (busy || paced || (forwardOnly && index < positionInSection))
@@ -1203,17 +1093,17 @@ export function AssessmentAttempt({
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Kirim tugas?</AlertDialogTitle>
+            <AlertDialogTitle>Selesaikan {kindLabel}?</AlertDialogTitle>
             <AlertDialogDescription>
               {expired
-                ? "Waktu habis. Hanya jawaban yang sudah tersimpan di server yang dapat dinilai."
-                : `${answeredCount} dari ${total} soal dijawab. Jawaban yang dikirim tidak dapat diubah.`}
+                ? "Waktu habis. Jawaban yang kamu isi sebelum waktu habis akan dikirim dan dinilai."
+                : `Apakah kamu yakin ingin menyelesaikan ${kindLabel} ini dan mengirim jawaban? ${answeredCount} dari ${total} soal dijawab. Jawaban yang dikirim tidak dapat diubah.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Periksa lagi</AlertDialogCancel>
             <AlertDialogAction onClick={() => void submitAssessment()}>
-              Kirim
+              Selesaikan
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

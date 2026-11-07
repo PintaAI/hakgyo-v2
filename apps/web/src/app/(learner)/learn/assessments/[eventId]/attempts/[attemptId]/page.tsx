@@ -24,6 +24,11 @@ export default async function AssessmentEventAttemptPage({
     );
   }
 
+  // Like the app, a finished attempt has no screen of its own: the event page
+  // shows the result in full.
+  if (attempt.status !== "IN_PROGRESS")
+    redirect(`/learn/assessments/${eventId}`);
+
   const assessment = await api.assessment.getForAttempt({ attemptId });
 
   return (

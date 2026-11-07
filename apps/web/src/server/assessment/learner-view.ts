@@ -407,3 +407,23 @@ export async function getLearnerAssessmentsForCourseItems(
     }),
   );
 }
+
+/**
+ * An assessment's first question without its answers or explanation: the sample on the screen
+ * of a latihan or tryout that can be started (the app reads it from the course bundle).
+ */
+export function loadPreviewQuestion(db: DatabaseClient, assessmentId: string) {
+  return db.assessmentQuestion.findFirst({
+    where: { assessmentId },
+    orderBy: { position: "asc" },
+    select: {
+      id: true,
+      type: true,
+      prompt: true,
+      options: {
+        orderBy: { position: "asc" },
+        select: { id: true, content: true },
+      },
+    },
+  });
+}

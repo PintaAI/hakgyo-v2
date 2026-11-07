@@ -4,28 +4,42 @@ import { formatScoreOutOf } from "@hakgyo/shared";
 
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon, LoaderCircleIcon } from "lucide-react";
-import { toast } from "sonner";
+import { ArrowLeftIcon, ArrowRightIcon, LoaderCircleIcon } from "lucide-react";
 
 import Link from "~/components/link";
+import { LocalDateTime } from "~/components/local-date-time";
 import { Button, buttonVariants } from "~/components/ui/button";
-import { assessmentAttemptPresentation } from "~/lib/learner/assessment-state";
 import { assessmentEventAttemptHref } from "~/lib/learner/hrefs";
-import { dateLabel } from "~/lib/learner/study";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
+import { Eyebrow } from "../eyebrow";
+import { CardFan, HakgyoHero, heroTitleClass } from "../learn/hakgyo-hero";
 import {
   AssessmentMediaStatus,
   useAssessmentMediaPreload,
 } from "./assessment-media";
-import { StudyCard } from "./assessment-ui";
+import { QuestionCountFace } from "./assessment-introduction";
+import {
+  AssessmentFacts,
+  AssessmentOverview,
+  QuestionPreview,
+} from "./assessment-overview";
+import { AttemptResultDetails } from "./attempt-result-details";
 
-function formatDuration(milliseconds: number) {
-  const totalSeconds = Math.round(milliseconds / 1000);
-  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
-}
+const openingDate = new Intl.DateTimeFormat("id-ID", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
 
-/** An assessment event (tryout or latihan): details, start / retake, and the leaderboard. */
+/**
+ * An assessment event (tryout or latihan), like the app's event screen: the
+ * same hero as a course tugas with the opening and closing time, the first
+ * question as a sample, the latest result, the leaderboard, and the finished
+ * attempt in full (where the learner lands after finishing).
+ */
 export function AssessmentEvent({
   event,
 }: {
@@ -35,9 +49,10 @@ export function AssessmentEvent({
   const utils = api.useUtils();
   const start = api.assessmentEvent.startAttempt.useMutation();
   const attempt = event.attempts[0];
-  const attemptState = assessmentAttemptPresentation(attempt);
-  const invalidated = Boolean(event.participants[0]?.invalidatedAt);
+  const participant = event.participants[0];
+  const invalidated = Boolean(participant?.invalidatedAt);
   const assessment = event.assessment;
+  const questionCount = assessment?._count.questions ?? 0;
   const attemptHref = (attemptId: string) =>
     assessmentEventAttemptHref(event, attemptId);
   const opensAt = event.status === "SCHEDULED" ? event.opensAt : null;
@@ -66,7 +81,7 @@ export function AssessmentEvent({
       void utils.assessmentEvent.invalidate();
       router.replace(attemptHref(created.id));
     } catch {
-      toast.error("Event belum dapat dimulai.");
+      // The mutation error is shown under the action.
     }
   }
 
@@ -75,77 +90,74 @@ export function AssessmentEvent({
     : event.entry.canReattempt
       ? "Kerjakan ulang tugas"
       : null;
+  const statusNote = invalidated ? (
+    (participant?.invalidationReason ??
+    "Partisipasi tidak tersedia. Hubungi tim kurikulum kamu.")
+  ) : !primaryAction && !attempt ? (
+    event.status === "CANCELLED" ? (
+      "Event ini dibatalkan."
+    ) : event.status === "CLOSED" ? (
+      "Event telah ditutup. Tidak ada attempt yang tercatat."
+    ) : opensAt ? (
+      <>
+        Dibuka <LocalDateTime value={opensAt} format={openingDate} />. Kamu bisa
+        mulai mengerjakan saat itu.
+      </>
+    ) : (
+      "Event ini belum dibuka untuk dikerjakan."
+    )
+  ) : null;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
-      <Link
-        href="/learn/assessments"
-        className={cn(
-          buttonVariants({ variant: "ghost" }),
-          "text-muted-foreground -mb-2 -ml-2 self-start",
-        )}
+      <HakgyoHero
+        back={
+          <Link
+            href="/learn/assessments"
+            aria-label="Kembali ke Latihan"
+            className={buttonVariants({ variant: "ghost", size: "icon" })}
+          >
+            <ArrowLeftIcon />
+          </Link>
+        }
       >
-        <ArrowLeftIcon /> Latihan
-      </Link>
-
-      <StudyCard>
-        <p className="text-primary text-xs font-black tracking-[1.5px] uppercase">
-          {event.type === "TRYOUT" ? "Tryout" : "Latihan"} ·{" "}
-          {event.cohort?.name ?? event.course.title}
-        </p>
-        <h1 className="text-2xl leading-8 font-black">
-          {assessment?.title ?? event.title}
-        </h1>
-        {assessment?.description ? (
-          <p className="text-muted-foreground text-sm leading-6">
-            {assessment.description}
-          </p>
-        ) : null}
-
-        <p className="text-muted-foreground text-sm leading-6">
-          {assessment?._count.questions ?? 0} soal · {event.durationMinutes}{" "}
-          menit
-          {assessment?.passingScore != null
-            ? ` · lulus ${assessment.passingScore}%`
-            : ""}
-          {opensAt ? (
-            <>
-              <br />
-              Dibuka {dateLabel(opensAt)}
-            </>
+        <CardFan
+          faces={[
+            <QuestionCountFace key="count" count={questionCount} />,
+            <div key="second" />,
+            <div key="third" />,
+          ]}
+        />
+        <div className="flex flex-col items-center gap-2">
+          <Eyebrow size="md" tone="primary" className="text-center">
+            {event.type === "TRYOUT" ? "Tryout" : "Latihan"} ·{" "}
+            {event.cohort?.name ?? event.course.title}
+          </Eyebrow>
+          <h1 className={heroTitleClass}>{assessment?.title ?? event.title}</h1>
+          {assessment?.description ? (
+            <p className="text-muted-foreground text-center text-sm leading-6">
+              {assessment.description}
+            </p>
           ) : null}
-          {event.closesAt ? (
-            <>
-              <br />
-              Ditutup {dateLabel(event.closesAt)}
-            </>
-          ) : null}
-          <br />
-          {assessment?.maxAttempts != null
-            ? `${event.attemptCount} dari ${assessment.maxAttempts} percobaan terpakai`
-            : `${event.attemptCount} percobaan terpakai · tanpa batas`}
-        </p>
-
-        {invalidated ? (
-          <p className="text-destructive text-sm">
-            {event.participants[0]?.invalidationReason ??
-              "Partisipasi tidak tersedia. Hubungi tim kurikulum kamu."}
-          </p>
-        ) : null}
-
-        {attempt ? (
-          <p className="text-base font-bold">{attemptState.detail}</p>
-        ) : null}
-
+        </div>
+        <AssessmentFacts
+          timeLimitMinutes={event.durationMinutes}
+          passingScore={assessment?.passingScore ?? null}
+          maxAttempts={assessment?.maxAttempts ?? null}
+          attemptsUsed={event.attemptCount}
+          opensAt={opensAt}
+          closesAt={event.closesAt}
+        />
         <AssessmentMediaStatus
           progress={media.progress}
           sizes={mediaSizes}
           onRetry={media.retry}
         />
-
         {primaryAction ? (
           <Button
             size="lg"
+            // Like a course tugas: retrying after a result is optional.
+            variant={attempt ? "secondary" : "default"}
             disabled={start.isPending}
             onClick={() => void begin()}
           >
@@ -156,61 +168,64 @@ export function AssessmentEvent({
               />
             ) : null}
             {start.isPending ? "Memulai…" : primaryAction}
+            {start.isPending ? null : <ArrowRightIcon data-icon="inline-end" />}
           </Button>
         ) : null}
-
-        {attempt && attempt.status !== "IN_PROGRESS" ? (
-          <Link
-            href={attemptHref(attempt.id)}
-            className={buttonVariants({
-              size: "lg",
-              variant: primaryAction ? "secondary" : "default",
-            })}
+        {statusNote ? (
+          <p
+            className={cn(
+              "text-center text-sm",
+              invalidated ? "text-destructive" : "text-muted-foreground",
+            )}
           >
-            {attempt.status === "GRADED" ? "Lihat hasil" : "Lihat jawaban"}
-          </Link>
-        ) : null}
-
-        {!primaryAction && !attempt && !invalidated ? (
-          <p className="text-muted-foreground text-sm font-semibold">
-            {event.status === "CANCELLED"
-              ? "Event ini dibatalkan."
-              : event.status === "CLOSED"
-                ? "Event telah ditutup. Tidak ada attempt yang tercatat."
-                : opensAt
-                  ? `Dibuka ${dateLabel(opensAt)}. Kamu bisa mulai mengerjakan saat itu.`
-                  : "Event ini belum dibuka untuk dikerjakan."}
+            {statusNote}
           </p>
         ) : null}
-      </StudyCard>
+        {start.isError ? (
+          <p role="alert" className="text-destructive text-center text-sm">
+            {start.error.message || "Tryout tidak dapat dimulai."}
+          </p>
+        ) : null}
+      </HakgyoHero>
+
+      {!attempt && primaryAction && event.previewQuestion ? (
+        <QuestionPreview
+          question={event.previewQuestion}
+          total={questionCount}
+        />
+      ) : null}
+
+      <AssessmentOverview
+        passingScore={assessment?.passingScore ?? null}
+        latestAttempt={attempt}
+        canReattempt={event.entry.canReattempt}
+        gatesProgress={false}
+      />
 
       {event.leaderboard ? (
-        <StudyCard>
-          <h2 className="text-xl font-black">Leaderboard</h2>
-          <p className="text-muted-foreground text-sm">
+        <section className="bg-card flex flex-col gap-3 rounded-2xl border p-4">
+          <Eyebrow size="xs">Leaderboard</Eyebrow>
+          <p className="text-muted-foreground text-sm leading-5">
             Percobaan terbaik yang sudah direview yang dihitung. Nilai seri
             ditentukan oleh waktu penyelesaian.
           </p>
           {event.leaderboard.length ? (
-            <ol>
+            <ol className="flex flex-col">
               {event.leaderboard.map((entry) => (
                 <li
                   key={entry.userId}
                   className={cn(
-                    "border-border/60 flex items-center gap-3 border-b py-3 last:border-b-0",
+                    "border-border/60 flex flex-col gap-0.5 border-b py-3 last:border-b-0",
                     entry.attemptId === attempt?.id &&
                       "bg-primary/10 -mx-2 rounded-lg px-2",
                   )}
                 >
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="truncate text-sm font-semibold">
-                      {entry.rank}. {entry.name}
-                    </span>
-                    <span className="text-muted-foreground text-xs tabular-nums">
-                      {formatScoreOutOf(entry.score, entry.maxScore, " / ")} ·{" "}
-                      {entry.percentage}% ·{" "}
-                      {formatDuration(entry.completionTimeMs)}
-                    </span>
+                  <span className="truncate text-sm font-semibold">
+                    {entry.rank}. {entry.name}
+                  </span>
+                  <span className="text-muted-foreground text-xs tabular-nums">
+                    {formatScoreOutOf(entry.score, entry.maxScore, " / ")} ·{" "}
+                    {entry.percentage}%
                   </span>
                 </li>
               ))}
@@ -220,14 +235,27 @@ export function AssessmentEvent({
               Belum ada hasil yang sudah direview.
             </p>
           )}
-        </StudyCard>
+        </section>
       ) : attempt ? (
-        <StudyCard>
-          <h2 className="text-lg font-black">Leaderboard belum tersedia</h2>
-          <p className="text-muted-foreground text-sm">
+        <section className="bg-card flex flex-col gap-1 rounded-2xl border p-4">
+          <Eyebrow size="xs">Leaderboard</Eyebrow>
+          <p className="text-base font-bold">Belum tersedia</p>
+          <p className="text-muted-foreground text-sm leading-5">
             Peringkat muncul setelah hasil direview.
           </p>
-        </StudyCard>
+        </section>
+      ) : null}
+
+      {/* The finished attempt in full: where the learner lands after
+          finishing, so the attempt has no result screen of its own. */}
+      {/* Only once graded: scores are withheld (null) for invalidated or
+          cancelled participations, and the page ships this detail. */}
+      {attempt?.status === "GRADED" && attempt.score !== null ? (
+        <AttemptResultDetails
+          key={attempt.id}
+          attemptId={attempt.id}
+          courseItemId={event.courseItem?.id ?? null}
+        />
       ) : null}
     </div>
   );

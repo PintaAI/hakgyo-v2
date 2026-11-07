@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { LayoutGridIcon } from "lucide-react";
+import { ArrowRightIcon, CheckIcon, LayoutGridIcon, XIcon } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -15,6 +15,11 @@ import {
   nextUnansweredQuestion,
   type QuestionStatus,
 } from "~/lib/learner/question-progress";
+import {
+  questionTone,
+  questionToneTile,
+  type QuestionTone,
+} from "~/lib/learner/question-colors";
 import { cn } from "~/lib/utils";
 
 /** The rounded surface every assessment screen is built from. */
@@ -167,15 +172,18 @@ export function AssessmentOption({
       : wrong
         ? "Jawaban kamu · Salah"
         : undefined;
+  const emphasized = selected || correct === true;
+  // Like the app: a bordered card, washed and outlined in the tone once chosen or marked.
   const content = (
-    <StudyCard
-      tone={wrong ? "destructive" : "primary"}
-      emphasized={selected || correct === true}
+    <span
       className={cn(
-        "gap-4 p-4",
-        tile
-          ? "h-full flex-col items-start gap-2 p-3"
-          : "flex-row items-center",
+        "flex rounded-2xl border",
+        tile ? "h-full flex-col gap-2 p-3" : "flex-row items-center gap-4 p-5",
+        wrong
+          ? "border-destructive bg-destructive/8"
+          : emphasized
+            ? "border-primary bg-primary/8"
+            : "border-border bg-card",
       )}
     >
       <span
@@ -183,20 +191,27 @@ export function AssessmentOption({
           "flex size-8 shrink-0 items-center justify-center rounded-xl border text-sm font-black",
           wrong
             ? "border-destructive bg-destructive text-white"
-            : selected || correct === true
+            : emphasized
               ? "border-primary bg-primary text-primary-foreground"
               : "border-border bg-muted text-muted-foreground",
         )}
       >
-        {correct === true
-          ? "✓"
-          : wrong
-            ? "×"
-            : tile
-              ? (circledNumbers[index] ?? index + 1)
-              : String.fromCharCode(65 + index)}
+        {correct === true ? (
+          <CheckIcon className="size-4" strokeWidth={3} />
+        ) : wrong ? (
+          <XIcon className="size-4" strokeWidth={3} />
+        ) : tile ? (
+          (circledNumbers[index] ?? index + 1)
+        ) : (
+          String.fromCharCode(65 + index)
+        )}
       </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-2">
+      <span
+        className={cn(
+          "flex min-w-0 flex-col gap-2",
+          tile ? "w-full" : "flex-1",
+        )}
+      >
         {label ? (
           <span
             className={cn(
@@ -207,11 +222,9 @@ export function AssessmentOption({
             {label}
           </span>
         ) : null}
-        <span className={cn("min-w-0 text-sm", tile && "w-full")}>
-          {children}
-        </span>
+        <span className="min-w-0 text-sm">{children}</span>
       </span>
-    </StudyCard>
+    </span>
   );
   if (!onPress) return <div>{content}</div>;
   return (
@@ -222,7 +235,7 @@ export function AssessmentOption({
       disabled={disabled}
       onClick={onPress}
       className={cn(
-        "w-full rounded-[20px] text-left transition-opacity enabled:hover:opacity-90 disabled:cursor-default",
+        "w-full rounded-2xl text-left transition-opacity enabled:hover:opacity-90 enabled:active:opacity-75 disabled:cursor-default",
         tile && "h-full",
         correct === false && !selected && "opacity-60",
       )}
@@ -262,8 +275,19 @@ const statusLabels: Record<QuestionStatus, string> = {
   incorrect: "Salah",
 };
 
+const toneLabels: Record<QuestionTone, string> = {
+  done: "Sudah dijawab",
+  wrong: "Salah",
+  seen: "Dibuka, belum dijawab",
+  unseen: "Belum dibuka",
+};
+
+/** Number tiles per row, like an exam answer sheet. */
+const COLUMNS = 5;
+
 /**
- * "Soal" overview: every question with its status. `onSelect` may refuse the
+ * "Daftar soal": every question as a numbered tile in its status colour, the
+ * current one ringed, like the app's question list. `onSelect` may refuse the
  * move (for example when the current answer could not be saved) by resolving
  * false; the dialog then stays open.
  */
@@ -273,6 +297,7 @@ export function QuestionNavigator({
   title,
   current,
   statuses,
+  seen,
   onSelect,
 }: {
   open: boolean;
@@ -280,12 +305,23 @@ export function QuestionNavigator({
   title: string;
   current: number;
   statuses: readonly QuestionStatus[];
+  /** Questions the learner has opened; left out where it does not matter. */
+  seen?: readonly boolean[];
   onSelect: (index: number) => boolean | Promise<boolean>;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const answered = statuses.filter((status) => status !== "unanswered").length;
   const next = nextUnansweredQuestion(statuses, current);
+  // A review grades questions; an attempt only knows answered or not.
+  const graded = statuses.some(
+    (status) => status === "correct" || status === "incorrect",
+  );
+  const legend: QuestionTone[] = graded
+    ? ["done", "wrong", "unseen"]
+    : seen
+      ? ["done", "seen", "unseen"]
+      : ["done", "unseen"];
 
   async function select(index: number) {
     if (busy) return;
@@ -306,72 +342,81 @@ export function QuestionNavigator({
 
   return (
     <Dialog open={open} onOpenChange={(value) => !busy && onOpenChange(value)}>
-      <DialogContent className="max-h-[85svh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-black">Soal</DialogTitle>
-          <DialogDescription>{title}</DialogDescription>
-        </DialogHeader>
-        <p aria-live="polite" className="text-muted-foreground text-sm">
-          {answered} dari {statuses.length} dijawab · Klik soal untuk membukanya
-        </p>
-        {next >= 0 ? (
-          <Button disabled={busy} onClick={() => void select(next)}>
-            Soal belum dijawab berikutnya →
-          </Button>
-        ) : (
-          <p className="text-primary font-bold">
-            Semua soal sudah dijawab. Kamu masih bisa meninjaunya.
+      <DialogContent className="max-h-[85svh] gap-5 overflow-y-auto sm:max-w-md">
+        <DialogHeader className="flex-row items-start gap-3 pr-8 text-left">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <DialogTitle className="text-xl font-black">
+              Daftar soal
+            </DialogTitle>
+            <DialogDescription className="truncate">{title}</DialogDescription>
+          </div>
+          <p aria-live="polite" className="pt-1 text-sm font-bold tabular-nums">
+            {answered}/{statuses.length} dijawab
           </p>
-        )}
+        </DialogHeader>
+        <ul className="flex flex-wrap gap-x-4 gap-y-2">
+          {legend.map((tone) => (
+            <li key={tone} className="flex items-center gap-1.5">
+              <span
+                className={cn(
+                  "size-3 rounded-[4px] border",
+                  questionToneTile[tone],
+                )}
+              />
+              <span className="text-muted-foreground text-xs">
+                {/* In a review green means right and grey not answered. */}
+                {graded && tone === "done"
+                  ? "Benar"
+                  : graded && tone === "unseen"
+                    ? "Tidak dijawab"
+                    : toneLabels[tone]}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <div
+          className="grid gap-2"
+          style={{ gridTemplateColumns: `repeat(${COLUMNS}, minmax(0, 1fr))` }}
+        >
+          {statuses.map((status, index) => {
+            const isCurrent = index === current;
+            const tone = questionTone(status, seen?.[index] ?? false);
+            return (
+              <button
+                key={index}
+                type="button"
+                disabled={busy}
+                aria-current={isCurrent ? "step" : undefined}
+                aria-label={`Soal ${index + 1}, ${statusLabels[status]}${isCurrent ? ", soal saat ini" : ""}`}
+                onClick={() => void select(index)}
+                className={cn(
+                  "flex aspect-square items-center justify-center rounded-2xl border text-lg font-black tabular-nums transition-opacity hover:opacity-80 active:opacity-70 disabled:opacity-50",
+                  questionToneTile[tone],
+                  // A ring outside the tile marks where you are.
+                  isCurrent &&
+                    "outline-foreground outline-2 outline-offset-2 outline-solid",
+                )}
+              >
+                {index + 1}
+              </button>
+            );
+          })}
+        </div>
         {error ? (
           <p role="alert" className="text-destructive text-sm">
             {error}
           </p>
         ) : null}
-        <div className="grid grid-cols-3 gap-3">
-          {statuses.map((status, index) => (
-            <button
-              key={index}
-              type="button"
-              disabled={busy}
-              aria-current={index === current ? "step" : undefined}
-              aria-label={`Soal ${index + 1}, ${statusLabels[status]}${index === current ? ", soal saat ini" : ""}`}
-              onClick={() => void select(index)}
-              className={cn(
-                "flex min-h-24 flex-col items-center justify-center gap-1 rounded-2xl border p-3 transition-opacity hover:opacity-80 disabled:opacity-50",
-                index === current
-                  ? "border-primary bg-primary/20"
-                  : status === "incorrect"
-                    ? "border-destructive/50 bg-destructive/10"
-                    : status !== "unanswered"
-                      ? "border-primary/40 bg-primary/10"
-                      : "border-border bg-card",
-              )}
-            >
-              <span className="text-xl font-black">
-                {index + 1}
-                {status === "correct" || status === "answered"
-                  ? " ✓"
-                  : status === "incorrect"
-                    ? " ×"
-                    : ""}
-              </span>
-              <span className="text-muted-foreground text-xs">
-                {statusLabels[status]}
-              </span>
-              {index === current ? (
-                <span className="text-primary text-xs font-bold">Saat ini</span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-        <Button
-          variant="secondary"
-          disabled={busy}
-          onClick={() => onOpenChange(false)}
-        >
-          Selesai
-        </Button>
+        {next >= 0 ? (
+          <Button size="lg" disabled={busy} onClick={() => void select(next)}>
+            Soal belum dijawab berikutnya
+            <ArrowRightIcon data-icon="inline-end" />
+          </Button>
+        ) : (
+          <p className="text-primary text-center text-sm font-semibold">
+            Semua soal sudah dijawab. Kamu masih bisa meninjaunya.
+          </p>
+        )}
       </DialogContent>
     </Dialog>
   );

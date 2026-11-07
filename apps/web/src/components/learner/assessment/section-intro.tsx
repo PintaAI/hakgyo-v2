@@ -4,6 +4,7 @@ import { LoaderCircleIcon } from "lucide-react";
 import { formatScore } from "@hakgyo/shared";
 
 import { StudyCard } from "~/components/learner/assessment/assessment-ui";
+import { Eyebrow } from "../eyebrow";
 import { RichContent } from "~/components/learner/practice/rich-content";
 import { Button } from "~/components/ui/button";
 import { formatRemaining } from "~/lib/learner/question-progress";
@@ -22,6 +23,7 @@ export function SectionIntro({
   timeLimitSeconds,
   secondsToAutoStart,
   busy,
+  rules = [],
   onStart,
 }: {
   title: string;
@@ -32,13 +34,15 @@ export function SectionIntro({
   timeLimitSeconds: number | null;
   secondsToAutoStart: number;
   busy: boolean;
+  /** The section's rules (`sectionRules`), listed before it starts. */
+  rules?: readonly string[];
   onStart: () => void;
 }) {
   return (
-    <StudyCard>
-      <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+    <StudyCard className="rounded-2xl">
+      <Eyebrow>
         Bagian {position} dari {sectionCount}
-      </p>
+      </Eyebrow>
       <h2 className="text-2xl font-black">{title}</h2>
       <p className="text-muted-foreground text-sm">
         {questionCount} soal
@@ -47,6 +51,15 @@ export function SectionIntro({
           : " · tanpa batas waktu"}
       </p>
       {instructions ? <RichContent content={instructions} /> : null}
+      {rules.length ? (
+        <ul className="flex flex-col gap-1.5">
+          {rules.map((rule) => (
+            <li key={rule} className="text-sm font-semibold">
+              • {rule}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <p className="text-muted-foreground text-sm">
         Waktu bagian ini berjalan setelah kamu menekan Mulai. Bagian yang sudah
         selesai tidak bisa dibuka lagi.
