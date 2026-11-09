@@ -16,7 +16,7 @@ import { StudyAction } from "../../components/study-glass";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { gameLeaveLabel, type GameSource } from "../game-exit";
-import { GameModal, GameStartModal } from "../game-modals";
+import { GameModal } from "../game-modals";
 import { leaveGame } from "../game-navigation";
 import { GameBackToolbar } from "../game-screens";
 import { getWordChallenges } from "./word-builder-data";
@@ -24,6 +24,9 @@ import {
   createWordBuilderReducer,
   initialWordBuilderSession,
 } from "./word-builder-session";
+
+/** How long a right answer stays before the next word. */
+const AUTO_NEXT_MS = 1500;
 
 export function WordBuilderScreen({
   source,
@@ -36,7 +39,13 @@ export function WordBuilderScreen({
   const insets = useSafeAreaInsets();
   const words = getWordChallenges(stage?.id);
   const reducer = useMemo(() => createWordBuilderReducer(words), [words]);
-  const [session, dispatch] = useReducer(reducer, initialWordBuilderSession);
+  // Starts at once: the tile in Latihan (or the lesson) already said what
+  // the game is.
+  const [session, dispatch] = useReducer(
+    reducer,
+    initialWordBuilderSession,
+    (initial) => ({ ...initial, phase: "playing" as const }),
+  );
   const [showExit, setShowExit] = useState(false);
   const leave = useCallback(() => leaveGame(source), [source]);
   const leaveLabel = gameLeaveLabel(source);
@@ -55,10 +64,23 @@ export function WordBuilderScreen({
       syllable === hintSyllable && !session.selected.includes(index),
   );
 
+  // Nothing to lose yet (first word, nothing placed) or done: leave at once.
+  const nothingToLose =
+    session.phase === "intro" ||
+    session.phase === "complete" ||
+    (session.index === 0 && session.selected.length === 0);
   const requestLeave = useCallback(() => {
-    if (session.phase === "intro" || session.phase === "complete") leave();
+    if (nothingToLose) leave();
     else setShowExit(true);
-  }, [leave, session.phase]);
+  }, [leave, nothingToLose]);
+
+  // A right answer moves on by itself after a moment to read its meaning;
+  // "Lanjut" skips the wait.
+  useEffect(() => {
+    if (session.phase !== "correct") return;
+    const timer = setTimeout(() => dispatch({ type: "next" }), AUTO_NEXT_MS);
+    return () => clearTimeout(timer);
+  }, [session.phase, session.index]);
 
   useFocusEffect(
     useCallback(() => {
@@ -323,25 +345,6 @@ export function WordBuilderScreen({
         ) : null}
       </ScrollView>
 
-      <GameStartModal
-        gameKey="word-builder"
-        visible={session.phase === "intro"}
-        title={stage ? `Susun kata: ${stage.title}` : "Susun kata"}
-        detail={
-          stage
-            ? `Rangkai blok suku kata Hangeul menjadi kata yang sesuai dengan artinya. Semua kata hanya memakai huruf tahap ${stage.title}.`
-            : "Rangkai blok suku kata Hangeul menjadi kata yang sesuai dengan artinya. Mulai dari dua blok, lalu coba tiga blok."
-        }
-        content={
-          <Text style={[styles.modalCopy, { color: colors.mutedForeground }]}>
-            {words.length} kata · Tanpa batas waktu{"\n"}Ketuk blok untuk
-            menyusun. Kamu bisa melepasnya atau meminta petunjuk kapan pun.
-          </Text>
-        }
-        primaryLabel="Mulai menyusun"
-        onPrimary={() => dispatch({ type: "start" })}
-        onSecondary={leave}
-      />
       <GameModal
         gameKey="word-builder"
         visible={session.phase === "complete"}

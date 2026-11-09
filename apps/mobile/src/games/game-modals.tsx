@@ -1,4 +1,3 @@
-import { Image } from "expo-image";
 import type { ReactNode } from "react";
 import {
   Modal,
@@ -29,8 +28,7 @@ const gameSymbols = {
   "word-builder": "text.word.spacing",
 } satisfies Record<GameKey, SymbolName>;
 
-/** The illustration of each game, shown at the top of Latihan's source sheet
- * and on the start screen of the Hangeul games. */
+/** The illustration of each game, shown at the top of Latihan's source sheet. */
 export const gameHeroAssets = {
   cards: require("../../assets/games/cards-intro.png"),
   "word-fall": require("../../assets/games/word-fall-intro.png"),
@@ -40,19 +38,6 @@ export const gameHeroAssets = {
   "stroke-master": require("../../assets/games/hangeul-intro.png"),
   "word-builder": require("../../assets/games/word-builder-intro.png"),
 } satisfies Record<GameKey, number>;
-
-function GameStartHero({ gameKey }: { gameKey: GameKey }) {
-  return (
-    <Image
-      cachePolicy="memory-disk"
-      contentFit="contain"
-      priority="high"
-      source={gameHeroAssets[gameKey]}
-      style={styles.startHeroImage}
-      transition={0}
-    />
-  );
-}
 
 function GameModalContent({
   gameKey,
@@ -362,63 +347,6 @@ function NativeGameModal({
   );
 }
 
-export function GameStartModal({
-  gameKey,
-  visible,
-  title,
-  detail,
-  hero,
-  content,
-  onPrimary,
-  onDismiss,
-  onSecondary,
-  primaryLabel = "Mulai",
-  primaryDisabled = false,
-  tertiaryLabel,
-  tertiaryDetail,
-  onTertiary,
-  tertiaryContent,
-}: {
-  gameKey: GameKey;
-  visible: boolean;
-  title: string;
-  detail: string;
-  hero?: ReactNode;
-  content?: ReactNode;
-  onPrimary: () => void;
-  onDismiss?: () => void;
-  onSecondary: () => void;
-  primaryLabel?: string;
-  primaryDisabled?: boolean;
-  tertiaryLabel?: string;
-  tertiaryDetail?: string;
-  onTertiary?: () => void;
-  tertiaryContent?: ReactNode;
-}) {
-  return (
-    <GameModal
-      content={content}
-      detail={detail}
-      eyebrow="Game latihan"
-      gameKey={gameKey}
-      hero={hero ?? <GameStartHero gameKey={gameKey} />}
-      onDismiss={onDismiss}
-      onPrimary={onPrimary}
-      onSecondary={onSecondary}
-      primaryDisabled={primaryDisabled}
-      primaryLabel={primaryLabel}
-      tertiaryLabel={tertiaryLabel}
-      tertiaryDetail={tertiaryDetail}
-      onTertiary={onTertiary}
-      tertiaryContent={tertiaryContent}
-      showCloseButton
-      title={title}
-      verticallyCentered
-      visible={visible}
-    />
-  );
-}
-
 export function GameJourneyFooter({
   courseId,
   courseItemId,
@@ -470,7 +398,6 @@ const styles = StyleSheet.create({
   },
   closeFallback: { fontSize: 22, fontWeight: "700", lineHeight: 24 },
   hero: { alignSelf: "stretch" },
-  startHeroImage: { alignSelf: "center", height: 180, width: "100%" },
   heading: { alignItems: "center", flexDirection: "row", gap: 16 },
   headingCopy: { flex: 1, gap: 2, minWidth: 0 },
   icon: {

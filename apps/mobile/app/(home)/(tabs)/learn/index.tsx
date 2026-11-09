@@ -390,6 +390,15 @@ export default function LearnTab() {
           )
         }
       />
+      {/* This tab draws under the tab bar (no automatic insets), so the end
+          of the page keeps clear of it, and of the page dots above it. */}
+      <SafeAreaView
+        edges={{ bottom: true }}
+        pointerEvents="none"
+        style={styles.bottomSpacer}
+      >
+        <View style={{ height: activeCohorts.length > 1 ? 56 : 8 }} />
+      </SafeAreaView>
     </TabScreen>
   );
 }
@@ -403,6 +412,7 @@ const styles = StyleSheet.create({
     flex: 0,
     alignItems: "center",
   },
+  bottomSpacer: { flex: 0 },
   dotsPill: {
     marginBottom: 12,
     borderRadius: 999,

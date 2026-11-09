@@ -39,7 +39,7 @@ Beberapa materi punya kartu **Permainan Hangeul**. Permainannya ada di aplikasi 
 - Di situs web lewat ponsel, ketuk **Buka di aplikasi**. Jika aplikasinya belum terpasang, pasang dulu dari App Store atau Google Play.
 - Di situs web lewat komputer, kartunya menampilkan tautan App Store dan Google Play. Buka materi yang sama di aplikasi Hakgyo di ponselmu untuk bermain.
 
-Permainan adalah latihan tambahan. Bab tetap bisa selesai tanpa memainkannya. Kamu juga bisa membuka permainan kapan saja dari bagian **Penguasaan Hangeul** di tab **Latihan**.
+Permainan adalah latihan tambahan. Bab tetap bisa selesai tanpa memainkannya. Kamu juga bisa membuka permainan kapan saja dari bagian **Penguasaan Hangeul** di tab **Latihan**. Di aplikasi, permainan Hangeul langsung dimulai begitu dibuka. Setelah kamu menjawab, soal berikutnya muncul sendiri; ketuk **Lanjut** kalau ingin lebih cepat.
 
 ## Sudah bisa membaca Hangeul?
 
