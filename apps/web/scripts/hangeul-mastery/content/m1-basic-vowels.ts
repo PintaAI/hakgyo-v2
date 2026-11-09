@@ -132,11 +132,7 @@ export const m1BasicVowels: ModuleContent = {
               character: "ㅇ",
               cue: "Diam di depan blok. Hanya pengisi tempat.",
               romanization: "-",
-              example: {
-                word: "아",
-                meaning: "ah! (seruan)",
-                romanization: "a",
-              },
+              example: { word: "오이", meaning: "timun", romanization: "oi" },
             },
             {
               character: "ㅏ",
@@ -305,7 +301,6 @@ export const m1BasicVowels: ModuleContent = {
               romanization: "eo",
               say: "어",
               note: "Kalau bibirmu membulat, bunyinya jadi ㅗ. Garis pendek menunjuk ke kiri.",
-              example: { word: "어", meaning: "eh?; oh!", romanization: "eo" },
             },
           ],
           { showRomanization: true },
@@ -390,41 +385,13 @@ export const m1BasicVowels: ModuleContent = {
       key: "m1-vocab-a",
       title: "Kosakata A: kata dari vokal",
       description:
-        "Kata-kata pertama yang hanya memakai ㅇ dan vokal dasar. Jumlahnya sedikit karena kamu belum belajar konsonan.",
+        "Kata pertama yang bisa kamu baca hanya dengan ㅇ dan vokal dasar. Jumlahnya sedikit karena kamu belum belajar konsonan.",
       entries: [
-        {
-          term: "아이",
-          definition: "anak; anak kecil",
-          romanization: "ai",
-          examples: ["Dua blok: 아 + 이."],
-        },
+        { term: "아이", definition: "anak", romanization: "ai" },
         { term: "오이", definition: "timun", romanization: "oi" },
-        {
-          term: "이",
-          definition: "dua (angka); gigi; ini",
-          romanization: "i",
-          examples: [
-            "Satu kata bisa punya beberapa arti. Konteks yang menentukan.",
-          ],
-        },
-        { term: "오", definition: "lima (angka); oh!", romanization: "o" },
-        {
-          term: "아우",
-          definition: "adik (kata lama, antarsaudara laki-laki)",
-          romanization: "au",
-        },
-        { term: "우아", definition: "anggun; keanggunan", romanization: "ua" },
-        {
-          term: "아",
-          definition: "ah! (seruan saat sadar atau terkejut)",
-          romanization: "a",
-        },
-        {
-          term: "어",
-          definition: "eh?; oh! (seruan); iya (santai)",
-          romanization: "eo",
-          examples: ["Bandingkan dengan 오: ㅓ bibir santai, ㅗ bibir bulat."],
-        },
+        { term: "이", definition: "dua; gigi", romanization: "i" },
+        { term: "오", definition: "lima", romanization: "o" },
+        { term: "우아", definition: "anggun", romanization: "ua" },
       ],
     },
     {
