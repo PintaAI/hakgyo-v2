@@ -364,20 +364,6 @@ function QuestionPage({
       answersDisabled={!!result}
       disabled={busy}
       resolveAssetUrl={resolveAssetUrl}
-      context={
-        // Where the question comes from, as a quiet link to that tugas.
-        <SourceLink
-          title={question.assessmentTitle}
-          courseTitle={question.courseTitle}
-          hint="Membuka tugas asal soal ini"
-          onPress={() =>
-            openCourseItem({
-              courseId: question.courseId,
-              courseItemId: question.sourceCourseItemId,
-            })
-          }
-        />
-      }
     >
       {result ? (
         <>
@@ -421,6 +407,19 @@ function QuestionPage({
               : "Periksa jawaban"}
         </Action>
       ) : null}
+      {/* Where the question comes from, as a quiet link to that tugas: last,
+          after the actions, so it never reads as part of the question. */}
+      <SourceLink
+        title={question.assessmentTitle}
+        courseTitle={question.courseTitle}
+        hint="Membuka tugas asal soal ini"
+        onPress={() =>
+          openCourseItem({
+            courseId: question.courseId,
+            courseItemId: question.sourceCourseItemId,
+          })
+        }
+      />
     </QuizQuestion>
   );
 }

@@ -65,8 +65,7 @@ function instructionFor(type: string) {
  * - `hidden` shows grey placeholders where the server has not set the
  *   content yet (the start preview of a shuffled tugas).
  * - `media` sits between the question and its answers (a section's audio
- *   player), after `context` (where the question comes from);
- *   `children` below them (feedback, explanation, actions).
+ *   player); `children` below them (feedback, explanation, actions).
  */
 export function QuizQuestion({
   question,
@@ -84,7 +83,6 @@ export function QuizQuestion({
   hideInlineAudio = false,
   hidden,
   media,
-  context,
   hideCounter = false,
   resolveAssetUrl,
   children,
@@ -110,8 +108,6 @@ export function QuizQuestion({
   /** Content not known yet, drawn as placeholders in its final place. */
   hidden?: "prompt" | "options";
   media?: ReactNode;
-  /** Right under the question: where it comes from (Hari Ini's source). */
-  context?: ReactNode;
   /** The screen shows the position itself (Hari Ini, beside its title). */
   hideCounter?: boolean;
   resolveAssetUrl: AssetUrlResolver;
@@ -163,7 +159,6 @@ export function QuizQuestion({
           resolveAssetUrl={resolveAssetUrl}
         />
       )}
-      {context}
       {media}
 
       {/* What to do, until the question is graded. */}

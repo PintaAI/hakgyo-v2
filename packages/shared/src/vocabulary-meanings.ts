@@ -145,3 +145,31 @@ function answerKeys(text: string) {
 function collapse(text: string) {
   return text.trim().replace(/\s+/gu, " ");
 }
+
+/** Punctuation to leave out of a typed answer; apostrophes and hyphens stay. */
+const UNTYPED = /[^\p{L}\p{N}\p{M}\s'-]/gu;
+
+/**
+ * What a learner types for a written answer where the answer is checked
+ * letter by letter (Hujan Kata), in the order to offer them: without notes
+ * in brackets ("Panas (Cuaca)" → "Panas", "(건물) 앞" → "앞"), each side of a
+ * slash, an equals sign or a middle dot ("Sdr / Sdr.i" → "Sdr", "Sdri"),
+ * without punctuation ("여보세요?" → "여보세요"); then, so a note can still
+ * be typed, the same with the note's words kept ("Panas Cuaca").
+ */
+export function typeableAnswers(written: string) {
+  const answers: string[] = [];
+  const add = (text: string) => {
+    const typed = text.replace(UNTYPED, "").replace(/\s+/gu, " ").trim();
+    if (
+      typed &&
+      !answers.some((answer) => answer.toLowerCase() === typed.toLowerCase())
+    )
+      answers.push(typed);
+  };
+  const sides = (text: string) =>
+    /[/=·]/u.test(text) ? text.split(/[/=·]/u) : [text];
+  for (const side of sides(written.replace(/\([^()]*\)/gu, " "))) add(side);
+  for (const side of sides(written)) add(side);
+  return answers;
+}

@@ -17,8 +17,9 @@ export type GameLesson = {
 export const LESSON_WORD_COUNT = 5;
 
 /**
- * The rounds in their order, each a game key: recognise the meaning, recall
- * the Korean word, use it in a sentence, then type it under time pressure.
+ * The rounds, each a game key: recognise the meaning, recall the Korean
+ * word, use it in a sentence, then type it under time pressure. The middle
+ * two take turns (see `lessonRounds`), so lessons don't play the same way.
  */
 export type LessonRound = "match" | "cards" | "sentences" | "word-fall";
 
@@ -29,7 +30,13 @@ type LessonWord = {
   examples?: unknown;
 };
 
-type WordProgress = { practiced: boolean; due: boolean; mastered: boolean };
+type WordProgress = {
+  practiced: boolean;
+  due: boolean;
+  mastered: boolean;
+  /** Recalled right at least once; absent from older servers. */
+  learned?: boolean;
+};
 
 function shuffled<T>(items: readonly T[], random: () => number) {
   const copy = [...items];
@@ -74,15 +81,42 @@ export function pickLessonWords<T extends LessonWord>(
   ].slice(0, count);
 }
 
-/** The rounds the words can be played in; a round they cannot fill is left out. */
-export function lessonRounds(words: readonly LessonWord[]): LessonRound[] {
+/**
+ * The rounds of a lesson, so it ramps up without playing the same way every
+ * time:
+ * - Cocokkan (recognising) opens it, unless every word is already learned:
+ *   then recognising is too easy and the lesson starts at recall.
+ * - Kartu and Susun makna come next, in either order.
+ * - Hujan Kata (typing under time) always closes it.
+ * A round the words cannot fill is left out (matching needs two words, a
+ * sentence round needs examples).
+ */
+export function lessonRounds(
+  words: readonly LessonWord[],
+  {
+    progress,
+    random = Math.random,
+  }: {
+    progress?: ReadonlyMap<string, WordProgress>;
+    random?: () => number;
+  } = {},
+): LessonRound[] {
   if (words.length === 0) return [];
-  return [
-    ...(words.length >= 2 ? (["match"] as const) : []),
+  const allLearned =
+    !!progress &&
+    words.every((word) => {
+      const item = progress.get(word.id);
+      return !!item && (item.learned === true || item.mastered);
+    });
+  const middle: LessonRound[] = [
     "cards",
     ...(createSentenceChallenges(words).length > 0
       ? (["sentences"] as const)
       : []),
+  ];
+  return [
+    ...(words.length >= 2 && !allLearned ? (["match"] as const) : []),
+    ...shuffled(middle, random),
     "word-fall",
   ];
 }

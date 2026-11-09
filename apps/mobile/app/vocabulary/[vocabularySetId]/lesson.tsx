@@ -104,7 +104,7 @@ export default function VocabularyLessonScreen() {
     const picked = pickLessonWords(words, byEntry);
     setPlan({
       words: picked,
-      rounds: lessonRounds(picked),
+      rounds: lessonRounds(picked, { progress: byEntry }),
       before: new Map(
         picked.map((word) => [
           word.id,
