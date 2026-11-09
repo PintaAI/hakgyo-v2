@@ -33,6 +33,7 @@ import {
   type CourseRevisions,
 } from "~/server/mobile/sync-log";
 import { getRequestHangeulVisibility } from "~/server/preferences/hangeul-visibility";
+import { getVocabularySetSummaries } from "~/server/vocabulary/set-summary";
 import {
   createRequestCache,
   runWithRequestCache,
@@ -274,6 +275,26 @@ export async function buildLearnerIndex(
       ),
     ]);
   });
+  // Per-set word progress for Latihan's suggestions, over the same sets the
+  // practice pools draw from (open chapters of enrolled courses).
+  const vocabularySummariesPromise = Promise.all([
+    coursesPromise,
+    outlineViewsPromise,
+  ]).then(([courses, outlineViews]) => {
+    const viewsById = new Map(outlineViews);
+    const sets = practiceItemsFromOutlines(
+      courses.flatMap((course) => {
+        const view = viewsById.get(course.id);
+        return view ? [view.learnerOutline] : [];
+      }),
+    ).filter((item) => item.type === "VOCABULARY_SET");
+    return getVocabularySetSummaries(
+      ctx.db,
+      actorUserId,
+      sets.map((item) => item.courseItemId),
+      now,
+    );
+  });
   const attemptsPromise = assessment.listMyAttempts(scope);
   const resumableAttemptsPromise = attemptsPromise.then((attempts) =>
     Promise.all(
@@ -308,6 +329,7 @@ export async function buildLearnerIndex(
     learner,
     enrollments,
     hangeulVisibility,
+    vocabularySummaries,
   ] = await Promise.all([
     coursesPromise,
     cohortsPromise,
@@ -330,6 +352,7 @@ export async function buildLearnerIndex(
     runWithRequestCache(callerCtx.requestCache, () =>
       getRequestHangeulVisibility(ctx.db, actorUserId),
     ),
+    vocabularySummariesPromise,
   ]);
 
   const organizations: Record<
@@ -421,6 +444,10 @@ export async function buildLearnerIndex(
       mastered: hangeulVisibility.hangeulMastered,
       hidden: hangeulVisibility.hangeulHidden,
     },
+    // Keyed by the set's course item. Added without an INDEX_SCHEMA bump:
+    // indexes cached before it lack the field, and Latihan then suggests
+    // without review counts.
+    vocabularySummaries,
   };
 }
 

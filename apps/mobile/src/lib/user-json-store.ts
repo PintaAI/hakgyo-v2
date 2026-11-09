@@ -2,10 +2,11 @@ import Storage from "expo-sqlite/kv-store";
 import { useCallback, useSyncExternalStore } from "react";
 
 /**
- * A small record per course kept on this device for each account (Belajar's
- * archive choices, claimed badges), shared by every screen that reads it.
+ * Small records kept on this device for each account, under an id (a course
+ * for archive choices and claimed badges, a game for the last source played),
+ * shared by every screen that reads them.
  */
-export function createUserCourseStore<T>(
+export function createUserRecordStore<T>(
   prefix: string,
   isValue: (value: unknown) => value is T,
 ) {
@@ -33,11 +34,11 @@ export function createUserCourseStore<T>(
     return records;
   }
 
-  /** Sets (or, with `undefined`, clears) the record of a course. */
-  function set(userId: string, courseId: string, value: T | undefined) {
+  /** Sets (or, with `undefined`, clears) the record under `key`. */
+  function set(userId: string, key: string, value: T | undefined) {
     const next = { ...read(userId) };
-    if (value === undefined) delete next[courseId];
-    else next[courseId] = value;
+    if (value === undefined) delete next[key];
+    else next[key] = value;
     cache.set(userId, next);
     try {
       if (Object.keys(next).length === 0)

@@ -13,7 +13,7 @@ Di halaman ini, "latihan" berarti latihan kelas ini, bukan latihan kartu kosakat
 ## Di mana menemukannya
 
 - Halaman **Belajar**: latihan yang tenggatnya kurang dari 48 jam muncul di kartu kelas. Latihan yang sudah selesai hilang dari sini sehari setelah ditutup.
-- Menu **Latihan**: pilih **Quiz**, lalu lihat latihan yang sedang dibuka di bagian atas. Klik **Semua event & hasil** untuk melihat semuanya, termasuk yang sudah selesai.
+- Menu **Latihan**: pilih **Quiz**, lalu lihat latihan yang sedang dibuka di bagian atas. Di aplikasi ponsel, daftarnya terbuka sebagai lembar dari bawah layar. Klik **Semua event & hasil** untuk melihat semuanya, termasuk yang sudah selesai.
 - Notifikasi saat latihan dibuka, akan ditutup, atau dibatalkan.
 
 Setiap kartu menampilkan status:

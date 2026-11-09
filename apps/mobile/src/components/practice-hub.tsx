@@ -1,28 +1,12 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { router } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  type LayoutChangeEvent,
-} from "react-native";
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { openAssessmentEvent, openCourseItem } from "../lib/navigation";
 import { canOpenModule } from "../lib/study";
 import { isGameKey, type GameKey } from "../games/catalog";
 import { useAppTheme } from "../providers/AppThemeProvider";
-import { withOpacity } from "../theme/colors";
 import { dateLabel } from "../lib/study";
 import { closesLabel } from "./learn/cohort-card";
 import { LearningItemRow } from "./learn/learning-item-row";
@@ -41,9 +25,9 @@ import type { SymbolName } from "./ui/symbol-names";
 import { TourTarget } from "../tour/tour-target";
 
 export type Course = RouterOutputs["learning"]["listMyCourses"][number];
-type Event = RouterOutputs["assessmentEvent"]["listForLearner"][number];
+export type Event = RouterOutputs["assessmentEvent"]["listForLearner"][number];
 type CourseOutline = RouterOutputs["learning"]["getCourseOutline"];
-type PracticeFilter = "VOCABULARY_SET" | "ASSESSMENT";
+export type PracticeFilter = "VOCABULARY_SET" | "ASSESSMENT";
 
 export type PreselectedVocabularySource = {
   courseId: string;
@@ -53,23 +37,15 @@ export type PreselectedVocabularySource = {
 };
 
 type HubProps = {
-  courses: Course[];
   coursesPending: boolean;
   coursesError?: { message: string } | null;
-  events: Event[];
-  eventsPending: boolean;
-  eventsError?: { message: string } | null;
-  now: number;
   onRetryCourses: () => void;
-  onRetryEvents: () => void;
-  outlines: Record<string, CourseOutline>;
-  onResourceFocus?: (offsetY: number) => void;
   preselectedSource?: PreselectedVocabularySource;
   /** Leaves out the "Penguasaan Hangeul" games while Hangeul is archived. */
   hangeulHidden?: boolean;
 };
 
-type Tool = {
+export type Tool = {
   key: string;
   title: string;
   subtitle: string;
@@ -86,7 +62,7 @@ type Tool = {
   disabledHint?: string;
 };
 
-const tools: Tool[] = [
+export const tools: Tool[] = [
   {
     key: "cards",
     title: "Kartu",
@@ -175,12 +151,12 @@ const hangeulTools: Tool[] = [
 // tabs read as a set. Chips and icon circles stay fully round.
 const SURFACE_RADIUS = 20;
 
-function selectedTool(key: string | null | undefined) {
+export function selectedTool(key: string | null | undefined) {
   if (!key) return undefined;
   return tools.find((tool) => tool.key === key);
 }
 
-function GameIcon({
+export function GameIcon({
   tool,
   selected = false,
   size = 44,
@@ -338,7 +314,15 @@ function GamePicker({
   );
 }
 
-function AssessmentQueue({ events, now }: { events: Event[]; now: number }) {
+export function AssessmentQueue({
+  events,
+  now,
+  onOpen = openAssessmentEvent,
+}: {
+  events: Event[];
+  now: number;
+  onOpen?: (event: Event) => void;
+}) {
   if (events.length === 0) return null;
   return (
     <StudyGlass
@@ -352,7 +336,7 @@ function AssessmentQueue({ events, now }: { events: Event[]; now: number }) {
           accessibilityHint={`Membuka ${event.title}`}
           accessibilityRole="button"
           className={`flex-row items-center gap-3 py-3.5 active:opacity-70 ${index === events.length - 1 ? "" : "border-b border-primary/20"}`}
-          onPress={() => openAssessmentEvent(event)}
+          onPress={() => onOpen(event)}
         >
           <GameIcon size={36} tool={tools[1]!} />
           <View className="min-w-0 flex-1 gap-0.5">
@@ -380,34 +364,56 @@ function AssessmentQueue({ events, now }: { events: Event[]; now: number }) {
   );
 }
 
-function AssessmentEvents({ props }: { props: HubProps }) {
-  return (
-    <>
-      <QueryState
-        error={props.eventsError}
-        pending={props.eventsPending}
-        retry={props.onRetryEvents}
-      />
-      <AssessmentQueue events={props.events} now={props.now} />
-    </>
-  );
-}
-
 // One flat entry in the global practice library: the course grouping is
 // gone, so each item carries its own course + module context.
-type LibraryItem = {
+export type LibraryItem = {
   key: string;
   courseId: string;
   courseTitle: string;
   id: string;
   type: PracticeFilter;
   title: string;
+  moduleId: string;
   moduleTitle: string;
   isCompleted: boolean;
   attempt: { id: string; status: string } | null;
 };
 
-function openLibraryItem(item: LibraryItem, gameKey?: GameKey) {
+/**
+ * Every vocabulary set or quiz the learner can open, across their courses,
+ * each with its course and chapter.
+ */
+export function practiceLibraryItems(
+  courses: Course[],
+  outlines: Record<string, CourseOutline>,
+  filter: PracticeFilter,
+): LibraryItem[] {
+  return courses.flatMap((course) =>
+    (outlines[course.id]?.modules ?? []).flatMap((module) =>
+      canOpenModule(module.access)
+        ? module.items
+            .filter((item) => item.type === filter)
+            .map((item) => ({
+              key: `${course.id}:${item.id}`,
+              courseId: course.id,
+              courseTitle: course.title,
+              id: item.id,
+              type: filter,
+              title: item.title,
+              moduleId: module.id,
+              moduleTitle: module.title,
+              isCompleted: item.isCompleted,
+              attempt:
+                item.type === "ASSESSMENT" && item.attempt
+                  ? { id: item.attempt.id, status: item.attempt.status }
+                  : null,
+            }))
+        : [],
+    ),
+  );
+}
+
+export function openLibraryItem(item: LibraryItem, gameKey?: GameKey) {
   if (gameKey && item.type === "VOCABULARY_SET") {
     router.push({
       pathname: "/games/[gameKey]",
@@ -430,14 +436,14 @@ function openLibraryItem(item: LibraryItem, gameKey?: GameKey) {
 
 // Thin wrapper over the shared learning-item row: the practice library
 // always shows the rail + type highlight, single-line detail, chevron.
-function LibraryRow({
+export function LibraryRow({
   item,
   isLast,
-  gameKey,
+  onOpen,
 }: {
   item: LibraryItem;
   isLast: boolean;
-  gameKey?: GameKey;
+  onOpen: (item: LibraryItem) => void;
 }) {
   return (
     <LearningItemRow
@@ -447,7 +453,7 @@ function LibraryRow({
       completed={item.isCompleted}
       isLast={isLast}
       detailLines={1}
-      onPress={() => openLibraryItem(item, gameKey)}
+      onPress={() => onOpen(item)}
     />
   );
 }
@@ -470,6 +476,7 @@ export function ResourceLibrary({
   gameKey,
   onRetry,
   outlines,
+  onOpenItem,
 }: {
   courses: Course[];
   filter: PracticeFilter;
@@ -477,6 +484,8 @@ export function ResourceLibrary({
   gameKey?: GameKey;
   onRetry: () => void;
   outlines: Record<string, CourseOutline>;
+  /** Replaces opening the item directly (the source sheet closes first). */
+  onOpenItem?: (item: LibraryItem) => void;
 }) {
   const { colors } = useAppTheme();
   const [query, setQuery] = useState("");
@@ -491,29 +500,7 @@ export function ResourceLibrary({
   }, [filter]);
 
   const allItems = useMemo(
-    () =>
-      courses.flatMap((course) =>
-        (outlines[course.id]?.modules ?? []).flatMap((module) =>
-          canOpenModule(module.access)
-            ? module.items
-                .filter((item) => item.type === filter)
-                .map((item) => ({
-                  key: `${course.id}:${item.id}`,
-                  courseId: course.id,
-                  courseTitle: course.title,
-                  id: item.id,
-                  type: filter,
-                  title: item.title,
-                  moduleTitle: module.title,
-                  isCompleted: item.isCompleted,
-                  attempt:
-                    item.type === "ASSESSMENT" && item.attempt
-                      ? { id: item.attempt.id, status: item.attempt.status }
-                      : null,
-                }))
-            : [],
-        ),
-      ),
+    () => practiceLibraryItems(courses, outlines, filter),
     [courses, filter, outlines],
   );
   const missingOutlineCount = courses.filter(
@@ -538,6 +525,8 @@ export function ResourceLibrary({
     ? visible.filter((item) => item.key !== upNext.key)
     : visible;
   const activeFilter = statusFilters.find((option) => option.key === status)!;
+  const open =
+    onOpenItem ?? ((item: LibraryItem) => openLibraryItem(item, gameKey));
 
   if (courses.length === 0) {
     return <Empty>Ikuti kurikulum untuk membuka latihan.</Empty>;
@@ -662,17 +651,17 @@ export function ResourceLibrary({
         <View>
           {upNext ? (
             <LibraryRow
-              gameKey={gameKey}
               isLast={rest.length === 0}
               item={upNext}
+              onOpen={open}
             />
           ) : null}
           {rest.map((item, index) => (
             <LibraryRow
               key={item.key}
-              gameKey={gameKey}
               isLast={index === rest.length - 1}
               item={item}
+              onOpen={open}
             />
           ))}
         </View>
@@ -681,42 +670,14 @@ export function ResourceLibrary({
   );
 }
 
-function ModeResources({ props, tool }: { props: HubProps; tool: Tool }) {
-  return (
-    <View className="gap-3">
-      {tool.resource === "ASSESSMENT" ? (
-        <AssessmentEvents props={props} />
-      ) : null}
-      <ResourceLibrary
-        courses={props.courses}
-        filter={tool.resource}
-        gameKey={isGameKey(tool.key) ? tool.key : undefined}
-        onRetry={props.onRetryCourses}
-        outlines={props.outlines}
-        sourceLabel={tool.sourceLabel}
-      />
-    </View>
-  );
-}
-
 export function PracticeHub(props: HubProps) {
-  const { colors, colorScheme } = useAppTheme();
-  const [toolKey, setToolKey] = useState<string | null>(null);
-  const tool = selectedTool(toolKey);
-  const resourceOffset = useRef(0);
-  const resourceHighlight = useSharedValue(0);
-  const resourceHighlightStyle = useAnimatedStyle(() => ({
-    opacity: resourceHighlight.value,
-  }));
+  const { colors } = useAppTheme();
   const [sourceDismissed, setSourceDismissed] = useState(false);
   const preselectedKey = props.preselectedSource
     ? `${props.preselectedSource.courseId}:${props.preselectedSource.sourceCourseItemId}`
     : null;
   useEffect(() => {
     setSourceDismissed(false);
-    // No default game: the learner picks one, which then reveals resources.
-    // (Quiz still cannot practice a preselected vocabulary set.)
-    setToolKey(null);
   }, [preselectedKey]);
   const activeSource =
     !sourceDismissed && preselectedKey ? props.preselectedSource : undefined;
@@ -739,10 +700,6 @@ export function PracticeHub(props: HubProps) {
     [activeSource],
   );
 
-  const handleResourceLayout = useCallback((event: LayoutChangeEvent) => {
-    resourceOffset.current = event.nativeEvent.layout.y;
-  }, []);
-
   const handleSelect = useCallback(
     (key: string) => {
       const nextTool =
@@ -754,10 +711,8 @@ export function PracticeHub(props: HubProps) {
       if (
         activeSource &&
         nextTool.resource === "VOCABULARY_SET" &&
-        nextTool.available &&
         isGameKey(nextTool.key)
       ) {
-        setToolKey(key);
         router.push({
           pathname: "/games/[gameKey]",
           params: {
@@ -768,19 +723,11 @@ export function PracticeHub(props: HubProps) {
         });
         return;
       }
-      setToolKey(key);
-      resourceHighlight.value = withSequence(
-        withTiming(1, { duration: 180, easing: Easing.out(Easing.quad) }),
-        withDelay(
-          900,
-          withTiming(0, { duration: 450, easing: Easing.out(Easing.quad) }),
-        ),
-      );
-      requestAnimationFrame(() => {
-        props.onResourceFocus?.(resourceOffset.current);
-      });
+      // Otherwise the source (a vocabulary set or a tugas) is picked in a
+      // sheet, which keeps Latihan a short menu.
+      router.push({ pathname: "/practice-source", params: { tool: key } });
     },
-    [activeSource, displayTools, props.onResourceFocus, resourceHighlight],
+    [activeSource, displayTools],
   );
 
   return (
@@ -863,7 +810,7 @@ export function PracticeHub(props: HubProps) {
             <GamePicker
               tools={displayTools}
               onSelect={handleSelect}
-              selectedKey={toolKey}
+              selectedKey={null}
             />
             {activeSource ? (
               <Text className="text-xs leading-4 text-muted-foreground">
@@ -872,46 +819,8 @@ export function PracticeHub(props: HubProps) {
               </Text>
             ) : null}
           </TourTarget>
-          {tool ? (
-            <View
-              className="gap-3"
-              onLayout={handleResourceLayout}
-              style={styles.resourceSection}
-            >
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.resourceHighlight,
-                  {
-                    backgroundColor: withOpacity(
-                      colors.primary,
-                      colorScheme === "dark" ? 0.12 : 0.06,
-                    ),
-                  },
-                  resourceHighlightStyle,
-                ]}
-              />
-              <ModeResources props={props} tool={tool} />
-            </View>
-          ) : null}
         </>
       ) : null}
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  resourceSection: {
-    borderRadius: SURFACE_RADIUS,
-    padding: 8,
-    position: "relative",
-  },
-  resourceHighlight: {
-    bottom: 0,
-    borderRadius: SURFACE_RADIUS,
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-});
