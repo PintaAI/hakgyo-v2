@@ -3,15 +3,10 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
-import { closesLabel } from "../src/components/learn/cohort-card";
+import { closesLabel, HeroBlock } from "../src/components/learn/cohort-card";
 import { HakgyoHero, HERO_TITLE } from "../src/components/learn/hakgyo-hero";
 import { LearningItemRow } from "../src/components/learn/learning-item-row";
-import {
-  Action,
-  Eyebrow,
-  ProgressBar,
-  QueryState,
-} from "../src/components/learning-ui";
+import { Eyebrow, QueryState } from "../src/components/learning-ui";
 import {
   AssessmentQueue,
   GameIcon,
@@ -185,67 +180,41 @@ type Pick = {
 };
 
 /**
- * The suggested source, in the look of a course item's hero card: why it
- * was picked, the title, where it is from, the set's progress, and the
- * button that starts the game.
+ * Where a source is from, without repeating its title: the course, and the
+ * chapter unless the set is already named after it.
  */
-function MainPick({ pick }: { pick: Pick }) {
-  const { colors, colorScheme } = useAppTheme();
+function placeLine(courseTitle: string, moduleTitle: string, title: string) {
+  return title.toLowerCase().includes(moduleTitle.toLowerCase())
+    ? courseTitle
+    : `${courseTitle} · ${moduleTitle}`;
+}
+
+/**
+ * The suggested source at the foot of the hero, on the glass tile of the
+ * "Lanjutkan belajar" hero in a Belajar class card: why and what on the
+ * left, "Main" on the right, the whole tile tappable.
+ */
+function HeroPick({ pick }: { pick: Pick }) {
+  const learned = pick.progress?.learned ?? 0;
+  const total = pick.progress?.total ?? 0;
+  const words =
+    total > 0
+      ? learned > 0
+        ? ` · ${learned}/${total} kata dipelajari`
+        : ` · ${total} kata`
+      : "";
   return (
-    <View
-      className="gap-4 rounded-[20px] border p-5"
-      style={{
-        backgroundColor: colors.card,
-        borderColor: withOpacity(colors.primary, 0.3),
-        shadowColor: "#000",
-        shadowOpacity: colorScheme === "dark" ? 0 : 0.06,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
-      }}
-    >
-      <View className="flex-row items-center gap-2">
-        <View className="rounded-full bg-primary px-2.5 py-1">
-          <Text className="text-[11px] font-bold text-primary-foreground">
-            {pick.label}
-          </Text>
-        </View>
-        <Text
-          className="min-w-0 flex-1 text-xs font-semibold text-muted-foreground"
-          numberOfLines={1}
-        >
-          {pick.reason}
-        </Text>
-      </View>
-      <View className="gap-1">
-        <Text
-          className="text-xl font-black leading-7 tracking-tight text-foreground"
-          numberOfLines={2}
-        >
-          {pick.title}
-        </Text>
-        <Text className="text-sm text-muted-foreground" numberOfLines={1}>
-          {pick.context}
-        </Text>
-      </View>
-      {pick.progress && pick.progress.total > 0 ? (
-        <View className="gap-1.5">
-          <ProgressBar
-            accessibilityLabel={`${pick.progress.learned} dari ${pick.progress.total} kata dipelajari`}
-            max={pick.progress.total}
-            value={pick.progress.learned}
-          />
-          <Text className="text-xs font-semibold text-muted-foreground">
-            {pick.progress.learned} dari {pick.progress.total} kata dipelajari
-          </Text>
-        </View>
-      ) : null}
-      <Action
-        accessibilityHint={pick.reason}
-        onPress={pick.open}
-        trailingIcon="arrow.right"
-      >
-        {pick.action}
-      </Action>
+    <View className="w-full">
+      <HeroBlock
+        hero={{
+          kind: "learning",
+          eyebrow: `Untukmu · ${pick.reason}`,
+          title: pick.title,
+          meta: `${pick.context}${words}`,
+          pill: pick.action,
+          onPress: pick.open,
+        }}
+      />
     </View>
   );
 }
@@ -347,7 +316,11 @@ export default function PracticeSourceSheet() {
               key: suggestion.item.key,
               type: "ASSESSMENT",
               title: suggestion.item.quiz.title,
-              context: `${suggestion.item.quiz.courseTitle} · ${suggestion.item.quiz.moduleTitle}`,
+              context: placeLine(
+                suggestion.item.quiz.courseTitle,
+                suggestion.item.quiz.moduleTitle,
+                suggestion.item.quiz.title,
+              ),
               label: suggestion.label,
               reason: suggestion.reason,
               action:
@@ -370,7 +343,11 @@ export default function PracticeSourceSheet() {
           key: suggestion.item.key,
           type: "VOCABULARY_SET",
           title: suggestion.item.title,
-          context: `${suggestion.item.courseTitle} · ${suggestion.item.moduleTitle}`,
+          context: placeLine(
+            suggestion.item.courseTitle,
+            suggestion.item.moduleTitle,
+            suggestion.item.title,
+          ),
           label: suggestion.label,
           reason: suggestion.reason,
           progress: summary
@@ -403,7 +380,7 @@ export default function PracticeSourceSheet() {
             contentFit="contain"
             priority="high"
             source={gameHeroAssets[gameKey]}
-            style={{ width: "100%", height: 140 }}
+            style={{ width: "100%", height: 110 }}
             transition={0}
           />
         ) : (
@@ -442,6 +419,7 @@ export default function PracticeSourceSheet() {
             ) : null}
           </View>
         )}
+        {mainPick ? <HeroPick pick={mainPick} /> : null}
       </HakgyoHero>
 
       <QueryState
@@ -449,13 +427,6 @@ export default function PracticeSourceSheet() {
         pending={index.isPending}
         retry={() => void index.refetch()}
       />
-
-      {mainPick ? (
-        <View className="-mt-2 gap-3">
-          <Eyebrow tone="primary">Untukmu</Eyebrow>
-          <MainPick pick={mainPick} />
-        </View>
-      ) : null}
 
       {otherPicks.length > 0 ? (
         <View className="gap-1">
@@ -469,9 +440,11 @@ export default function PracticeSourceSheet() {
                 isLast={position === otherPicks.length - 1}
                 key={pick.key}
                 onPress={pick.open}
-                statusText={pick.reason}
+                statusText={`${pick.reason} · ${pick.context}`}
                 title={pick.title}
                 type={pick.type}
+                // Every row here is the same kind of source.
+                typeLabel=""
               />
             ))}
           </View>

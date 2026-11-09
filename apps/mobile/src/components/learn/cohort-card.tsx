@@ -37,6 +37,7 @@ import {
 import { useSidebarIndicators } from "../../lib/sidebar-indicators";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { glassTint, withOpacity } from "../../theme/colors";
+import { DoodleBackground } from "../doodle-background";
 import { authClient } from "../../lib/auth-client";
 import {
   claimBadge,
@@ -216,7 +217,7 @@ const SURFACE_RADIUS = 20;
 // The card answers "what should I do now?" with exactly one hero, chosen by
 // urgency: a live/starting class beats an expiring assessment, which beats
 // the next lesson. Everything else is demoted to quiet plate rows.
-type CohortHero = {
+export type CohortHero = {
   kind: "class" | "assessment" | "learning" | "caught-up";
   eyebrow: string;
   live?: boolean;
@@ -297,7 +298,11 @@ function HeroPill({ hero }: { hero: CohortHero }) {
   );
 }
 
-function HeroBlock({ hero }: { hero: CohortHero }) {
+/**
+ * The glass tile that answers "what now?": copy on the left, a pill on the
+ * right. Also the suggestion in Latihan's source sheet.
+ */
+export function HeroBlock({ hero }: { hero: CohortHero }) {
   // Heroes with an action stay on one row: copy left (flex-1, truncates),
   // pill pinned right so a long title never pushes the button down.
   const compact = hero.kind === "assessment";
@@ -508,6 +513,8 @@ export function CohortCard({
   onBadgeClaimed?: () => void;
 }) {
   const [curriculumSegment, setCurriculumSegment] = useState(0);
+  // A broken thumbnail falls back to the doodle header.
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
   // Stable, like `openOutlineItem`, for the memoized outline.
   const showCompleted = useCallback(() => setCurriculumSegment(1), []);
   const { markEntitySeen } = useSidebarIndicators();
@@ -777,9 +784,9 @@ export function CohortCard({
       <TourTarget
         id="learn.cohort"
         enabled={tourTarget}
-        className="relative justify-end bg-muted"
+        className="relative justify-end overflow-hidden"
       >
-        {thumbnailUrl ? (
+        {thumbnailUrl && !thumbnailFailed ? (
           <>
             <Image
               accessibilityIgnoresInvertColors
@@ -787,6 +794,7 @@ export function CohortCard({
               cachePolicy="memory-disk"
               className="absolute inset-0 z-0 size-full"
               contentFit="cover"
+              onError={() => setThumbnailFailed(true)}
               source={{ uri: thumbnailUrl }}
               style={StyleSheet.absoluteFill}
               transition={0}
@@ -798,7 +806,30 @@ export function CohortCard({
               }}
             />
           </>
-        ) : null}
+        ) : (
+          // No thumbnail, or it failed to load: Hakgyo's doodles on a wash of
+          // the brand colour, as on the course item pages.
+          <View className="absolute inset-0 z-0" pointerEvents="none">
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  experimental_backgroundImage: `linear-gradient(to bottom, ${withOpacity(colors.primary, colorScheme === "dark" ? 0.22 : 0.12)}, ${withOpacity(colors.primary, 0)})`,
+                },
+              ]}
+            />
+            <DoodleBackground tile={160} />
+          </View>
+        )}
+        {/* The header's lower part fades into the page behind the card, so
+            it has no hard bottom edge. */}
+        <View
+          className="absolute inset-0 z-10"
+          pointerEvents="none"
+          style={{
+            experimental_backgroundImage: `linear-gradient(to bottom, ${withOpacity(colors.background, 0)} 45%, ${colors.background} 100%)`,
+          }}
+        />
         <View
           className="relative z-20 flex-row items-end gap-2 p-4"
           style={{ paddingTop: headerTopPadding }}
