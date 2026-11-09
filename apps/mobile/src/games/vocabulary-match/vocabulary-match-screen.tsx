@@ -27,7 +27,7 @@ import { scheduleOnRN } from "react-native-worklets";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { GameBackToolbar } from "../game-screens";
-import { GameModal, GameStartModal, GameJourneyFooter } from "../game-modals";
+import { GameModal, GameJourneyFooter } from "../game-modals";
 import type { GameLesson } from "../lesson";
 import { useGameExitGuard } from "../game-navigation";
 import { withOpacity } from "../../theme/colors";
@@ -384,13 +384,14 @@ export function VocabularyMatchScreen({
     }, 520);
   }, [clearLiveRope, lesson, onComplete, roundIndex, session.rounds.length]);
 
-  // A lesson round starts at once, without the start sheet.
-  const lessonStarted = useRef(false);
+  // Starts at once: Latihan's source sheet (or the lesson) already showed
+  // what the game is.
+  const started = useRef(false);
   useEffect(() => {
-    if (!lesson || lessonStarted.current) return;
-    lessonStarted.current = true;
+    if (started.current) return;
+    started.current = true;
     resetGame();
-  }, [lesson, resetGame]);
+  }, [resetGame]);
 
   const handleAttempt = useCallback(
     (termId: string, definitionId: string) => {
@@ -764,14 +765,6 @@ export function VocabularyMatchScreen({
         </View>
       </GestureDetector>
 
-      <GameStartModal
-        detail="Hubungkan setiap kata dengan artinya. Seret dari kiri, atau ketuk satu kartu di setiap sisi."
-        gameKey="match"
-        onPrimary={resetGame}
-        onSecondary={exit}
-        title="Cocokkan Kata"
-        visible={phase === "ready" && !lesson}
-      />
       <GameModal
         content={
           <View style={styles.finishContent}>

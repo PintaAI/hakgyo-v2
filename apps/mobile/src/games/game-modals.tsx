@@ -29,7 +29,9 @@ const gameSymbols = {
   "word-builder": "text.word.spacing",
 } satisfies Record<GameKey, SymbolName>;
 
-const gameHeroAssets = {
+/** The illustration of each game, shown at the top of Latihan's source sheet
+ * and on the start screen of the Hangeul games. */
+export const gameHeroAssets = {
   cards: require("../../assets/games/cards-intro.png"),
   "word-fall": require("../../assets/games/word-fall-intro.png"),
   sentences: require("../../assets/games/sentences-intro.png"),

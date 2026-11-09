@@ -28,26 +28,14 @@ import {
 } from "./onboarding-deck-tutorial";
 import { VocabularyModeSwitch } from "./vocabulary-mode-switch";
 import { api } from "../lib/trpc";
-import {
-  GameModal,
-  GameStartModal,
-  GameJourneyFooter,
-} from "../games/game-modals";
+import { GameModal, GameJourneyFooter } from "../games/game-modals";
 import { GameBackToolbar } from "../games/game-screens";
 import { useGameExitGuard } from "../games/game-navigation";
 import type { GameLesson } from "../games/lesson";
 import { useVocabularyProgressReporter } from "../lib/use-vocabulary-progress";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { toolbarIcons } from "../theme/toolbar-icons";
-import {
-  Action,
-  Card,
-  Empty,
-  Eyebrow,
-  ProgressBar,
-  QueryState,
-  Spinner,
-} from "./learning-ui";
+import { Action, Card, Empty, QueryState, Spinner } from "./learning-ui";
 import {
   VocabularyPracticeDeck,
   type VocabularyPracticeDeckCard,
@@ -162,9 +150,6 @@ export function VocabularySession({
     }
     return { practicedCount: practiced, masteredCount: mastered };
   }, [evidence?.items]);
-  const progress = usableWords.length
-    ? Math.min(100, Math.round((practicedCount / usableWords.length) * 100))
-    : 0;
   const currentWord = queue[index];
   const isStudyMode = mode === "ID";
   // Any one meaning counts when the learner answers with the meaning.
@@ -205,17 +190,13 @@ export function VocabularySession({
     onRoundActiveChange?.(roundActive);
   }, [onRoundActiveChange, roundActive]);
 
-  // A lesson round starts as soon as the saved progress has loaded.
-  const lessonStarted = useRef(false);
+  // A round starts as soon as the saved progress has loaded: Latihan's
+  // source sheet (or the lesson) already showed what the game is.
+  const autoStarted = useRef(false);
   useEffect(() => {
-    if (
-      !lesson ||
-      lessonStarted.current ||
-      progressQuery.isPending ||
-      !readyWords.length
-    )
+    if (autoStarted.current || progressQuery.isPending || !readyWords.length)
       return;
-    lessonStarted.current = true;
+    autoStarted.current = true;
     beginRound();
   });
 
@@ -472,8 +453,6 @@ export function VocabularySession({
     return <Empty>Set ini belum memiliki kata yang siap dilatih.</Empty>;
   }
 
-  const showStart =
-    !lesson && !roundActive && !evidence?.practiced && readyWords.length > 0;
   const showFinish = !lesson && Boolean(evidence?.practiced) && !roundActive;
   const finishTitle = evidence?.mastered
     ? "Kosakata dikuasai"
@@ -747,39 +726,6 @@ export function VocabularySession({
         </Card>
       ) : null}
 
-      <GameStartModal
-        content={
-          <View className="gap-4">
-            <View className="flex-row items-start justify-between gap-5">
-              <View className="min-w-0 flex-1 gap-0.5">
-                <Eyebrow tone="primary">Progres set</Eyebrow>
-                <Text className="text-xl font-black tracking-tight text-foreground">
-                  {practicedCount} dilatih
-                </Text>
-              </View>
-              <Text className="text-2xl font-black tabular-nums text-foreground">
-                {progress}%
-              </Text>
-            </View>
-            <ProgressBar value={progress} max={100} />
-            <View className="flex-row items-center justify-between gap-4">
-              <Text className="text-sm text-muted-foreground">
-                {usableWords.length} kata total
-              </Text>
-              <Text className="text-sm font-semibold text-primary">
-                {readyWords.length} siap sekarang
-              </Text>
-            </View>
-          </View>
-        }
-        detail="Pengulangan penguasaan tetap tersedia tanpa menghambat kurikulum kamu."
-        gameKey="cards"
-        onPrimary={beginRound}
-        onSecondary={exit}
-        primaryLabel={`Mulai latihan · ${readyWords.length} kata`}
-        title="Kartu"
-        visible={showStart}
-      />
       <GameModal
         content={
           courseId ? (
