@@ -36,7 +36,7 @@ Bagian atas lembar menjelaskan cara bermain permainan itu. Untuk **Hujan Kata**,
 
 Jika kamu ikut lebih dari satu kelas, geser kartu kelas di tab **Belajar** ke kiri atau kanan. Titik-titik di atas menu bawah menunjukkan kelas yang sedang tampil.
 
-Di kartu kelas, daftar **Bab** hanya menampilkan materi yang belum selesai. Bab yang sudah tuntas dilipat menjadi satu baris, misalnya **3 bab selesai**. Ketuk baris itu, atau pilih **Selesai**, untuk melihat semua yang sudah kamu kerjakan.
+Di kartu kelas, **Materi kurikulum** punya dua pilihan. **Belum selesai** hanya menampilkan materi yang belum selesai; bab yang sudah tuntas dilipat menjadi satu baris, misalnya **3 bab selesai**. **Semua** menampilkan seluruh kurikulum per bab, termasuk yang sudah selesai (bertanda centang), untuk mengulang materi. Ketuk baris **3 bab selesai** untuk langsung membuka **Semua**.
 
 ## Lencana kurikulum
 

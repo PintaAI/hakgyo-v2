@@ -268,9 +268,7 @@ function FinishedChaptersRow({
   return (
     <Pressable
       accessibilityRole={onPress ? "button" : undefined}
-      accessibilityHint={
-        onPress ? "Lihat aktivitas yang sudah selesai" : undefined
-      }
+      accessibilityHint={onPress ? "Lihat semua bab" : undefined}
       className={`flex-row items-center gap-3 ${separated ? "border-t border-border pt-4" : ""} ${onPress ? "active:opacity-60" : ""}`}
       disabled={!onPress}
       onPress={onPress}
