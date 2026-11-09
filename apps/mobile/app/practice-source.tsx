@@ -6,6 +6,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { closesLabel, HeroBlock } from "../src/components/learn/cohort-card";
 import { HakgyoHero, HERO_TITLE } from "../src/components/learn/hakgyo-hero";
 import { LearningItemRow } from "../src/components/learn/learning-item-row";
+import { AppSegmentedControl } from "../src/components/app-segmented-control";
 import { Eyebrow, QueryState } from "../src/components/learning-ui";
 import {
   AssessmentQueue,
@@ -194,6 +195,9 @@ function placeLine(courseTitle: string, moduleTitle: string, title: string) {
  * "Lanjutkan belajar" hero in a Belajar class card: why and what on the
  * left, "Main" on the right, the whole tile tappable.
  */
+/** Suggestion labels whose reason only restates the curriculum order. */
+const PLAIN_LABELS = new Set(["Bab sekarang", "Berikutnya"]);
+
 function HeroPick({ pick }: { pick: Pick }) {
   const learned = pick.progress?.learned ?? 0;
   const total = pick.progress?.total ?? 0;
@@ -203,14 +207,19 @@ function HeroPick({ pick }: { pick: Pick }) {
         ? ` · ${learned}/${total} kata dipelajari`
         : ` · ${total} kata`
       : "";
+  // Where a set sits in the curriculum needs no telling; a reason that
+  // says something (words due, a tugas closing) replaces the word count.
+  const telling = !PLAIN_LABELS.has(pick.label);
   return (
     <View className="w-full">
       <HeroBlock
         hero={{
           kind: "learning",
-          eyebrow: `Untukmu · ${pick.reason}`,
+          eyebrow: "Untukmu",
           title: pick.title,
-          meta: `${pick.context}${words}`,
+          meta: telling
+            ? `${pick.reason} · ${pick.context}`
+            : `${pick.context}${words}`,
           pill: pick.action,
           onPress: pick.open,
         }}
@@ -237,7 +246,8 @@ export default function PracticeSourceSheet() {
   const lastPlayedByGame = useLastPlayed(userId);
   const lastPlayed = tool ? lastPlayedByGame[tool.key] : undefined;
   const gameKey = tool && isGameKey(tool.key) ? tool.key : undefined;
-  const [showAll, setShowAll] = useState(false);
+  // 0: Rekomendasi, 1: the full list to search ("Cari set").
+  const [segment, setSegment] = useState(0);
 
   // An unknown game (an old link): nothing to pick.
   useEffect(() => {
@@ -358,9 +368,9 @@ export default function PracticeSourceSheet() {
         };
       });
   const [mainPick, ...otherPicks] = picks;
-  const total = items.length + (isQuiz ? events.length : 0);
   // Nothing to suggest (no sets yet): the list explains why.
-  const listOpen = showAll || !mainPick;
+  // Nothing to suggest (no sets yet): the full list explains why.
+  const listOpen = segment === 1 || !mainPick;
 
   return (
     <ScrollView
@@ -428,10 +438,19 @@ export default function PracticeSourceSheet() {
         retry={() => void index.refetch()}
       />
 
-      {otherPicks.length > 0 ? (
-        <View className="gap-1">
-          <Eyebrow>Pilihan lain</Eyebrow>
-          <View>
+      {/* Like a Belajar class card: the glass tile above, then a segment
+          between the other suggestions and the full list to search. */}
+      {mainPick ? (
+        <AppSegmentedControl
+          values={["Rekomendasi", isQuiz ? "Cari tugas" : "Cari set"]}
+          selectedIndex={segment}
+          onIndexChange={setSegment}
+        />
+      ) : null}
+
+      {!listOpen ? (
+        otherPicks.length > 0 ? (
+          <View className="-mt-2">
             {otherPicks.map((pick, position) => (
               <LearningItemRow
                 accessibilityHint={pick.reason}
@@ -448,41 +467,13 @@ export default function PracticeSourceSheet() {
               />
             ))}
           </View>
-        </View>
-      ) : null}
-
-      {mainPick ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: listOpen }}
-          className="flex-row items-center gap-3 border-t border-border pt-5 active:opacity-60"
-          onPress={() => setShowAll((open) => !open)}
-        >
-          <View className="min-w-0 flex-1 gap-0.5">
-            <Text className="text-base font-bold text-foreground">
-              {isQuiz ? "Semua tugas & quiz" : "Semua set kosakata"}
-            </Text>
-            <Text className="text-xs text-muted-foreground">
-              {listOpen
-                ? "Cari atau saring sendiri"
-                : `${total} pilihan · pilih sendiri`}
-            </Text>
-          </View>
-          <View
-            className="size-8 items-center justify-center rounded-full bg-muted"
-            style={listOpen ? { transform: [{ rotate: "180deg" }] } : undefined}
-          >
-            <SymbolIcon
-              name="chevron.down"
-              size={13}
-              tintColor={colors.mutedForeground}
-              weight="semibold"
-            />
-          </View>
-        </Pressable>
-      ) : null}
-
-      {listOpen ? (
+        ) : (
+          <Text className="py-2 text-center text-sm text-muted-foreground">
+            Belum ada pilihan lain. Cari sendiri di{" "}
+            {isQuiz ? "Cari tugas" : "Cari set"}.
+          </Text>
+        )
+      ) : (
         <>
           {isQuiz ? (
             <AssessmentQueue events={events} now={now} onOpen={openEvent} />
@@ -497,7 +488,7 @@ export default function PracticeSourceSheet() {
             sourceLabel={tool.sourceLabel}
           />
         </>
-      ) : null}
+      )}
 
       {/* Floats over the hero, top right, in its padding. */}
       <Pressable

@@ -24,7 +24,7 @@ import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { toolbarIcons } from "../../theme/toolbar-icons";
 import { gameLeaveLabel, type GameSource } from "../game-exit";
-import { GameModal, GameStartModal } from "../game-modals";
+import { GameModal } from "../game-modals";
 import { leaveGame } from "../game-navigation";
 import { GameBackToolbar } from "../game-screens";
 import { composeHangul, syllableKeys } from "./hangul-composer";
@@ -174,6 +174,9 @@ function SyllableHintModal({
   );
 }
 
+/** How long a right block stays before the next one. */
+const AUTO_NEXT_MS = 1200;
+
 export function SyllableForgeScreen({
   source,
   stage,
@@ -188,7 +191,16 @@ export function SyllableForgeScreen({
     () => createSyllableSessionReducer(challenges),
     [challenges],
   );
-  const [session, dispatch] = useReducer(reducer, initialSession);
+  // Starts at once: the tile in Latihan (or the lesson) already said what
+  // the game is.
+  const [session, dispatch] = useReducer(
+    reducer,
+    initialSession,
+    (initial) => ({
+      ...initial,
+      phase: "playing" as const,
+    }),
+  );
   const [showExit, setShowExit] = useState(false);
   const [showHintModal, setShowHintModal] = useState(false);
   const leave = useCallback(() => leaveGame(source), [source]);
@@ -223,10 +235,23 @@ export function SyllableForgeScreen({
     width: `${progress.value * 100}%`,
   }));
 
+  // Nothing to lose yet (first block, nothing typed) or done: leave at once.
+  const nothingToLose =
+    session.phase === "intro" ||
+    session.phase === "complete" ||
+    (session.index === 0 && session.keys.length === 0);
   const requestLeave = useCallback(() => {
-    if (session.phase === "intro" || session.phase === "complete") leave();
+    if (nothingToLose) leave();
     else setShowExit(true);
-  }, [leave, session.phase]);
+  }, [leave, nothingToLose]);
+
+  // A right block moves on by itself after a moment; "Lanjut" skips the
+  // wait.
+  useEffect(() => {
+    if (session.phase !== "correct") return;
+    const timer = setTimeout(() => dispatch({ type: "next" }), AUTO_NEXT_MS);
+    return () => clearTimeout(timer);
+  }, [session.phase, session.index]);
   const openHint = useCallback(() => {
     if (!session.showHint) dispatch({ type: "hint" });
     setShowHintModal(true);
@@ -399,26 +424,6 @@ export function SyllableForgeScreen({
         expectedKeys={expectedKeys}
         onClose={() => setShowHintModal(false)}
         visible={session.phase === "playing" && showHintModal}
-      />
-      <GameStartModal
-        gameKey="syllable-forge"
-        visible={session.phase === "intro"}
-        title={stage ? `Susun 한글: ${stage.title}` : "Susun 한글"}
-        detail={
-          stage
-            ? `Ketik huruf dan lihat mereka menyatu menjadi suku kata. Semua blok hanya memakai huruf tahap ${stage.title}.`
-            : "Ketik huruf dan lihat mereka menyatu menjadi suku kata. Mulai dari blok sederhana, lalu coba vokal gabungan dan batchim."
-        }
-        content={
-          <Text style={[styles.modalCopy, { color: colors.mutedForeground }]}>
-            {challenges.length} tantangan · Tanpa batas waktu{"\n"}Keyboard
-            Korea dengan bunyi bantu Indonesia. Gunakan Shift untuk huruf
-            rangkap, ⌫ untuk menghapus, dan petunjuk kapan pun dibutuhkan.
-          </Text>
-        }
-        primaryLabel="Mulai menyusun"
-        onPrimary={() => dispatch({ type: "start" })}
-        onSecondary={leave}
       />
       <GameModal
         gameKey="syllable-forge"

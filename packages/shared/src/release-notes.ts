@@ -38,7 +38,7 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
     items: [
       "Ketuk sebuah permainan di Latihan, dan Hakgyo langsung memilihkan set kosakata untukmu, beserta alasannya.",
       "Kata yang perlu diulang hari ini didahulukan.",
-      "Mau memilih sendiri? Ketuk Semua set kosakata.",
+      "Mau memilih sendiri? Pilih Cari set.",
     ],
   },
   {

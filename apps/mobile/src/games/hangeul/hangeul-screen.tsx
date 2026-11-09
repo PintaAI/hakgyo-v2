@@ -2,7 +2,7 @@ import type { HangeulGameStage } from "@hakgyo/shared/hangeul";
 import { Stack } from "expo-router";
 import { Asset } from "expo-asset";
 import { Image } from "expo-image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -16,7 +16,6 @@ import { GlassBox } from "../../components/GlassBox";
 import { StudyAction } from "../../components/study-glass";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
-import { GameStartModal } from "../game-modals";
 import { gameLeaveLabel, type GameSource } from "../game-exit";
 import { leaveGame } from "../game-navigation";
 import { GameBackToolbar, GamePage } from "../game-screens";
@@ -451,6 +450,10 @@ function introCopy(plan: ReturnType<typeof hangeulLessonPlan>) {
   };
 }
 
+/** How long an answer stays before the next letter: right, then wrong. */
+const AUTO_NEXT_RIGHT_MS = 800;
+const AUTO_NEXT_WRONG_MS = 2200;
+
 export function HangeulScreen({
   source,
   stage,
@@ -463,7 +466,9 @@ export function HangeulScreen({
   const copy = introCopy(plan);
   const introStepCount = plan.learnFamilies.length + 1;
   const quizLength = plan.quizIds.length;
-  const [phase, setPhase] = useState<Phase>("intro");
+  // Starts on the first lesson: the tile in Latihan (or the lesson that
+  // opened it) already said what the game is.
+  const [phase, setPhase] = useState<Phase>("learn");
   const [lessonIndex, setLessonIndex] = useState(0);
   const [quizQueue, setQuizQueue] = useState(() => plan.quizIds);
   const [masteredIds, setMasteredIds] = useState<Set<string>>(() => new Set());
@@ -524,6 +529,19 @@ export function HangeulScreen({
     setSelectedCue(undefined);
   };
 
+  // An answer moves on by itself: soon when right, after a longer look at
+  // the right answer when wrong. "Lanjut" skips the wait.
+  const continueQuizRef = useRef(continueQuiz);
+  continueQuizRef.current = continueQuiz;
+  useEffect(() => {
+    if (phase !== "quiz" || !selectedCue) return;
+    const timer = setTimeout(
+      () => continueQuizRef.current(),
+      answerCorrect ? AUTO_NEXT_RIGHT_MS : AUTO_NEXT_WRONG_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [answerCorrect, phase, quizRound, selectedCue]);
+
   const restart = () => {
     setLessonIndex(0);
     setPhase("learn");
@@ -551,30 +569,6 @@ export function HangeulScreen({
         }}
       />
       <GamePage>
-        {phase === "intro" ? (
-          <View style={styles.stepContent}>
-            <Image
-              cachePolicy="memory-disk"
-              contentFit="contain"
-              priority="high"
-              source={introImage}
-              style={styles.heroImageLarge}
-              transition={0}
-            />
-            <View style={styles.centeredCopy}>
-              <Text style={[styles.eyebrow, { color: colors.primary }]}>
-                한글
-              </Text>
-              <Text style={[styles.heading, { color: colors.foreground }]}>
-                {copy.title}
-              </Text>
-              <Text style={[styles.body, { color: colors.mutedForeground }]}>
-                {copy.body}
-              </Text>
-            </View>
-          </View>
-        ) : null}
-
         {phase === "learn" ? (
           <>
             <ProgressBar progress={(lessonIndex + 1) / introStepCount} />
@@ -682,7 +676,8 @@ export function HangeulScreen({
                   key={cue}
                   correct={cue === currentLetter.cue}
                   cue={cue}
-                  onPress={() => setSelectedCue(cue)}
+                  // One answer per letter; it moves on by itself.
+                  onPress={() => setSelectedCue((current) => current ?? cue)}
                   revealed={Boolean(selectedCue)}
                   selected={selectedCue === cue}
                 />
@@ -769,16 +764,6 @@ export function HangeulScreen({
         groups={plan.sheetFamilies}
         onClose={() => setShowCheatSheet(false)}
         visible={phase === "quiz" && showCheatSheet}
-      />
-
-      <GameStartModal
-        detail={copy.detail}
-        gameKey="stroke-master"
-        onPrimary={() => setPhase("learn")}
-        onSecondary={leave}
-        primaryLabel="Mulai belajar"
-        title={copy.title}
-        visible={phase === "intro"}
       />
     </View>
   );
