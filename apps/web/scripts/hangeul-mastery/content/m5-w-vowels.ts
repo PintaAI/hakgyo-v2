@@ -332,7 +332,7 @@ export const m5WVowels: ModuleContent = {
           term: "회의",
           definition: "rapat",
           romanization: "hoeui",
-          examples: ["Boleh dibaca [회의] atau [회이]."],
+          examples: ["회의 어디서 해요? = Rapatnya di mana?"],
         },
         {
           term: "최고",
@@ -350,7 +350,7 @@ export const m5WVowels: ModuleContent = {
           term: "저희",
           definition: "kami (sopan, merendah)",
           romanization: "jeohui",
-          examples: ["Dibaca [저히]: ㅢ setelah konsonan dibaca ㅣ."],
+          examples: ["저희 회사 = perusahaan kami"],
         },
       ],
     },

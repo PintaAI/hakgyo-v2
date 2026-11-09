@@ -260,17 +260,11 @@ export const m2CoreConsonants: ModuleContent = {
           term: "누나",
           definition: "kakak perempuan (dipakai adik laki-laki)",
           romanization: "nuna",
-          examples: [
-            "Adik perempuan memakai kata lain, yang akan kamu pelajari nanti.",
-          ],
         },
         {
           term: "이모",
           definition: "tante (saudari ibu)",
           romanization: "imo",
-          examples: [
-            "Juga dipakai untuk memanggil ibu-ibu pemilik warung makan dengan akrab.",
-          ],
         },
         { term: "어머니", definition: "ibu", romanization: "eomeoni" },
         { term: "너무", definition: "terlalu; sangat", romanization: "neomu" },
@@ -308,9 +302,6 @@ export const m2CoreConsonants: ModuleContent = {
           term: "바보",
           definition: "orang bodoh; dungu (santai, bisa terdengar kasar)",
           romanization: "babo",
-          examples: [
-            "Sering terdengar di drama, biasanya di antara teman akrab.",
-          ],
         },
         { term: "이사", definition: "pindah rumah", romanization: "isa" },
       ],
@@ -560,7 +551,7 @@ export const m2CoreConsonants: ModuleContent = {
           term: "거기",
           definition: "di sana; tempat itu",
           romanization: "geogi",
-          examples: ["Bandingkan dengan 고기 (daging)."],
+          examples: ["거기 누구? = Siapa di sana? (santai)"],
         },
         { term: "도시", definition: "kota", romanization: "dosi" },
         { term: "두부", definition: "tahu", romanization: "dubu" },
