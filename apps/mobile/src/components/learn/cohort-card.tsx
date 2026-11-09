@@ -954,7 +954,7 @@ export function CohortCard({
           <View className="gap-3">
             <Eyebrow>Materi kurikulum</Eyebrow>
             <AppSegmentedControl
-              values={["Bab", "Selesai"]}
+              values={["Belum selesai", "Semua"]}
               selectedIndex={curriculumSegment}
               onIndexChange={setCurriculumSegment}
             />
@@ -966,6 +966,17 @@ export function CohortCard({
                 hideCompleted
                 onShowCompleted={showCompleted}
                 completionSlot={badgeSlot}
+                showActiveState={false}
+                showHeader={false}
+                onOpenItem={openOutlineItem}
+              />
+            ) : outline ? (
+              // The whole curriculum, to look back at: finished lessons
+              // carry their check, the chapter in progress opens first.
+              <CourseOutlineList
+                courseId={cohort.course.id}
+                outline={outline}
+                collapsible
                 showActiveState={false}
                 showHeader={false}
                 onOpenItem={openOutlineItem}

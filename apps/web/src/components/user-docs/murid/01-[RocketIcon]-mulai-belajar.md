@@ -63,7 +63,7 @@ Halaman **Belajar** menjawab pertanyaan "apa yang harus dikerjakan sekarang?":
 2. Kartu kelas menampilkan nama kurikulum, kelas, pengajar, tombol **Grup** WhatsApp (jika ada), dan progres belajarmu. Bergabunglah ke grupnya: pengingat pertemuan dan jadwal latihan bisa dikirim ke sana.
 3. Kartu besar menunjukkan hal terpenting saat ini, misalnya pertemuan online yang sedang berlangsung (**Gabung**), latihan kelas yang tenggatnya dekat, atau **Lanjutkan belajar**.
 4. **Perlu dikerjakan** berisi daftar tugas dan materi berikutnya.
-5. **Materi kurikulum** menampilkan bab-bab kurikulum. Pilih **Selesai** untuk melihat yang sudah kamu tuntaskan. Di aplikasi, daftar **Bab** hanya menampilkan yang belum selesai.
+5. **Materi kurikulum** menampilkan bab-bab kurikulum. Di aplikasi, **Belum selesai** hanya menampilkan yang belum kamu tuntaskan, dan **Semua** menampilkan seluruh kurikulum untuk mengulang materi.
 6. Di aplikasi, kelas yang sudah selesai pindah ke **Diarsipkan** di bawah kartu kelas. Baca [Aplikasi Ponsel](/docs/murid/aplikasi-ponsel) untuk caranya.
 
 ### Kelas Mandiri
