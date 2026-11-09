@@ -225,30 +225,6 @@ describe("audio texts", () => {
     );
   });
 
-  test("speak an entry's say text instead of its term", () => {
-    const content = structuredClone(fixtureContent);
-    const vocab = content.modules[0]!.items.find(
-      (item) => item.type === "vocabulary",
-    );
-    if (vocab?.type !== "vocabulary") throw new Error("fixture has no set");
-    vocab.entries.push({
-      term: "ㄱ",
-      definition: "g / k",
-      romanization: "g/k",
-      say: "가",
-    });
-
-    const texts = collectCourseAudioTexts(content);
-    expect(texts).toContain("가");
-    expect(texts).not.toContain("ㄱ");
-    const { course, errors } = build(content);
-    expect(errors).toEqual([]);
-    const entry = course.modules[0]!.items.find(
-      (item) => item.vocabularySet,
-    )!.vocabularySet!.entries.find((row) => row.term === "ㄱ")!;
-    expect(entry.audioAssetId).toBe(assetIdOf("가"));
-  });
-
   test("voice version changes with the settings", () => {
     const voice = {
       reference: "voice/voice-ref.wav",

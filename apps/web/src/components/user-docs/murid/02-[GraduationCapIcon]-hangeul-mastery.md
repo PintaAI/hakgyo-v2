@@ -8,7 +8,7 @@ Bab dibuka berurutan: bab berikutnya terbuka setelah semua isi bab sebelumnya se
 
 | Bab | Yang dipelajari |
 |---|---|
-| **Perkenalan dan vokal dasar** | Cara kerja Hangeul dan ke-24 hurufnya, cara huruf disusun menjadi blok, ㅇ yang tidak dibaca, dan vokal ㅏ ㅓ ㅗ ㅜ ㅡ ㅣ |
+| **Perkenalan dan vokal dasar** | Cara kerja Hangeul, cara huruf disusun menjadi blok, ㅇ yang tidak dibaca, dan vokal ㅏ ㅓ ㅗ ㅜ ㅡ ㅣ |
 | **Konsonan inti** | ㄴ ㅁ ㅅ ㅂ ㄱ ㄷ ㅈ ㅎ ㄹ dan kata pertamamu |
 | **Vokal Y dan ㅐ ㅔ** | ㅑ ㅕ ㅛ ㅠ dan ㅐ ㅔ ㅒ ㅖ |
 | **Konsonan berhembus dan tegang** | Bunyi dengan hembusan napas (ㅋ ㅌ ㅍ ㅊ) dan bunyi tegang (ㄲ ㄸ ㅃ ㅆ ㅉ) |
@@ -26,7 +26,7 @@ Bab dibuka berurutan: bab berikutnya terbuka setelah semua isi bab sebelumnya se
 4. Di **tabel suku kata**, ketuk setiap blok untuk mendengar cara membacanya.
 5. Di **pasangan bunyi**, putar setiap kata bergantian dan dengarkan bedanya, misalnya 사다 dan 싸다.
 6. **Kartu aturan** merangkum pola yang perlu kamu ingat, misalnya posisi vokal atau tujuh bunyi batchim. Setiap barisnya berisi kapan aturan itu berlaku, hasilnya, dan contohnya.
-7. Hafalkan kosakata setiap bab dengan **Hafalkan kosakata**. Kumpulan kosakata selesai setelah semua katanya kamu latih. Kartu **24 huruf Hangeul** dari bab pertama juga muncul di kosakata harian di **Hari ini**, jadi kamu bisa mengulang huruf setiap hari.
+7. Hafalkan kosakata setiap bab dengan **Hafalkan kosakata**. Kumpulan kosakata selesai setelah semua katanya kamu latih. Kosakata dari bab yang sudah terbuka juga muncul di kosakata harian di **Hari ini**, mulai dari Kosakata A di bab pertama.
 8. Kerjakan kuis di akhir bab. Bab selesai setelah kamu lulus kuisnya. Kuis bisa diulang sampai lulus.
 
 > Dengarkan audionya sambil menirukan dengan suara keras. Bunyi seperti ㅓ, ㅡ, dan pasangan ㄱ ㅋ ㄲ paling mudah dipelajari dengan mendengar.

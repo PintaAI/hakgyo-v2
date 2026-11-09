@@ -426,9 +426,8 @@ function buildVocabularySet(
     }
     if (seen.has(term)) errors.push(`${where}: "${term}" is listed twice`);
     seen.add(term);
-    const spoken = entry.say ? normalizeTerm(entry.say) : term;
-    const audioAssetId = spoken ? options.resolveAudio(spoken) : undefined;
-    if (spoken && !audioAssetId) missingAudio.add(spoken);
+    const audioAssetId = term ? options.resolveAudio(term) : undefined;
+    if (term && !audioAssetId) missingAudio.add(term);
     const romanization = entry.romanization.trim();
     return {
       id: entryId(item.key, term),
