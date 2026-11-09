@@ -1,5 +1,5 @@
 import type { ArchiveOverride } from "./cohort-archive";
-import { createUserCourseStore } from "./user-json-store";
+import { createUserRecordStore } from "./user-json-store";
 
 function isOverride(value: unknown): value is ArchiveOverride {
   if (!value || typeof value !== "object") return false;
@@ -10,7 +10,7 @@ function isOverride(value: unknown): value is ArchiveOverride {
   );
 }
 
-const store = createUserCourseStore("hakgyo:cohort-archive:v1", isOverride);
+const store = createUserRecordStore("hakgyo:cohort-archive:v1", isOverride);
 
 /** Sets (or, with `undefined`, clears) the learner's choice for a course. */
 export const setArchiveOverride = store.set;

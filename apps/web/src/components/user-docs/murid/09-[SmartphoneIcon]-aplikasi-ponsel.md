@@ -24,6 +24,16 @@ Gunakan akun yang sama dengan di situs web supaya kelasmu muncul.
 
 Di tab **Hari Ini**, **Soal harian** berisi lima soal acak dari kurikulummu. Geser ke kiri atau kanan untuk pindah soal, atau pakai panah di bawah soal. Tombol **Daftar soal** di antara panah membuka semua nomor soal. Titik di atas soal menunjukkan keadaan setiap soal: hijau jawabanmu benar, merah salah, kuning sudah dibuka tapi belum dijawab, dan abu-abu belum dibuka. Titik yang memanjang adalah soal yang sedang tampil. Ketuk titik-titik itu untuk membuka daftar soal, yang memakai warna yang sama. Setelah kamu menjawab, pembahasan muncul di bawah soal. Matikan **Tampilkan penjelasan** kalau kamu tidak ingin melihatnya; pilihanmu tersimpan di ponsel untuk soal-soal berikutnya. Setelah soal terakhir, ada kartu **Ringkasan** yang menunjukkan berapa soal yang benar. Tekan **Coba lagi** (ikon dadu) di kartu itu untuk mengambil lima soal acak yang baru. Jawabanmu dinilai, tapi nilai, percobaan, dan XP tidak berubah.
 
+Di tab **Latihan**, ketuk sebuah permainan, misalnya **Kartu** atau **Hujan Kata**. Sebuah lembar terbuka dari bawah layar. Di bagian **Untukmu**, Hakgyo memilihkan satu set kosakata beserta alasannya, lalu dua **Pilihan lain**. Urutannya:
+
+1. Set dengan kata yang **perlu diulang** hari ini.
+2. Set yang terakhir kamu mainkan dan belum selesai, atau yang masih punya kata **belum hafal**.
+3. Set di bab yang sedang kamu pelajari di tab **Belajar**.
+4. Set baru berikutnya di kurikulummu.
+5. Jika semua sudah selesai, set yang paling lama tidak kamu latih.
+
+Ketuk **Main** untuk langsung bermain. Untuk memilih sendiri, ketuk **Semua set kosakata**, lalu cari atau saring daftarnya. Untuk **Quiz**, Hakgyo lebih dulu memilihkan latihan atau tryout kelas yang sedang dibuka, lalu quiz yang belum selesai atau belum lulus. Geser lembarnya ke bawah untuk menutupnya.
+
 Jika kamu ikut lebih dari satu kelas, geser kartu kelas di tab **Belajar** ke kiri atau kanan. Titik-titik di atas menu bawah menunjukkan kelas yang sedang tampil.
 
 Di kartu kelas, daftar **Bab** hanya menampilkan materi yang belum selesai. Bab yang sudah tuntas dilipat menjadi satu baris, misalnya **3 bab selesai**. Ketuk baris itu, atau pilih **Selesai**, untuk melihat semua yang sudah kamu kerjakan.

@@ -1,6 +1,6 @@
 import type { LearnerState } from "@hakgyo/shared/mobile-sync";
 
-import { createUserCourseStore } from "./user-json-store";
+import { createUserRecordStore } from "./user-json-store";
 
 /**
  * Course badges. The badge itself is not stored anywhere: a course whose
@@ -25,7 +25,7 @@ function isClaim(value: unknown): value is BadgeClaim {
   );
 }
 
-const store = createUserCourseStore("hakgyo:badge-claims:v1", isClaim);
+const store = createUserRecordStore("hakgyo:badge-claims:v1", isClaim);
 
 export function claimBadge(
   userId: string,

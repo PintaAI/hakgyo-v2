@@ -268,6 +268,25 @@ function RootNavigator() {
                     }}
                   />
                   <Stack.Screen
+                    name="practice-source"
+                    options={{
+                      headerShown: false,
+                      // iOS shows the native sheet material through; Android
+                      // sheets have none and need an opaque surface.
+                      contentStyle: {
+                        backgroundColor:
+                          Platform.OS === "ios"
+                            ? "transparent"
+                            : colors.background,
+                      },
+                      // Half height, growing to full while the list scrolls.
+                      ...formSheetOptions({
+                        detents: [0.6, 1],
+                        expandsWhenScrolledToEdge: true,
+                      }),
+                    }}
+                  />
+                  <Stack.Screen
                     name="organization-switcher"
                     options={{
                       headerShown: Platform.OS === "ios",
