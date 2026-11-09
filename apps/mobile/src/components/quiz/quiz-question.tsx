@@ -65,7 +65,8 @@ function instructionFor(type: string) {
  * - `hidden` shows grey placeholders where the server has not set the
  *   content yet (the start preview of a shuffled tugas).
  * - `media` sits between the question and its answers (a section's audio
- *   player); `children` below them (feedback, explanation, actions).
+ *   player), after `context` (where the question comes from);
+ *   `children` below them (feedback, explanation, actions).
  */
 export function QuizQuestion({
   question,
@@ -83,6 +84,8 @@ export function QuizQuestion({
   hideInlineAudio = false,
   hidden,
   media,
+  context,
+  hideCounter = false,
   resolveAssetUrl,
   children,
 }: {
@@ -107,6 +110,10 @@ export function QuizQuestion({
   /** Content not known yet, drawn as placeholders in its final place. */
   hidden?: "prompt" | "options";
   media?: ReactNode;
+  /** Right under the question: where it comes from (Hari Ini's source). */
+  context?: ReactNode;
+  /** The screen shows the position itself (Hari Ini, beside its title). */
+  hideCounter?: boolean;
   resolveAssetUrl: AssetUrlResolver;
   children?: ReactNode;
 }) {
@@ -119,20 +126,22 @@ export function QuizQuestion({
     <View className="gap-4">
       {/* Where the learner is, once. Moving and the answered count live in
           the screen's navigation (QuizNav, or the attempt's toolbar). */}
-      <View
-        accessible
-        accessibilityLabel={`Soal ${index + 1} dari ${total}`}
-        className="flex-row items-center gap-2"
-      >
-        <View className="size-9 items-center justify-center rounded-full bg-primary/15">
-          <Text className="text-base font-black tabular-nums text-primary">
-            {index + 1}
+      {hideCounter ? null : (
+        <View
+          accessible
+          accessibilityLabel={`Soal ${index + 1} dari ${total}`}
+          className="flex-row items-center gap-2"
+        >
+          <View className="size-9 items-center justify-center rounded-full bg-primary/15">
+            <Text className="text-base font-black tabular-nums text-primary">
+              {index + 1}
+            </Text>
+          </View>
+          <Text className="text-sm font-semibold tabular-nums text-muted-foreground">
+            / {total}
           </Text>
         </View>
-        <Text className="text-sm font-semibold tabular-nums text-muted-foreground">
-          / {total}
-        </Text>
-      </View>
+      )}
 
       {detail ? <Eyebrow size="xs">{detail}</Eyebrow> : null}
       {group ? (
@@ -154,6 +163,7 @@ export function QuizQuestion({
           resolveAssetUrl={resolveAssetUrl}
         />
       )}
+      {context}
       {media}
 
       {/* What to do, until the question is graded. */}

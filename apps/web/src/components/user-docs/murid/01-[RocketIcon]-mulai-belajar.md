@@ -48,7 +48,7 @@ Di situs web, menu ada di samping kiri. Di ponsel, ketuk ikon menu di kiri atas.
 
 | Menu | Isinya |
 |---|---|
-| **Hari ini** | Hari belajar berturut-turut (streak), kosakata harian, dan soal harian |
+| **Hari ini** | Hari belajar berturut-turut (streak), agenda kelas (di aplikasi), kosakata harian, dan soal harian |
 | **Belajar** | Kelasmu, pertemuan berikutnya, dan apa yang perlu dikerjakan |
 | **Latihan** | Latihan kartu kosakata, permainan, serta latihan dan tryout kelas |
 | **Jelajahi kurikulum** | Katalog kurikulum yang bisa kamu ikuti |

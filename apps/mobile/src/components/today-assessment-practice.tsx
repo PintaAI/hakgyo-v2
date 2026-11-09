@@ -1,7 +1,7 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { useEffect, useRef, useState } from "react";
 import { useSharedValue } from "react-native-reanimated";
-import { Text, View } from "react-native";
+import { AccessibilityInfo, Pressable, Text, View } from "react-native";
 
 import { api } from "../lib/trpc";
 import { userErrorMessage } from "../lib/error-message";
@@ -13,7 +13,6 @@ import {
 import { useQuestionNavigator } from "../providers/QuestionNavigatorProvider";
 import { NativeContentRenderer, useApiAssetResolver } from "./content-renderer";
 import { Action, Card, Empty, Eyebrow } from "./learning-ui";
-import { AssessmentFeedback } from "./assessment-ui";
 import { QuizNav } from "./quiz/quiz-nav";
 import { QuizPager, type QuizPagerHandle } from "./quiz/quiz-pager";
 import { QuizQuestion } from "./quiz/quiz-question";
@@ -21,7 +20,8 @@ import { QuizStatusDots } from "./quiz/quiz-status-dots";
 import { SourceLink } from "./source-link";
 import { openCourseItem } from "../lib/navigation";
 import { useExplanationVisibility } from "../lib/use-explanation-visibility";
-import { SettingsSwitch } from "./ui/settings-switch";
+import { SymbolIcon } from "./ui/symbol-icon";
+import { useAppTheme } from "../providers/AppThemeProvider";
 
 type PracticeQuestion =
   RouterOutputs["practice"]["getAssessmentSample"]["questions"][number];
@@ -35,7 +35,7 @@ function randomSeed() {
  * Home's daily question challenge: a small random set of published questions
  * from the learner's open curricula, one page per question and a summary page
  * with the retry action at the end. Swipe between them, or jump from the
- * question list and "Soal belum dijawab berikutnya". Answers are graded on the
+ * question list and "Lanjut" (the next unanswered question). Answers are graded on the
  * server but change no score, attempt or XP.
  */
 export function TodayAssessmentPractice({
@@ -190,8 +190,15 @@ export function TodayAssessmentPractice({
         </Empty>
       ) : questions.length > 0 ? (
         <>
+          {/* The position lives beside the title; the question itself has no
+              counter of its own here. */}
           <Text className="text-center text-lg font-bold tracking-tight text-foreground">
             Soal harian
+            <Text className="font-semibold tabular-nums text-muted-foreground">
+              {index < questions.length
+                ? `  ${index + 1}/${questions.length}`
+                : "  · Ringkasan"}
+            </Text>
           </Text>
           <QuizStatusDots
             statuses={statuses}
@@ -265,7 +272,7 @@ export function TodayAssessmentPractice({
 
 /**
  * The last page: how the set went and the way to a new one. Reached by the
- * last question's "Lihat hasil latihan", or by swiping on early, when it says
+ * last question's "Lihat hasil", or by swiping on early, when it says
  * how many questions are left.
  */
 function SummaryPage({
@@ -339,53 +346,60 @@ function QuestionPage({
   onNext: () => void;
 }) {
   const failed = failure !== undefined;
+  // The colours of the answers say right or wrong; screen readers hear it.
+  const graded = result?.correct;
+  useEffect(() => {
+    if (graded === undefined) return;
+    AccessibilityInfo.announceForAccessibility(graded ? "Benar" : "Salah");
+  }, [graded]);
   return (
     <QuizQuestion
       question={question}
       index={index}
       total={total}
+      hideCounter
       selectedOptionIds={selected}
       correctOptionIds={result?.correctOptionIds}
       onChooseOption={onChoose}
       answersDisabled={!!result}
       disabled={busy}
       resolveAssetUrl={resolveAssetUrl}
+      context={
+        // Where the question comes from, as a quiet link to that tugas.
+        <SourceLink
+          title={question.assessmentTitle}
+          courseTitle={question.courseTitle}
+          hint="Membuka tugas asal soal ini"
+          onPress={() =>
+            openCourseItem({
+              courseId: question.courseId,
+              courseItemId: question.sourceCourseItemId,
+            })
+          }
+        />
+      }
     >
       {result ? (
         <>
-          <AssessmentFeedback correct={result.correct}>
-            {result.explanation ? (
-              <>
-                <View className="flex-row items-center justify-between gap-3">
-                  <Text className="shrink text-sm font-semibold text-foreground">
-                    Tampilkan penjelasan
-                  </Text>
-                  <SettingsSwitch
-                    label="Tampilkan penjelasan"
-                    value={showExplanation}
-                    onValueChange={onShowExplanationChange}
-                  />
-                </View>
-                {showExplanation ? (
-                  <NativeContentRenderer
-                    content={result.explanation}
-                    resolveAssetUrl={resolveAssetUrl}
-                  />
-                ) : null}
-              </>
-            ) : (
-              <Text className="text-sm text-muted-foreground">
-                Jawaban yang benar ditandai di atas.
-              </Text>
-            )}
-          </AssessmentFeedback>
+          {result.explanation ? (
+            <View className="gap-3">
+              <ExplanationToggle
+                open={showExplanation}
+                onToggle={() => onShowExplanationChange(!showExplanation)}
+              />
+              {showExplanation ? (
+                <NativeContentRenderer
+                  content={result.explanation}
+                  resolveAssetUrl={resolveAssetUrl}
+                />
+              ) : null}
+            </View>
+          ) : null}
           <Action
             onPress={onNext}
             trailingIcon={allAnswered ? undefined : "arrow.right"}
           >
-            {allAnswered
-              ? "Lihat hasil latihan"
-              : "Soal belum dijawab berikutnya"}
+            {allAnswered ? "Lihat hasil" : "Lanjut"}
           </Action>
         </>
       ) : null}
@@ -407,18 +421,39 @@ function QuestionPage({
               : "Periksa jawaban"}
         </Action>
       ) : null}
-      {/* Where the question comes from, as a quiet link to that tugas. */}
-      <SourceLink
-        title={question.assessmentTitle}
-        courseTitle={question.courseTitle}
-        hint="Membuka tugas asal soal ini"
-        onPress={() =>
-          openCourseItem({
-            courseId: question.courseId,
-            courseItemId: question.sourceCourseItemId,
-          })
-        }
-      />
     </QuizQuestion>
+  );
+}
+
+/**
+ * "Lihat penjelasan" under a graded question: opens the explanation in
+ * place. The choice is remembered, so the next questions open the same way.
+ */
+function ExplanationToggle({
+  open,
+  onToggle,
+}: {
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { colors } = useAppTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ expanded: open }}
+      className="flex-row items-center gap-1.5 self-start py-1 active:opacity-60"
+      hitSlop={8}
+      onPress={onToggle}
+    >
+      <Text className="text-sm font-semibold text-primary">
+        {open ? "Sembunyikan penjelasan" : "Lihat penjelasan"}
+      </Text>
+      <SymbolIcon
+        name={open ? "chevron.up" : "chevron.down"}
+        size={12}
+        tintColor={colors.primary}
+        weight="semibold"
+      />
+    </Pressable>
   );
 }

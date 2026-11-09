@@ -441,11 +441,16 @@ export default function PracticeSourceSheet() {
       {/* Like a Belajar class card: the glass tile above, then a segment
           between the other suggestions and the full list to search. */}
       {mainPick ? (
-        <AppSegmentedControl
-          values={["Rekomendasi", isQuiz ? "Cari tugas" : "Cari set"]}
-          selectedIndex={segment}
-          onIndexChange={setSegment}
-        />
+        // Titled like "Materi kurikulum" above a class card's segment, and
+        // pulled up into the hero's fade so no gap opens above it.
+        <View className="-mt-3 gap-3">
+          <Eyebrow>{isQuiz ? "Pilih tugas" : "Pilih set kosakata"}</Eyebrow>
+          <AppSegmentedControl
+            values={["Rekomendasi", isQuiz ? "Cari tugas" : "Cari set"]}
+            selectedIndex={segment}
+            onIndexChange={setSegment}
+          />
+        </View>
       ) : null}
 
       {!listOpen ? (
