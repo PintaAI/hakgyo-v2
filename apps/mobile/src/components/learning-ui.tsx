@@ -2,6 +2,7 @@ import {
   useCallback,
   useRef,
   useState,
+  type ComponentProps,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -78,6 +79,7 @@ export function StudyScreen({
   scrollViewRef,
   gameHeader = false,
   contentClassName = "gap-6",
+  onScroll,
 }: {
   title: string;
   children: ReactNode;
@@ -96,6 +98,8 @@ export function StudyScreen({
   gameHeader?: boolean;
   /** Replaces the default `gap-6` between sections; the gutter stays `px-5`. */
   contentClassName?: string;
+  /** Follows the scroll position (Belajar frosts its header once scrolled). */
+  onScroll?: ComponentProps<typeof ScrollView>["onScroll"];
 }) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -138,6 +142,8 @@ export function StudyScreen({
       automaticallyAdjustContentInsets={!bleedTop && behavior !== "never"}
       automaticallyAdjustKeyboardInsets={automaticallyAdjustKeyboardInsets}
       keyboardShouldPersistTaps="handled"
+      onScroll={onScroll}
+      scrollEventThrottle={onScroll ? 32 : undefined}
       scrollEnabled={scrollable}
       removeClippedSubviews={scrollGesture ? false : undefined}
       contentContainerStyle={fillViewport ? { flexGrow: 1 } : undefined}

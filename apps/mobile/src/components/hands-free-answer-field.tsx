@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { Pressable, Text, View, type TextInput } from "react-native";
 import Animated, {
   type AnimatedStyle,
@@ -7,6 +7,8 @@ import Animated, {
 import type { ViewStyle } from "react-native";
 
 import { useAppTheme } from "../providers/AppThemeProvider";
+import { glassTint } from "../theme/colors";
+import { GlassBox } from "./GlassBox";
 import { GlassInput } from "./learning-ui";
 import { VoiceLevelMeter } from "./voice-level-meter";
 import { SymbolIcon } from "./ui/symbol-icon";
@@ -55,9 +57,53 @@ function FieldIconButton({
   );
 }
 
+export type AnswerAction = {
+  kind: "check" | "next";
+  accessibilityLabel: string;
+  busy: boolean;
+  disabled: boolean;
+  dimmed: boolean;
+  onPress: () => void;
+};
+
+const ACTION_SIZE = 44;
+
+/**
+ * Check or next, as a round glass button beside the answer pill, the size
+ * of the answer-language button it sits opposite.
+ */
+export function AnswerActionButton({ action }: { action: AnswerAction }) {
+  const { colors, colorScheme } = useAppTheme();
+  return (
+    <GlassBox
+      isInteractive
+      glassEffectStyle="clear"
+      tintColor={glassTint(colors, colorScheme)}
+      style={{
+        borderRadius: ACTION_SIZE / 2,
+        width: ACTION_SIZE,
+        height: ACTION_SIZE,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <FieldIconButton
+        accessibilityLabel={action.accessibilityLabel}
+        busy={action.busy}
+        disabled={action.disabled}
+        dimmed={action.dimmed}
+        symbol={action.kind === "next" ? "arrow.right" : "paperplane.fill"}
+        color={colors.primary}
+        onPress={action.onPress}
+      />
+    </GlassBox>
+  );
+}
+
 /**
  * The answer pill under a practice card: a hands-free mic on the left, the
- * typed or spoken answer in the middle, and check / next on the right. While
+ * typed or spoken answer in the middle, and `trailing` on the right (check
+ * and next sit outside it, in `AnswerActionButton`). While
  * hands-free waits for a word the empty field shows the voice level meter.
  */
 export function HandsFreeAnswerField({
@@ -74,7 +120,7 @@ export function HandsFreeAnswerField({
   onBlur,
   onSubmitEditing,
   mic,
-  action,
+  trailing,
 }: {
   inputRef: Ref<TextInput>;
   accessibilityLabel: string;
@@ -97,14 +143,8 @@ export function HandsFreeAnswerField({
     dimmed: boolean;
     onPress: () => void;
   };
-  action: {
-    kind: "check" | "next";
-    accessibilityLabel: string;
-    busy: boolean;
-    disabled: boolean;
-    dimmed: boolean;
-    onPress: () => void;
-  };
+  /** Inside the pill on the right (Hari Ini: the answer language). */
+  trailing?: ReactNode;
 }) {
   const { colors } = useAppTheme();
   return (
@@ -146,17 +186,7 @@ export function HandsFreeAnswerField({
             />
           ) : undefined
         }
-        trailing={
-          <FieldIconButton
-            accessibilityLabel={action.accessibilityLabel}
-            busy={action.busy}
-            disabled={action.disabled}
-            dimmed={action.dimmed}
-            symbol={action.kind === "next" ? "arrow.right" : "paperplane.fill"}
-            color={colors.primary}
-            onPress={action.onPress}
-          />
-        }
+        trailing={trailing}
       />
     </Animated.View>
   );
