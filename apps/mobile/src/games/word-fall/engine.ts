@@ -1,4 +1,4 @@
-import { joinMeanings } from "@hakgyo/shared";
+import { joinMeanings, typeableAnswers } from "@hakgyo/shared";
 
 export type WordFallWord = {
   id: string;
@@ -50,12 +50,19 @@ export function isWordFallInputEditable(phase: WordFallPhase) {
   return phase === "running";
 }
 
-/** Every text the learner may type to clear the word. */
+/**
+ * Every text the learner may type to clear the word, the one to show
+ * first leading: notes in brackets, the other side of a slash and punctuation are
+ * not typed (see `typeableAnswers`), as other games accept answers without
+ * them. A word with nothing typeable keeps its text as written.
+ */
 export function answerOptionsForWord(
   word: WordFallWord,
   mode: WordFallAnswerMode = "ID",
 ) {
-  return mode === "KR" ? [word.term] : word.meanings;
+  const written = mode === "KR" ? [word.term] : word.meanings;
+  const options = [...new Set(written.flatMap(typeableAnswers))];
+  return options.length > 0 ? options : written;
 }
 
 /** The answer shown before the learner starts typing: the first meaning. */

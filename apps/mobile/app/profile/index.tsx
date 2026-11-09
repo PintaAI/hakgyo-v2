@@ -17,6 +17,7 @@ import {
   RecentActivity,
 } from "../../src/components/profile-learner";
 import { CourseBadges } from "../../src/components/course-badges";
+import { useUserRefresh } from "../../src/lib/use-user-refresh";
 import {
   SettingsRow,
   SettingsSection,
@@ -94,12 +95,8 @@ export default function ProfileScreen() {
     firstParam(params.segment) === "settings" ? 1 : 0,
   );
   const [error, setError] = useState<string | null>(null);
-  const {
-    activeBrand,
-    activeOrganizationId,
-    isRefreshingOrganizations,
-    refreshOrganizations,
-  } = useAppTheme();
+  const { activeBrand, activeOrganizationId, refreshOrganizations } =
+    useAppTheme();
   const {
     isSyncing,
     pendingCount,
@@ -136,6 +133,12 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (!isSyncing) refreshLocalStats();
   }, [isSyncing, refreshLocalStats]);
+  const pullRefresh = useUserRefresh(() =>
+    Promise.all([
+      syncNow(activeOrganizationId ?? undefined),
+      refreshOrganizations(),
+    ]),
+  );
   const progress = api.gamification.getMySummary.useQuery();
   // Opened on Pengaturan from the gear, the profile tour waits for Profil.
   useAutoTour("profile", segment === 0 && !progress.isPending);
@@ -329,11 +332,9 @@ export default function ProfileScreen() {
       <StudyScreen
         title="Profil"
         headerShown
-        onRefresh={() => {
-          void syncNow(activeOrganizationId ?? undefined);
-          void refreshOrganizations();
-        }}
-        refreshing={isSyncing || isRefreshingOrganizations}
+        // Spins for the learner's own pull only, not background syncs.
+        onRefresh={pullRefresh.onRefresh}
+        refreshing={pullRefresh.refreshing}
       >
         <TourTarget id="profile.segments">
           <AppSegmentedControl

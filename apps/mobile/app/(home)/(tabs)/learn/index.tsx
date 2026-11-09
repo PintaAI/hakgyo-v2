@@ -43,6 +43,7 @@ import {
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { withOpacity } from "../../../../src/theme/colors";
 import { useCohortArchive } from "../../../../src/lib/use-cohort-archive";
+import { useUserRefresh } from "../../../../src/lib/use-user-refresh";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
 import {
   useCourseOutlines,
@@ -223,10 +224,13 @@ export default function LearnTab() {
   );
   // Composed per course from the local bundles (progress, resume item).
   const { outlines } = useCourseOutlines(cohortCourseIds);
-  const { isSyncing, syncNow } = useMobileSync();
+  const { syncNow } = useMobileSync();
   const [now, setNow] = useState(Date.now);
   const pagePosition = useSharedValue(0);
   const insets = useSafeAreaInsets();
+  const pullRefresh = useUserRefresh(() =>
+    syncNow(activeOrganizationId ?? undefined),
+  );
 
   // Clear at rest, so the class card runs up to the top unfrosted; once the
   // page scrolls, the header frosts like on Hari Ini. (The soft edge would
@@ -359,10 +363,9 @@ export default function LearnTab() {
         ) : null
       }
       onScroll={onScroll}
-      refreshing={dashboard.isRefetching || isSyncing}
-      onRefresh={() => {
-        void syncNow(activeOrganizationId ?? undefined);
-      }}
+      // Spins for the learner's own pull only, not background syncs.
+      refreshing={pullRefresh.refreshing}
+      onRefresh={pullRefresh.onRefresh}
     >
       <QueryState
         pending={dashboard.isPending}

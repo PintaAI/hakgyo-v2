@@ -109,6 +109,22 @@ describe("word fall engine", () => {
     ).toBe(word.id);
   });
 
+  test("leaves notes in brackets and punctuation out of what is typed", () => {
+    const word = {
+      id: "deopda",
+      term: "(날씨가) 덥다?",
+      meanings: ["Panas (Cuaca)", "Sdr / Sdr.i"],
+    };
+    expect(answerOptionsForWord(word, "ID")).toEqual([
+      "Panas",
+      "Panas Cuaca",
+      "Sdr",
+      "Sdri",
+    ]);
+    expect(answerOptionsForWord(word, "KR")).toEqual(["덥다", "날씨가 덥다"]);
+    expect(answerTextForWord(word, "ID")).toBe("Panas");
+  });
+
   test("accepts any meaning and follows the one being typed", () => {
     const word = { id: "bae", term: "배", meanings: ["perut", "kapal"] };
     const options = answerOptionsForWord(word, "ID");

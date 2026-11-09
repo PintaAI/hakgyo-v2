@@ -44,17 +44,42 @@ describe("pickLessonWords", () => {
 });
 
 describe("lessonRounds", () => {
-  test("plays every round when the words allow it", () => {
-    const words = [
-      word("a", ["저는 매일 아침 밥을 먹어요. = Saya makan setiap pagi."]),
-      word("b"),
-    ];
-    expect(lessonRounds(words)).toEqual([
-      "match",
-      "cards",
-      "sentences",
-      "word-fall",
+  const withExample = (id: string) =>
+    word(id, ["저는 매일 아침 밥을 먹어요. = Saya makan setiap pagi."]);
+  // shuffled() swaps the last item with index floor(random * length).
+  const keepOrder = () => 0.99;
+  const swapPair = () => 0;
+
+  test("opens with matching and closes with Hujan Kata", () => {
+    expect(
+      lessonRounds([withExample("a"), word("b")], { random: keepOrder }),
+    ).toEqual(["match", "cards", "sentences", "word-fall"]);
+  });
+
+  test("Kartu and Susun makna take turns", () => {
+    expect(
+      lessonRounds([withExample("a"), word("b")], { random: swapPair }),
+    ).toEqual(["match", "sentences", "cards", "word-fall"]);
+  });
+
+  test("skips matching once every word is learned", () => {
+    const progress = new Map([
+      ["a", { practiced: true, due: false, mastered: false, learned: true }],
+      ["b", { practiced: true, due: true, mastered: true }],
     ]);
+    expect(
+      lessonRounds([withExample("a"), word("b")], {
+        progress,
+        random: keepOrder,
+      }),
+    ).toEqual(["cards", "sentences", "word-fall"]);
+    const oneNew = new Map([...progress].slice(0, 1));
+    expect(
+      lessonRounds([withExample("a"), word("b")], {
+        progress: oneNew,
+        random: keepOrder,
+      })[0],
+    ).toBe("match");
   });
 
   test("leaves out matching for one word and sentences without examples", () => {

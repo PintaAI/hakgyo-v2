@@ -11,6 +11,7 @@ import { useOpenEventMediaPrefetch } from "../../../../src/components/assessment
 import { firstParam } from "../../../../src/lib/route-params";
 import { isHangeulMastered } from "../../../../src/lib/hangeul-visibility";
 import { useHangeulArchived } from "../../../../src/lib/use-cohort-archive";
+import { useUserRefresh } from "../../../../src/lib/use-user-refresh";
 
 export default function PracticeTab() {
   const { activeOrganizationId } = useAppTheme();
@@ -34,7 +35,7 @@ export default function PracticeTab() {
   const dashboard = useSyncIndex(activeOrganizationId);
   const hangeulArchived = useHangeulArchived(isHangeulMastered(dashboard.data));
   useAutoTour("practice", Boolean(dashboard.data));
-  const { isSyncing, syncNow } = useMobileSync();
+  const { syncNow } = useMobileSync();
   const { promptInContext } = usePushNotifications();
 
   // Tryouts open without warning, so this is where notifications pay off.
@@ -48,14 +49,16 @@ export default function PracticeTab() {
 
   // The source sheet opens these events; their media is warmed from here.
   useOpenEventMediaPrefetch(dashboard.data?.events);
+  const pullRefresh = useUserRefresh(() =>
+    syncNow(activeOrganizationId ?? undefined),
+  );
   return (
     <TabScreen
       title="Latihan"
       titleIcon={{ symbol: "pencil.and.list.clipboard" }}
-      refreshing={dashboard.isRefetching || isSyncing}
-      onRefresh={() => {
-        void syncNow(activeOrganizationId ?? undefined);
-      }}
+      // Spins for the learner's own pull only, not background syncs.
+      refreshing={pullRefresh.refreshing}
+      onRefresh={pullRefresh.onRefresh}
     >
       <PracticeHub
         coursesError={dashboard.error}

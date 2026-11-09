@@ -7,6 +7,7 @@ import {
   matchesTerm,
   normalizeMeanings,
   splitMeanings,
+  typeableAnswers,
   vocabularyMeaningFields,
 } from "./vocabulary-meanings";
 
@@ -118,5 +119,28 @@ describe("matchesTerm", () => {
     expect(matchesTerm("k팝", "K-팝")).toBe(true);
     expect(matchesTerm("현금 인출기", "현금 인출기(ATM)")).toBe(true);
     expect(matchesTerm("건물", "(건물) 앞")).toBe(false);
+  });
+});
+
+describe("typeableAnswers", () => {
+  test("leaves notes in brackets out, then offers them typed in", () => {
+    expect(typeableAnswers("Panas (Cuaca)")).toEqual(["Panas", "Panas Cuaca"]);
+    expect(typeableAnswers("(건물) 앞")).toEqual(["앞", "건물 앞"]);
+  });
+
+  test("splits a slash, an equals sign or a middle dot", () => {
+    expect(typeableAnswers("Sdr / Sdr.i")).toEqual(["Sdr", "Sdri"]);
+    expect(typeableAnswers("30분=반")).toEqual(["30분", "반"]);
+  });
+
+  test("drops punctuation but keeps apostrophes and hyphens", () => {
+    expect(typeableAnswers("여보세요?")).toEqual(["여보세요"]);
+    expect(typeableAnswers("begitu …, langsung")).toEqual(["begitu langsung"]);
+    expect(typeableAnswers("ke-2")).toEqual(["ke-2"]);
+  });
+
+  test("keeps a plain answer as it is", () => {
+    expect(typeableAnswers("makan")).toEqual(["makan"]);
+    expect(typeableAnswers("(…)")).toEqual([]);
   });
 });
