@@ -156,7 +156,7 @@ export function suggestVocabularySets<T extends PracticeSourceItem>(input: {
     .map((item) => ({
       item,
       label: "Bab sekarang",
-      reason: `Bab yang sedang kamu pelajari · ${item.moduleTitle}`,
+      reason: "Bab yang sedang kamu pelajari",
     }));
 
   const next = fresh
@@ -164,9 +164,7 @@ export function suggestVocabularySets<T extends PracticeSourceItem>(input: {
     .map((item) => ({
       item,
       label: "Berikutnya",
-      reason: summaryOf(item)?.lastPracticedAt
-        ? `Belum selesai · ${item.moduleTitle}`
-        : `Set baru · ${item.moduleTitle}`,
+      reason: summaryOf(item)?.lastPracticedAt ? "Belum selesai" : "Set baru",
     }));
 
   // Finished sets, the one practised longest ago first.
@@ -271,15 +269,9 @@ export function suggestQuizzes<
     .filter(
       (item) => input.currentModuleByCourse[item.courseId] === item.moduleId,
     )
-    .map((item) =>
-      quiz(
-        item,
-        "Bab sekarang",
-        `Bab yang sedang kamu pelajari · ${item.moduleTitle}`,
-      ),
-    );
+    .map((item) => quiz(item, "Bab sekarang", "Bab yang sedang kamu pelajari"));
   const next = untouched.map((item) =>
-    quiz(item, "Berikutnya", `Quiz berikutnya · ${item.moduleTitle}`),
+    quiz(item, "Berikutnya", "Quiz berikutnya"),
   );
   return pickThree<{ key: string }>([
     events,

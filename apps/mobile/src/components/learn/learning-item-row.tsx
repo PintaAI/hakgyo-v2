@@ -98,10 +98,18 @@ export function LearningItemRow({
                 className="text-xs leading-4 text-muted-foreground"
                 numberOfLines={detailLines}
               >
-                <Text className={`font-semibold ${meta.textClass}`}>
-                  {typeLabel ?? meta.label}
-                </Text>
-                {statusText ? ` · ${statusText}` : null}
+                {/* An empty `typeLabel` leaves the type out, for lists of one
+                    type. */}
+                {typeLabel === "" ? null : (
+                  <Text className={`font-semibold ${meta.textClass}`}>
+                    {typeLabel ?? meta.label}
+                  </Text>
+                )}
+                {statusText
+                  ? typeLabel === ""
+                    ? statusText
+                    : ` · ${statusText}`
+                  : null}
               </Text>
             </View>
             {showChevron ? <Chevron className="pt-0.5" /> : null}

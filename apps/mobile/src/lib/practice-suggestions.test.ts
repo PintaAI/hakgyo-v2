@@ -76,8 +76,8 @@ describe("suggestVocabularySets", () => {
     });
     expect(picks.map((pick) => [pick.item.id, pick.reason])).toEqual([
       ["a", "4 kata perlu diulang"],
-      ["c", "Bab yang sedang kamu pelajari · Bab m2"],
-      ["b", "Set baru · Bab m1"],
+      ["c", "Bab yang sedang kamu pelajari"],
+      ["b", "Set baru"],
     ]);
   });
 
