@@ -271,14 +271,9 @@ function RootNavigator() {
                     name="practice-source"
                     options={{
                       headerShown: false,
-                      // iOS shows the native sheet material through; Android
-                      // sheets have none and need an opaque surface.
-                      contentStyle: {
-                        backgroundColor:
-                          Platform.OS === "ios"
-                            ? "transparent"
-                            : colors.background,
-                      },
+                      // Opaque on both platforms: the Hakgyo hero at the top
+                      // fades into the page colour.
+                      contentStyle: { backgroundColor: colors.background },
                       // Half height, growing to full while the list scrolls.
                       ...formSheetOptions({
                         detents: [0.6, 1],
