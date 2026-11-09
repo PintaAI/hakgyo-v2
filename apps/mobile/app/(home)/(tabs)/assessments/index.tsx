@@ -11,7 +11,8 @@ import { useCourseOutlines, useSyncIndex } from "../../../../src/sync/hooks";
 import { useAutoTour } from "../../../../src/tour/tour-provider";
 import { useOpenEventMediaPrefetch } from "../../../../src/components/assessment-media";
 import { firstParam } from "../../../../src/lib/route-params";
-import { isHangeulHidden } from "../../../../src/lib/hangeul-visibility";
+import { isHangeulMastered } from "../../../../src/lib/hangeul-visibility";
+import { useHangeulArchived } from "../../../../src/lib/use-cohort-archive";
 
 export default function PracticeTab() {
   const { activeOrganizationId } = useAppTheme();
@@ -33,6 +34,7 @@ export default function PracticeTab() {
         }
       : undefined;
   const dashboard = useSyncIndex(activeOrganizationId);
+  const hangeulArchived = useHangeulArchived(isHangeulMastered(dashboard.data));
   useAutoTour("practice", Boolean(dashboard.data));
   const courseIds = useMemo(
     () => (dashboard.data?.courses ?? []).map((course) => course.id),
@@ -96,7 +98,7 @@ export default function PracticeTab() {
         courses={dashboard.data?.courses ?? []}
         coursesError={dashboard.error}
         coursesPending={dashboard.isPending}
-        hangeulHidden={isHangeulHidden(dashboard.data)}
+        hangeulHidden={hangeulArchived}
         events={actionableEvents}
         eventsError={dashboard.error}
         eventsPending={dashboard.isPending}

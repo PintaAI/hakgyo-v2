@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 
 import {
-  isHangeulHiddenInIndexes,
+  isHangeulMasteredInIndexes,
   isHiddenHangeulDocument,
 } from "../lib/hangeul-visibility";
+import { useHangeulArchived } from "../lib/use-cohort-archive";
 import { SyncDataContext, type SyncLocalData } from "../sync/hooks";
 import { syncQueryKeys } from "../sync/query-keys";
 import type { LearnerIndex } from "../sync/types";
@@ -63,6 +64,8 @@ async function loadCourseDocuments(
 
 export type SearchCorpus = {
   documents: PreparedDocument[];
+  /** Hangeul Mastery is mastered in some organization scope. */
+  hangeulMastered: boolean;
   /** Names of the organizations the documents belong to. */
   organizationNames: Record<string, string>;
   courseCount: number;
@@ -115,15 +118,9 @@ async function loadSearchCorpus(
   gameCache ??= gameDocuments().map(prepareDocument);
   for (const document of gameCache) byKey.set(document.document.key, document);
 
-  // A mastered Hangeul course and its games leave Cari unless the learner
-  // shows them again in Pengaturan; its vocabulary stays findable.
-  const hangeulHidden = isHangeulHiddenInIndexes(indexes);
-  const documents = [...byKey.values()].filter(
-    (document) => !isHiddenHangeulDocument(document.document, hangeulHidden),
-  );
-
   return {
-    documents,
+    documents: [...byKey.values()],
+    hangeulMastered: isHangeulMasteredInIndexes(indexes),
     organizationNames,
     courseCount: revisions.length,
   };
@@ -136,10 +133,27 @@ async function loadSearchCorpus(
  */
 export function useSearchCorpus() {
   const localData = useContext(SyncDataContext)?.localData ?? null;
-  return useQuery({
+  const query = useQuery({
     queryKey: searchCorpusQueryKey,
     queryFn: () => loadSearchCorpus(localData!),
     enabled: Boolean(localData),
     staleTime: Infinity,
   });
+  // Hangeul Mastery under Diarsipkan leaves Cari with its games; its
+  // vocabulary stays findable.
+  const corpus = query.data;
+  const hangeulArchived = useHangeulArchived(corpus?.hangeulMastered ?? false);
+  const data = useMemo(
+    () =>
+      corpus && hangeulArchived
+        ? {
+            ...corpus,
+            documents: corpus.documents.filter(
+              (document) => !isHiddenHangeulDocument(document.document, true),
+            ),
+          }
+        : corpus,
+    [corpus, hangeulArchived],
+  );
+  return { ...query, data };
 }

@@ -1,7 +1,8 @@
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-screens/experimental";
 
@@ -10,6 +11,10 @@ import {
   type CohortEvent,
   type LearnCohort,
 } from "../../../../src/components/learn/cohort-card";
+import {
+  ArchivedClasses,
+  type ArchivedClass,
+} from "../../../../src/components/learn/archived-classes";
 import { GlassBox } from "../../../../src/components/GlassBox";
 import { useAutoTour } from "../../../../src/tour/tour-provider";
 import { TourTarget } from "../../../../src/tour/tour-target";
@@ -31,6 +36,7 @@ import {
 } from "../../../../src/lib/learn-cohort-focus";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { withOpacity } from "../../../../src/theme/colors";
+import { useCohortArchive } from "../../../../src/lib/use-cohort-archive";
 import { useMobileSync } from "../../../../src/providers/MobileSyncProvider";
 import {
   useCourseOutlines,
@@ -86,6 +92,9 @@ function CohortCarousel({
   eventsPending,
   milestonesByCohort,
   now,
+  onArchive,
+  onBadgeClaimed,
+  onMissingFocus,
   onRetryEvents,
   organizationId,
   outlines,
@@ -98,6 +107,10 @@ function CohortCarousel({
   eventsPending: boolean;
   milestonesByCohort: Map<string, CohortMilestoneGroup>;
   now: number;
+  onArchive: (cohort: LearnCohort) => void;
+  onBadgeClaimed: () => void;
+  /** A requested cohort is not in the carousel (it may be archived). */
+  onMissingFocus: (cohortId: string) => void;
   onRetryEvents: () => void;
   organizationId: string;
   outlines: Record<string, CourseOutline>;
@@ -139,6 +152,7 @@ function CohortCarousel({
     const index = cohorts.findIndex(({ id }) => id === focus.cohortId);
     if (index < 0) {
       completeLearnCohortFocus(focus.id);
+      onMissingFocus(focus.cohortId);
       return;
     }
     const timer = setTimeout(() => {
@@ -147,7 +161,7 @@ function CohortCarousel({
       completeLearnCohortFocus(focus.id);
     }, FOCUS_SLIDE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [cohorts, focus, persistCohort]);
+  }, [cohorts, focus, onMissingFocus, persistCohort]);
 
   // Each card holds a whole curriculum, and cards differ a lot in length:
   // the pager takes the height of the card in view instead of the longest.
@@ -179,6 +193,8 @@ function CohortCarousel({
             now={now}
             isFirst
             onRetryEvents={onRetryEvents}
+            onArchive={() => onArchive(cohort)}
+            onBadgeClaimed={onBadgeClaimed}
             outline={outlines[cohort.course.id]}
           />
         );
@@ -201,6 +217,7 @@ export default function LearnTab() {
   const { isSyncing, syncNow } = useMobileSync();
   const [now, setNow] = useState(Date.now);
   const pagePosition = useSharedValue(0);
+  const insets = useSafeAreaInsets();
 
   // Another organization's carousel starts again from its first card (or the
   // saved one, which scrolls the dots along).
@@ -253,15 +270,64 @@ export default function LearnTab() {
       ),
     [dashboard.data?.milestones],
   );
-  useAutoTour("learn", cohorts.length > 0);
+  // Finished or archived classes leave the carousel for Diarsipkan below.
+  const archive = useCohortArchive(now);
+  const { activeCohorts, archivedClasses } = useMemo(() => {
+    const active: LearnCohort[] = [];
+    const archived: ArchivedClass[] = [];
+    for (const cohort of cohorts) {
+      const state = archive.states.get(cohort.id);
+      if (state?.archived) archived.push({ cohort, progress: state.progress });
+      else active.push(cohort);
+    }
+    return { activeCohorts: active, archivedClasses: archived };
+  }, [archive.states, cohorts]);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  // A claimed badge files its class away: show where it went.
+  const openArchive = useCallback(() => setArchiveOpen(true), []);
+  const archiveStates = archive.states;
+  const { archive: archiveCourse, restore: restoreCourse } = archive;
+  const onArchive = useCallback(
+    (cohort: LearnCohort) => archiveCourse(cohort.course.id),
+    [archiveCourse],
+  );
+  // A class opened from the sidebar, a notification or Cari that sits under
+  // Diarsipkan: open the list and its curriculum.
+  const onMissingFocus = useCallback(
+    (cohortId: string) => {
+      const archived = archivedClasses.find(
+        (item) => item.cohort.id === cohortId,
+      );
+      if (!archived) return;
+      setArchiveOpen(true);
+      router.push({
+        pathname: "/courses/[courseId]",
+        params: { courseId: archived.cohort.course.id },
+      });
+    },
+    [archivedClasses],
+  );
+  // With every class archived there is no carousel to take the request.
+  const focus = useLearnCohortFocus();
+  const noCarousel = activeCohorts.length === 0 && archivedClasses.length > 0;
+  useEffect(() => {
+    if (!focus || !noCarousel) return;
+    completeLearnCohortFocus(focus.id);
+    onMissingFocus(focus.cohortId);
+  }, [focus, noCarousel, onMissingFocus]);
+  const activeKey = activeCohorts.map(({ id }) => id).join("|");
+  useAutoTour("learn", activeCohorts.length > 0);
   return (
     <TabScreen
       right="updates"
       bleedTop
       contentInsetAdjustmentBehavior="never"
       overlay={
-        cohorts.length > 1 ? (
-          <CohortPageDots count={cohorts.length} position={pagePosition} />
+        activeCohorts.length > 1 ? (
+          <CohortPageDots
+            count={activeCohorts.length}
+            position={pagePosition}
+          />
         ) : null
       }
       refreshing={dashboard.isRefetching || isSyncing}
@@ -274,16 +340,21 @@ export default function LearnTab() {
         error={dashboard.error}
         retry={() => void dashboard.refetch()}
       />
-      {cohorts.length > 0 ? (
+      {activeCohorts.length > 0 ? (
         <FullBleed>
           <CohortCarousel
-            key={activeOrganizationId}
-            cohorts={cohorts}
+            // Remounts when a class moves to or from Diarsipkan, starting
+            // again from the saved card.
+            key={`${activeOrganizationId}:${activeKey}`}
+            cohorts={activeCohorts}
             eventsByCohort={eventsByCohort}
             eventsError={dashboard.error}
             eventsPending={dashboard.isPending}
             milestonesByCohort={milestonesByCohort}
             now={now}
+            onArchive={onArchive}
+            onBadgeClaimed={openArchive}
+            onMissingFocus={onMissingFocus}
             onRetryEvents={() => void dashboard.refetch()}
             organizationId={activeOrganizationId!}
             outlines={outlines}
@@ -291,13 +362,34 @@ export default function LearnTab() {
             userId={session!.user.id}
           />
         </FullBleed>
+      ) : archivedClasses.length > 0 ? (
+        // Without a card the page still starts below the transparent header.
+        <View style={{ paddingTop: insets.top + 56 }}>
+          <Empty>
+            Semua kelas sudah selesai. Kelas yang selesai atau kamu arsipkan ada
+            di Diarsipkan di bawah.
+          </Empty>
+        </View>
       ) : dashboard.data && !dashboard.error ? (
-        <Empty>
-          Belum ada kelas di organisasi ini. Kelas muncul di sini setelah
-          lembaga mendaftarkan kamu. Sementara itu, lanjutkan latihan Hangeul
-          dan kosakata dari tab Hari Ini.
-        </Empty>
+        <View style={{ paddingTop: insets.top + 56 }}>
+          <Empty>
+            Belum ada kelas di organisasi ini. Kelas muncul di sini setelah
+            lembaga mendaftarkan kamu. Sementara itu, lanjutkan latihan Hangeul
+            dan kosakata dari tab Hari Ini.
+          </Empty>
+        </View>
       ) : null}
+      <ArchivedClasses
+        items={archivedClasses}
+        open={archiveOpen || activeCohorts.length === 0}
+        onToggle={() => setArchiveOpen((open) => !open)}
+        onRestore={(item) =>
+          restoreCourse(
+            item.cohort.course.id,
+            archiveStates.get(item.cohort.id),
+          )
+        }
+      />
     </TabScreen>
   );
 }

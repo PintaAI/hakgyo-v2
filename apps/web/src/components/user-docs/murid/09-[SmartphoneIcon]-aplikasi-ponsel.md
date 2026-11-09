@@ -26,6 +26,26 @@ Di tab **Hari Ini**, **Soal harian** berisi lima soal acak dari kurikulummu. Ges
 
 Jika kamu ikut lebih dari satu kelas, geser kartu kelas di tab **Belajar** ke kiri atau kanan. Titik-titik di atas menu bawah menunjukkan kelas yang sedang tampil.
 
+Di kartu kelas, daftar **Bab** hanya menampilkan materi yang belum selesai. Bab yang sudah tuntas dilipat menjadi satu baris, misalnya **3 bab selesai**. Ketuk baris itu, atau pilih **Selesai**, untuk melihat semua yang sudah kamu kerjakan.
+
+## Lencana kurikulum
+
+Setelah semua bab sebuah kurikulum kamu tuntaskan, daftar **Bab** di kartu kelasnya berakhir dengan lencana kurikulum itu. Ketuk **Klaim lencana** untuk meraihnya.
+
+Lencananya dihitung dari progres belajarmu, jadi tetap ada walaupun kamu berganti ponsel atau memasang ulang aplikasi. Di ponsel baru, kamu cukup mengklaimnya lagi. Lencana yang sudah diklaim tampil di **Profil**, di bagian **Lencana kurikulum**, dan sebagai medali kecil di daftar **Diarsipkan**. Ketuk sebuah lencana di Profil untuk membuka kurikulumnya.
+
+## Kelas yang sudah selesai (Diarsipkan)
+
+Supaya tab **Belajar** tetap rapi, kelas yang sudah selesai pindah ke **Diarsipkan** di bawah kartu kelas. Sebuah kelas dianggap selesai jika semua materinya sudah kamu tuntaskan, lencananya sudah kamu klaim, dan tidak ada tugas, tryout, atau pertemuan yang menunggu. Jika pengajar menambahkan materi, tugas, atau pertemuan baru, kelasnya kembali ke atas dengan sendirinya.
+
+Kamu juga bisa memindahkan kelas sendiri: ketuk tombol **⋯** di kanan atas kartu kelas, lalu pilih **Arsipkan kelas**. Tugas dan jadwal kelas itu tetap muncul di **Hari Ini** dan **Latihan**, jadi tidak ada yang terlewat.
+
+- Ketuk **Diarsipkan** untuk membuka atau menutup daftarnya.
+- Ketuk sebuah kelas di daftar untuk membuka kurikulumnya.
+- Tekan lama sebuah kelas, lalu pilih **Tampilkan lagi** untuk mengembalikannya ke atas.
+
+Pilihan ini tersimpan di ponsel, jadi tidak ikut ke situs web atau ke ponsel lain.
+
 Jika kamu belajar di lebih dari satu lembaga, pilih lembaganya dengan tombol di kiri atas, di samping tombol menu. Tarik layar ke bawah untuk memperbarui.
 
 ## Tur aplikasi

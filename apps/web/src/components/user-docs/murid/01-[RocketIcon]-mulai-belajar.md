@@ -63,7 +63,8 @@ Halaman **Belajar** menjawab pertanyaan "apa yang harus dikerjakan sekarang?":
 2. Kartu kelas menampilkan nama kurikulum, kelas, pengajar, tombol **Grup** WhatsApp (jika ada), dan progres belajarmu. Bergabunglah ke grupnya: pengingat pertemuan dan jadwal latihan bisa dikirim ke sana.
 3. Kartu besar menunjukkan hal terpenting saat ini, misalnya pertemuan online yang sedang berlangsung (**Gabung**), latihan kelas yang tenggatnya dekat, atau **Lanjutkan belajar**.
 4. **Perlu dikerjakan** berisi daftar tugas dan materi berikutnya.
-5. **Materi kurikulum** menampilkan semua bab. Pilih **Selesai** untuk melihat yang sudah kamu tuntaskan.
+5. **Materi kurikulum** menampilkan bab-bab kurikulum. Pilih **Selesai** untuk melihat yang sudah kamu tuntaskan. Di aplikasi, daftar **Bab** hanya menampilkan yang belum selesai.
+6. Di aplikasi, kelas yang sudah selesai pindah ke **Diarsipkan** di bawah kartu kelas. Baca [Aplikasi Ponsel](/docs/murid/aplikasi-ponsel) untuk caranya.
 
 ### Kelas Mandiri
 
@@ -72,7 +73,7 @@ Kurikulum yang kamu pelajari sendiri, tanpa jadwal, tampil di **Belajar** sebaga
 - Jika kamu ikut kelas berjadwal untuk kurikulum yang sama, kartu Kelas Mandiri disembunyikan selama kelas itu berjalan. Kamu cukup belajar lewat kelasmu. Selama kelas itu berjalan, kamu juga belum bisa bergabung sendiri ke Kelas Mandiri kurikulum tersebut.
 - Setelah kelas berjadwal selesai, atau kamu keluar dari kelas itu, kartu Kelas Mandiri muncul lagi.
 - Progres belajarmu tetap terbawa, jadi tidak ada yang hilang saat berpindah antara kelas dan Kelas Mandiri.
-- Kartu Kelas Mandiri Hangeul Mastery ikut disembunyikan setelah kamu menguasai Hangeul, kecuali kamu [menampilkannya lagi](/docs/murid/hangeul-mastery).
+- Setelah kamu menguasai Hangeul, kartu Kelas Mandiri Hangeul Mastery disembunyikan di situs web dan pindah ke **Diarsipkan** di aplikasi. Kamu bisa [menampilkannya lagi](/docs/murid/hangeul-mastery).
 
 ## Langkah berikutnya
 

@@ -5,53 +5,50 @@ import {
 
 export type HangeulIndexState = { mastered: boolean; hidden: boolean };
 
-/** Indexes cached before the server added `hangeul` lack it: not hidden. */
+/** Indexes cached before the server added `hangeul` lack it: not mastered. */
 type IndexWithHangeul =
   { hangeul?: HangeulIndexState | null } | null | undefined;
-
-/**
- * Whether learner lists leave out the Hangeul Mastery course and games: the
- * learner mastered it and did not choose to show it again in Pengaturan.
- * Direct links and practice pools ignore this.
- */
-export function isHangeulHidden(index: IndexWithHangeul) {
-  return index?.hangeul?.hidden === true;
-}
 
 export function isHangeulMastered(index: IndexWithHangeul) {
   return index?.hangeul?.mastered === true;
 }
 
 /**
- * The learner mastered Hangeul and chose "Tampilkan Hangeul Mastery", so the
- * course stays in their lists (and the badge is not new: the switch only
- * appears after mastery).
+ * Copy of the badge shown once the Hangeul Mastery course is finished:
+ * waiting to be claimed in the Bab list, filed under Diarsipkan after the
+ * claim, or shown again by the learner.
  */
-export function isHangeulShownAgain(index: IndexWithHangeul) {
-  return isHangeulMastered(index) && !isHangeulHidden(index);
-}
-
-/** Copy of the badge shown once the Hangeul Mastery course is finished. */
-export function hangeulCompletionBadgeCopy(shownAgain: boolean) {
-  return shownAgain
-    ? {
-        eyebrow: "Lencana",
-        detail:
-          "Kurikulum ini tetap tampil karena kamu memilih menampilkannya di Pengaturan.",
-      }
-    : {
+export function hangeulCompletionBadgeCopy(
+  state: "unclaimed" | "archived" | "shown",
+) {
+  switch (state) {
+    case "unclaimed":
+      return {
         eyebrow: "Lencana baru",
         detail:
-          "Kurikulum ini sekarang disembunyikan dari daftarmu. Tampilkan lagi kapan saja lewat Pengaturan di Profil.",
+          "Klaim lencanamu di daftar Bab pada kartu kelas di tab Belajar.",
       };
+    case "archived":
+      return {
+        eyebrow: "Lencana",
+        detail:
+          "Kelas ini ada di Diarsipkan di bawah tab Belajar. Tampilkan lagi kapan saja dari sana.",
+      };
+    case "shown":
+      return {
+        eyebrow: "Lencana",
+        detail:
+          "Kelas ini tetap tampil di Belajar karena kamu menampilkannya lagi.",
+      };
+  }
 }
 
-/** Courses for a learner list, without Hangeul Mastery when it is hidden. */
-export function withoutHiddenHangeulCourse<T extends { id: string }>(
+/** Courses for a learner list, without Hangeul Mastery while it is archived. */
+export function withoutArchivedHangeulCourse<T extends { id: string }>(
   courses: T[],
-  hidden: boolean,
+  archived: boolean,
 ) {
-  return hidden
+  return archived
     ? courses.filter((course) => course.id !== HANGEUL_MASTERY_COURSE_ID)
     : courses;
 }
@@ -60,7 +57,7 @@ export function withoutHiddenHangeulCourse<T extends { id: string }>(
 const KEPT_HANGEUL_SEARCH_KINDS = new Set(["vocabularySet", "vocabularyEntry"]);
 
 /**
- * A search result left out of Cari while Hangeul Mastery is hidden: the
+ * A search result left out of Cari while Hangeul Mastery is archived: the
  * course itself, its modules, materials and assessments, and the Hangeul
  * games. Its vocabulary sets and words stay.
  */
@@ -78,26 +75,7 @@ export function isHiddenHangeulDocument(
     : target.courseId === HANGEUL_MASTERY_COURSE_ID;
 }
 
-/** The index with the learner's new "Tampilkan Hangeul Mastery" choice. */
-export function withHangeulPreference<T extends IndexWithHangeul & object>(
-  index: T,
-  show: boolean,
-): T & { hangeul: HangeulIndexState } {
-  const mastered = isHangeulMastered(index);
-  return { ...index, hangeul: { mastered, hidden: mastered && !show } };
-}
-
-/**
- * Hangeul visibility across the stored indexes of every organization scope:
- * the newest index that carries it wins, since it is the same for all scopes.
- */
-export function isHangeulHiddenInIndexes(
-  indexes: ({ generatedAt: string } & IndexWithHangeul & object)[],
-) {
-  let newest: (typeof indexes)[number] | undefined;
-  for (const index of indexes) {
-    if (!index.hangeul) continue;
-    if (!newest || index.generatedAt > newest.generatedAt) newest = index;
-  }
-  return isHangeulHidden(newest);
+/** Whether any stored index (one per organization scope) says mastered. */
+export function isHangeulMasteredInIndexes(indexes: IndexWithHangeul[]) {
+  return indexes.some((index) => isHangeulMastered(index));
 }

@@ -20,15 +20,9 @@ import { openCourseItem } from "../../src/lib/navigation";
 import { getCourseResumeItem } from "../../src/lib/course-learning-path";
 import { authClient } from "../../src/lib/auth-client";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
-import {
-  hangeulCompletionBadgeCopy,
-  isHangeulShownAgain,
-} from "../../src/lib/hangeul-visibility";
-import {
-  useCourseOfflineMedia,
-  useCourseOutline,
-  useSyncIndex,
-} from "../../src/sync/hooks";
+import { hangeulCompletionBadgeCopy } from "../../src/lib/hangeul-visibility";
+import { useHangeulBadgeState } from "../../src/lib/use-cohort-archive";
+import { useCourseOfflineMedia, useCourseOutline } from "../../src/sync/hooks";
 import { withOpacity } from "../../src/theme/colors";
 import { firstParam } from "../../src/lib/route-params";
 
@@ -37,10 +31,10 @@ export default function CourseDetailScreen() {
   const courseId = firstParam(params.courseId);
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
-  const { activeOrganizationId, colors } = useAppTheme();
-  const index = useSyncIndex(activeOrganizationId);
+  const { colors } = useAppTheme();
   const isHangeulCourse = courseId === HANGEUL_MASTERY_COURSE_ID;
-  const hangeulShownAgain = isHangeulShownAgain(index.data);
+  // The badge copy once the course is finished: claim, archived or shown.
+  const hangeulBadge = useHangeulBadgeState();
   // Local bundle + learner index; online only when the bundle is missing.
   const courseQuery = useCourseOutline(courseId, {
     enabled: Boolean(session && courseId),
@@ -190,9 +184,7 @@ export default function CourseDetailScreen() {
       !resumeItem &&
       allItems.length > 0 &&
       completedCount === allItems.length ? (
-        <HangeulMasteryBadge
-          {...hangeulCompletionBadgeCopy(hangeulShownAgain)}
-        />
+        <HangeulMasteryBadge {...hangeulCompletionBadgeCopy(hangeulBadge)} />
       ) : null}
 
       {offlineMedia ? (

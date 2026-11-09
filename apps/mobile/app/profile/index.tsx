@@ -16,6 +16,7 @@ import {
   ProfileHero,
   RecentActivity,
 } from "../../src/components/profile-learner";
+import { CourseBadges } from "../../src/components/course-badges";
 import {
   SettingsRow,
   SettingsSection,
@@ -36,7 +37,6 @@ import {
 import { api } from "../../src/lib/trpc";
 import { firstParam } from "../../src/lib/route-params";
 import { stepSyncActivityPreview } from "../../src/sync/activity-preview";
-import { useHangeulVisibility } from "../../src/lib/use-hangeul-visibility";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
 import { useMobileSync } from "../../src/providers/MobileSyncProvider";
 import {
@@ -112,7 +112,6 @@ export default function ProfileScreen() {
     getLocalDataStats,
   } = useMobileSync();
   const push = usePushNotifications();
-  const hangeul = useHangeulVisibility();
   const [isResetting, setIsResetting] = useState(false);
   const [localStats, setLocalStats] = useState<LocalDataStats | null>(null);
   const [resyncReport, setResyncReport] = useState<ResyncReport | null>(null);
@@ -365,6 +364,7 @@ export default function ProfileScreen() {
                 onRetry={() => void progress.refetch()}
               />
             </TourTarget>
+            <CourseBadges />
             <RecentActivity
               activities={progress.data?.recentActivity ?? []}
               weekXp={progress.data?.weeklyActivity.xp ?? 0}
@@ -410,19 +410,6 @@ export default function ProfileScreen() {
                 onPress={() => router.push("/organization-switcher")}
               />
             </SettingsSection>
-
-            {hangeul.mastered ? (
-              <SettingsSection title="Pembelajaran">
-                <SettingsToggleRow
-                  label="Tampilkan Hangeul Mastery"
-                  detail="Munculkan lagi di daftar belajar"
-                  symbol="character.book.closed.fill"
-                  value={hangeul.showAfterMastery}
-                  onValueChange={hangeul.setShowAfterMastery}
-                  disabled={hangeul.isSaving}
-                />
-              </SettingsSection>
-            ) : null}
 
             <SettingsSection title="Notifikasi">
               <SettingsToggleRow

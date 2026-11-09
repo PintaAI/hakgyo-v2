@@ -1,4 +1,5 @@
 import type { RouterOutputs } from "@hakgyo/api";
+import { HANGEUL_MASTERY_COURSE_ID } from "@hakgyo/shared/hangeul";
 import { router } from "expo-router";
 import { Image } from "expo-image";
 import {
@@ -9,8 +10,10 @@ import {
   type ReactNode,
 } from "react";
 import {
+  ActionSheetIOS,
   Alert,
   Linking,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -34,7 +37,16 @@ import {
 import { useSidebarIndicators } from "../../lib/sidebar-indicators";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { glassTint, withOpacity } from "../../theme/colors";
+import { authClient } from "../../lib/auth-client";
+import {
+  claimBadge,
+  courseCompletedAt,
+  medalGlyph,
+  useBadgeClaims,
+} from "../../lib/badge-claims";
+import { useSyncIndex } from "../../sync/hooks";
 import { AppSegmentedControl } from "../app-segmented-control";
+import { BadgeClaimCard } from "./badge-claim";
 import { GlassBox } from "../GlassBox";
 import {
   Badge,
@@ -398,18 +410,22 @@ function PlateRowView({
 }
 
 function GlassChip({
+  accessibilityLabel,
   icon,
   label,
   onPress,
   tint,
 }: {
+  accessibilityLabel?: string;
   icon: ReactNode;
-  label: string;
+  /** Omitted for an icon-only chip, which then needs `accessibilityLabel`. */
+  label?: string;
   onPress: () => void;
   tint: string;
 }) {
   return (
     <Pressable
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       className="active:opacity-70"
       onPress={onPress}
@@ -420,13 +436,43 @@ function GlassChip({
         glassEffectStyle="clear"
         style={styles.chipGlass}
       >
-        <View className="h-9 flex-row items-center gap-1.5 px-3.5">
+        <View
+          className={`h-9 flex-row items-center gap-1.5 ${label ? "px-3.5" : "w-9 justify-center"}`}
+        >
           {icon}
-          <Text className="text-xs font-semibold text-foreground">{label}</Text>
+          {label ? (
+            <Text className="text-xs font-semibold text-foreground">
+              {label}
+            </Text>
+          ) : null}
         </View>
       </GlassBox>
     </Pressable>
   );
+}
+
+/** Asks before moving the class under Diarsipkan on Belajar. */
+function confirmArchive(title: string, onArchive: () => void) {
+  const message =
+    "Kelas pindah ke Diarsipkan di bawah. Tugas dan jadwalnya tetap muncul di Hari Ini dan Latihan.";
+  if (Platform.OS === "ios") {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        title,
+        message,
+        options: ["Arsipkan kelas", "Batal"],
+        cancelButtonIndex: 1,
+      },
+      (index) => {
+        if (index === 0) onArchive();
+      },
+    );
+    return;
+  }
+  Alert.alert("Arsipkan kelas?", message, [
+    { text: "Batal", style: "cancel" },
+    { text: "Arsipkan", onPress: onArchive },
+  ]);
 }
 
 export function CohortCard({
@@ -441,6 +487,8 @@ export function CohortCard({
   outline,
   isFirst = false,
   tourTarget = false,
+  onArchive,
+  onBadgeClaimed,
 }: {
   cohort: LearnCohort;
   thumbnailUrl?: string | null;
@@ -454,8 +502,14 @@ export function CohortCard({
   isFirst?: boolean;
   /** This card is the one the Belajar tour points at. */
   tourTarget?: boolean;
+  /** Moves the class under Diarsipkan (the card's "⋯" button). */
+  onArchive?: () => void;
+  /** The learner claimed this course's badge (Belajar opens Diarsipkan). */
+  onBadgeClaimed?: () => void;
 }) {
   const [curriculumSegment, setCurriculumSegment] = useState(0);
+  // Stable, like `openOutlineItem`, for the memoized outline.
+  const showCompleted = useCallback(() => setCurriculumSegment(1), []);
   const { markEntitySeen } = useSidebarIndicators();
   const upcoming = cohort.meetings
     .filter((meeting) => meetingState(meeting, now) !== "ended")
@@ -522,6 +576,49 @@ export function CohortCard({
     };
   }, [outline]);
   const hasProgress = totalCount > 0;
+
+  // Every lesson done: the Bab list ends in the course badge to claim.
+  const { data: session } = authClient.useSession();
+  const userId = session?.user.id;
+  const { activeOrganizationId } = useAppTheme();
+  const learner = useSyncIndex(activeOrganizationId).data?.learner;
+  const claim = useBadgeClaims(userId)[cohort.course.id];
+  const allLessonsDone = hasProgress && completedCount === totalCount;
+  const courseTitle = cohort.course.title;
+  const claimCourseId = cohort.course.id;
+  const completedAt = useMemo(
+    () => (allLessonsDone ? courseCompletedAt(outline, learner) : null),
+    [allLessonsDone, learner, outline],
+  );
+  const handleClaim = useCallback(() => {
+    if (!userId) return;
+    claimBadge(userId, claimCourseId, { title: courseTitle, completedAt });
+    onBadgeClaimed?.();
+  }, [claimCourseId, completedAt, courseTitle, onBadgeClaimed, userId]);
+  // Memoized so the clock re-renders leave the outline list alone.
+  const badgeSlot = useMemo(
+    () =>
+      allLessonsDone ? (
+        <BadgeClaimCard
+          courseTitle={courseTitle}
+          glyph={medalGlyph(
+            courseTitle,
+            claimCourseId === HANGEUL_MASTERY_COURSE_ID,
+          )}
+          claim={claim}
+          completedAt={completedAt}
+          onClaim={handleClaim}
+        />
+      ) : undefined,
+    [
+      allLessonsDone,
+      claim,
+      claimCourseId,
+      completedAt,
+      courseTitle,
+      handleClaim,
+    ],
+  );
   const nextTypeLabel = nextOutlineItem
     ? getLearningItemTypeMeta(nextOutlineItem.type).label
     : null;
@@ -760,6 +857,26 @@ export function CohortCard({
                 tint={tint}
               />
             ) : null}
+            {onArchive ? (
+              <GlassChip
+                accessibilityLabel="Pilihan kelas"
+                icon={
+                  <SymbolIcon
+                    name="ellipsis"
+                    size={15}
+                    weight="semibold"
+                    tintColor={colors.foreground}
+                  />
+                }
+                onPress={() =>
+                  confirmArchive(
+                    cohort.selfPaced ? cohort.course.title : cohort.name,
+                    onArchive,
+                  )
+                }
+                tint={tint}
+              />
+            ) : null}
           </View>
         </View>
         {hasProgress ? (
@@ -815,6 +932,9 @@ export function CohortCard({
                 courseId={cohort.course.id}
                 outline={outline}
                 collapsible
+                hideCompleted
+                onShowCompleted={showCompleted}
+                completionSlot={badgeSlot}
                 showActiveState={false}
                 showHeader={false}
                 onOpenItem={openOutlineItem}
