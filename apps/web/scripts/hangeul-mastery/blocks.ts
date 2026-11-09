@@ -249,6 +249,82 @@ export function syllableGrid(
   };
 }
 
+export type RuleRowInput = {
+  /** When the rule applies, for example "ㅇ di awal blok". */
+  when: string;
+  /** What happens, short: "diam", "→ ㅁ". */
+  result: string;
+  /** One example, for example "아 = a". */
+  example?: string;
+};
+
+export type RuleExampleInput = {
+  before?: string;
+  /** The part shown in the accent colour. */
+  emphasis: string;
+  after?: string;
+};
+
+/**
+ * A rule card (the `grammar` block) for the few rules Hangeul needs: a title,
+ * one or two sentences, a rule table and optional highlighted examples and
+ * tip. Every prop is set, because BlockNote fills omitted props with the
+ * block's Korean grammar sample. The Korean fields stay empty: learners
+ * cannot read Korean prose yet, and empty fields are hidden.
+ */
+export function rules(input: {
+  title: string;
+  intro?: string;
+  eyebrow?: string;
+  theme?: "amber" | "blue" | "green" | "rose";
+  columns?: [string, string, string];
+  rows?: RuleRowInput[];
+  examplesLabel?: string;
+  examples?: RuleExampleInput[];
+  tip?: { title?: string; text: string };
+}): BlockNoteBlock {
+  const [ruleColumnOne, ruleColumnTwo, ruleColumnThree] = input.columns ?? [
+    "Kapan",
+    "Hasilnya",
+    "Contoh",
+  ];
+  return {
+    type: "grammar",
+    props: {
+      theme: input.theme ?? "blue",
+      showTip: Boolean(input.tip),
+      number: "",
+      eyebrow: input.eyebrow ?? "Aturan",
+      title: input.title,
+      descriptionKo: "",
+      descriptionTranslation: input.intro ?? "",
+      ruleColumnOne,
+      ruleColumnTwo,
+      ruleColumnThree,
+      ruleRows: JSON.stringify(
+        (input.rows ?? []).map((row) => ({
+          condition: row.when,
+          form: row.result,
+          example: row.example ?? "",
+        })),
+      ),
+      examplesLabel: input.examples?.length
+        ? (input.examplesLabel ?? "Contoh")
+        : "",
+      examples: JSON.stringify(
+        (input.examples ?? []).map((example) => ({
+          before: example.before ?? "",
+          emphasis: example.emphasis,
+          after: example.after ?? "",
+        })),
+      ),
+      tipTitle: input.tip ? (input.tip.title ?? "Tips") : "",
+      tipKo: "",
+      tipTranslation: input.tip?.text ?? "",
+    },
+  };
+}
+
 /** Opens a mobile Hangeul game at a stage; web shows an app handoff card. */
 export function game(
   gameKey: HangeulGameKey,

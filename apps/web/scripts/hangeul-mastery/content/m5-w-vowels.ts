@@ -1,38 +1,21 @@
 import {
+  assessmentRef,
   audioClip,
   b,
   callout,
   contrast,
   game,
-  heading,
-  i,
   letters,
   p,
+  rules,
   syllableGrid,
-  table,
   vocabularyRef,
 } from "../blocks";
-import type {
-  BlockNoteBlock,
-  ModuleContent,
-  QuestionContent,
-} from "../content-types";
-
-// An audio clip whose player label does not reveal the Korean text (the
-// builder's default file name is the text itself, which would give away
-// listening answers).
-const listen = (
-  text: string,
-  label = "Dengarkan",
-  caption = "",
-): BlockNoteBlock => {
-  const block = audioClip(text, caption);
-  return { ...block, props: { ...block.props, fileName: label } };
-};
+import type { ModuleContent, QuestionContent } from "../content-types";
 
 const choice = (
   key: string,
-  prompt: string | BlockNoteBlock[],
+  prompt: QuestionContent["prompt"],
   correct: string,
   wrong: [string, string, string],
   explanation: string,
@@ -47,64 +30,64 @@ const choice = (
   ],
 });
 
-const hear = (text: string) => [
-  p("Dengarkan, lalu pilih kata yang kamu dengar."),
-  listen(text),
-];
+const hear = (
+  text: string,
+  question = "Dengarkan, lalu pilih kata yang kamu dengar.",
+) => [p(question), audioClip(text)];
+
+const NO_ROMANIZATION = { showRomanization: false };
 
 export const m5WVowels: ModuleContent = {
   key: "m5-w-vowels",
   title: "Vokal W",
   description:
-    "Vokal gabungan ㅘ ㅝ ㅙ ㅞ ㅚ ㅟ ㅢ: dua vokal yang dibaca cepat menjadi satu bunyi. Setelah modul ini kamu sudah mengenal semua vokal Hangeul.",
+    "Vokal gabungan ㅘ ㅝ ㅙ ㅞ ㅚ ㅟ ㅢ. Setelah modul ini kamu kenal semua vokal Hangeul.",
   items: [
     {
       type: "material",
       key: "m5-wa-wo-wae-we",
       title: "ㅘ ㅝ ㅙ ㅞ: dua vokal jadi satu",
-      description:
-        "Gabungan ㅗ dan ㅜ dengan vokal lain menghasilkan bunyi wa, w + ㅓ, dan we.",
-      minutes: 15,
+      description: "ㅗ atau ㅜ yang disambung vokal lain jadi bunyi w.",
+      minutes: 6,
       blocks: [
-        heading("Vokal yang dibangun dari dua vokal"),
-        p(
-          "Kamu sudah kenal ㅗ dan ㅜ. Kalau ㅗ atau ㅜ diucapkan cepat lalu langsung disambung vokal lain, bibir yang tadinya bulat membuka dan terdengar bunyi ",
-          b("w"),
-          ". Itulah vokal W. Bentuknya pun gabungan dua huruf yang sudah kamu kenal, jadi tidak ada bentuk baru yang perlu dihafal.",
-        ),
-        table([
-          ["Gabungan", "Hasil", "Bunyi"],
-          ["ㅗ + ㅏ", "ㅘ", "wa"],
-          ["ㅗ + ㅐ", "ㅙ", "we (e taling)"],
-          ["ㅜ + ㅓ", "ㅝ", "w + ㅓ"],
-          ["ㅜ + ㅔ", "ㅞ", "we (e taling)"],
-        ]),
         callout(
-          "tip",
-          "Pola pasangannya: ",
-          b("ㅗ"),
-          " berpasangan dengan ㅏ dan ㅐ (garis pendeknya sama-sama ke atas atau ke kanan), ",
-          b("ㅜ"),
-          " berpasangan dengan ㅓ dan ㅔ (garis pendeknya ke bawah atau ke kiri). Karena itu tidak ada gabungan ㅗ + ㅓ atau ㅜ + ㅏ.",
+          "info",
+          "Vokal W adalah ",
+          b("gabungan dua vokal"),
+          " yang sudah kamu kenal, dibaca cepat jadi satu bunyi. Tidak ada bentuk baru yang perlu dihafal.",
         ),
-        heading("Kenali bunyinya", 3),
+        rules({
+          title: "Gabungan dua vokal",
+          intro:
+            'Ucapkan ㅗ atau ㅜ dengan cepat, lalu langsung ke vokal berikutnya. Bibir yang bulat membuka, jadi terdengar "w".',
+          columns: ["Gabungan", "Jadi", "Dibaca"],
+          rows: [
+            { when: "ㅗ + ㅏ", result: "ㅘ", example: '와 = "wa"' },
+            { when: "ㅜ + ㅓ", result: "ㅝ", example: "워 = w + ㅓ" },
+            { when: "ㅗ + ㅐ", result: "ㅙ", example: '왜 = "we"' },
+            { when: "ㅜ + ㅔ", result: "ㅞ", example: '웨 = "we"' },
+          ],
+          tip: {
+            title: "Pasangannya tetap",
+            text: "ㅗ hanya bergabung dengan ㅏ dan ㅐ. ㅜ hanya dengan ㅓ dan ㅔ.",
+          },
+        }),
         letters(
-          "Vokal W bagian 1",
+          "Huruf baru",
           [
             {
               character: "ㅘ",
-              cue: "wa, seperti di 'wajah'",
+              cue: 'Seperti "wa" di "wajah".',
               romanization: "wa",
               say: "와",
-              note: "Bibir mulai bulat (ㅗ), lalu cepat terbuka ke ㅏ.",
               example: { word: "사과", meaning: "apel", romanization: "sagwa" },
             },
             {
               character: "ㅝ",
-              cue: "w lalu ㅓ: bibir bulat dulu, lalu buka ke ㅓ yang tidak bulat",
+              cue: "Bibir bulat dulu, lalu buka ke ㅓ yang tidak bulat.",
               romanization: "wo",
               say: "워",
-              note: "Bukan 'wo' dengan o bulat. Akhirnya adalah ㅓ, rahang turun dan bibir tidak bulat.",
+              note: 'Bukan "wo" dengan o bulat: ujungnya ㅓ.',
               example: {
                 word: "뭐",
                 meaning: "apa (santai)",
@@ -113,18 +96,17 @@ export const m5WVowels: ModuleContent = {
             },
             {
               character: "ㅙ",
-              cue: "we, e taling seperti di 'sate'",
+              cue: '"w" lalu "e" seperti di "sate": "we".',
               romanization: "wae",
               say: "왜",
-              note: "Bunyinya sama dengan ㅞ dan ㅚ. Bedanya hanya ejaan.",
               example: { word: "왜", meaning: "kenapa", romanization: "wae" },
             },
             {
               character: "ㅞ",
-              cue: "we, sama dengan ㅙ",
+              cue: "Bunyinya sama dengan ㅙ.",
               romanization: "we",
               say: "웨",
-              note: "Paling jarang dipakai. Banyak muncul di kata serapan.",
+              note: "Jarang, banyak muncul di kata serapan.",
               example: {
                 word: "스웨터",
                 meaning: "sweter",
@@ -132,85 +114,53 @@ export const m5WVowels: ModuleContent = {
               },
             },
           ],
-          { showRomanization: false },
-        ),
-        heading("Bentuk bloknya", 3),
-        p(
-          "Vokal W memakai dua tempat sekaligus: bagian ㅗ atau ㅜ ditulis di bawah konsonan, bagian ㅏ ㅓ ㅐ ㅔ di sebelah kanannya. Konsonan tetap di pojok kiri atas. Lihat 과: ㄱ di kiri atas, ㅗ di bawahnya, ㅏ di kanan.",
-        ),
-        syllableGrid(
-          "Baca baris demi baris",
-          ["ㅇ", "ㄱ", "ㄷ", "ㅁ", "ㅅ", "ㅎ"],
-          ["ㅘ", "ㅝ", "ㅙ", "ㅞ"],
-        ),
-        heading("Kata yang sudah bisa kamu baca", 3),
-        table([
-          ["Hangeul", "Arti"],
-          ["사과", "apel"],
-          ["과자", "camilan, kue kering"],
-          ["뭐", "apa (santai)"],
-          ["왜", "kenapa"],
-          ["와", "wah!"],
-          ["돼지", "babi"],
-          ["샤워", "mandi (pancuran)"],
-          ["스웨터", "sweter"],
-          ["고마워요", "terima kasih (sopan, akrab)"],
-          ["추워요", "dingin (cuaca)"],
-          ["더워요", "panas (cuaca)"],
-        ]),
-        p(
-          "Perhatikan 고마워요, 추워요, dan 더워요. Ketiganya berakhir dengan ",
-          b("워요"),
-          ": banyak kata sifat Korea berbentuk seperti ini saat diucapkan dengan sopan.",
+          NO_ROMANIZATION,
         ),
         contrast(
           "Ada W atau tidak?",
-          "Putar setiap kata. Dengarkan bibir yang membulat sebentar sebelum vokal kedua.",
+          "Putar tiap baris. Dengarkan bibir yang membulat sebentar sebelum vokal kedua.",
           [
             {
               items: [
-                { text: "사과", meaning: "apel", romanization: "sagwa" },
-                { text: "사고", meaning: "kecelakaan", romanization: "sago" },
+                { text: "사과", meaning: "apel" },
+                { text: "사고", meaning: "kecelakaan" },
               ],
-              note: "Satu huruf ㅏ kecil di kanan mengubah 'apel' menjadi 'kecelakaan'.",
+              note: "Satu ㅏ kecil mengubah apel jadi kecelakaan.",
             },
             {
               items: [
-                { text: "와", meaning: "wah!", romanization: "wa" },
-                { text: "워", meaning: "(w + ㅓ)", romanization: "wo" },
+                { text: "와", meaning: "wah!" },
+                { text: "워", meaning: "w + ㅓ" },
               ],
-              note: "ㅘ berakhir dengan ㅏ yang terbuka lebar, ㅝ berakhir dengan ㅓ.",
+              note: "ㅘ berakhir ㅏ yang terbuka lebar, ㅝ berakhir ㅓ.",
             },
             {
               items: [
-                { text: "뭐", meaning: "apa", romanization: "mwo" },
-                { text: "모", meaning: "(suku kata mo)", romanization: "mo" },
-                {
-                  text: "머",
-                  meaning: "(suku kata ㅁ + ㅓ)",
-                  romanization: "meo",
-                },
+                { text: "뭐", meaning: "apa" },
+                { text: "모" },
+                { text: "머" },
               ],
-              note: "뭐 dimulai bulat seperti 모, tetapi berakhir terbuka seperti 머.",
+              note: "뭐 mulai bulat seperti 모, lalu berakhir seperti 머.",
             },
           ],
-          { showRomanization: false },
+          NO_ROMANIZATION,
         ),
-        callout(
-          "warning",
-          "Romanisasi ㅝ ditulis ",
-          i("wo"),
-          ", dan orang Indonesia cenderung membacanya 'wo' dengan o bulat. Ingat: ujungnya ㅓ, bukan ㅗ. Percayai audio, bukan huruf Latinnya.",
+        syllableGrid(
+          "Sekarang kamu bisa baca",
+          ["ㅇ", "ㄱ", "ㄷ", "ㅁ", "ㅅ", "ㅎ"],
+          ["ㅘ", "ㅝ", "ㅙ", "ㅞ"],
+          NO_ROMANIZATION,
         ),
         game(
           "syllable-forge",
           "w-vowels",
           "Susun blok dengan vokal W",
-          "Gabungkan konsonan dengan ㅘ ㅝ ㅙ ㅞ sampai tanganmu hafal letaknya.",
+          "Gabungkan konsonan dengan ㅘ ㅝ ㅙ ㅞ sampai kamu hafal letaknya.",
         ),
         callout(
           "success",
-          "Ringkasnya: ㅗ + ㅏ = ㅘ (wa), ㅜ + ㅓ = ㅝ (w + ㅓ), ㅗ + ㅐ = ㅙ dan ㅜ + ㅔ = ㅞ (keduanya we). ㅗ berpasangan dengan ㅏ ㅐ, ㅜ dengan ㅓ ㅔ.",
+          b("Ingat: "),
+          "ㅝ berakhir dengan ㅓ yang santai, bukan o bulat.",
         ),
       ],
     },
@@ -218,31 +168,33 @@ export const m5WVowels: ModuleContent = {
       type: "material",
       key: "m5-oe-wi-ui",
       title: "ㅚ ㅟ ㅢ: tambah ㅣ",
-      description:
-        "ㅚ dibaca we, ㅟ dibaca wi, dan ㅢ punya tiga cara baca sesuai posisinya.",
-      minutes: 16,
+      description: "Tiga vokal terakhir, dan cara baca ㅢ.",
+      minutes: 7,
       blocks: [
-        heading("Tiga vokal yang diakhiri ㅣ"),
-        p(
-          "Tiga vokal terakhir dibuat dengan menambahkan ",
-          b("ㅣ"),
-          " di kanan ㅗ, ㅜ, dan ㅡ.",
+        callout(
+          "info",
+          "Tiga vokal terakhir dibuat dengan menambahkan ㅣ di kanan ㅗ, ㅜ, dan ㅡ. Setelah ini kamu kenal ",
+          b("semua vokal Hangeul"),
+          ".",
         ),
-        table([
-          ["Gabungan", "Hasil", "Bunyi"],
-          ["ㅗ + ㅣ", "ㅚ", "we (sama dengan ㅙ ㅞ)"],
-          ["ㅜ + ㅣ", "ㅟ", "wi, seperti di 'wisata'"],
-          ["ㅡ + ㅣ", "ㅢ", "ㅡ cepat ke ㅣ, atau ㅣ saja (lihat di bawah)"],
-        ]),
+        rules({
+          title: "Tambah ㅣ",
+          columns: ["Gabungan", "Jadi", "Dibaca"],
+          rows: [
+            { when: "ㅗ + ㅣ", result: "ㅚ", example: '외 = "we"' },
+            { when: "ㅜ + ㅣ", result: "ㅟ", example: '위 = "wi"' },
+            { when: "ㅡ + ㅣ", result: "ㅢ", example: "의 = ㅡ cepat ke ㅣ" },
+          ],
+        }),
         letters(
-          "Vokal W bagian 2",
+          "Huruf baru",
           [
             {
               character: "ㅚ",
-              cue: "we, e taling seperti di 'sate'",
+              cue: '"we", sama dengan ㅙ.',
               romanization: "oe",
               say: "외",
-              note: "Bentuknya ㅗ + ㅣ, tetapi hampir semua orang Korea sekarang membacanya 'we'.",
+              note: "Bentuknya ㅗ + ㅣ, tapi dibaca we.",
               example: {
                 word: "회사",
                 meaning: "perusahaan",
@@ -251,10 +203,9 @@ export const m5WVowels: ModuleContent = {
             },
             {
               character: "ㅟ",
-              cue: "wi, seperti di 'wisata'",
+              cue: 'Seperti "wi" di "wisata".',
               romanization: "wi",
               say: "위",
-              note: "Bibir bulat sebentar, lalu ke ㅣ.",
               example: {
                 word: "가위",
                 meaning: "gunting",
@@ -263,10 +214,10 @@ export const m5WVowels: ModuleContent = {
             },
             {
               character: "ㅢ",
-              cue: "ㅡ (bibir datar) yang cepat meluncur ke ㅣ",
+              cue: "ㅡ dengan bibir datar, cepat meluncur ke ㅣ.",
               romanization: "ui",
               say: "의",
-              note: "Cara bacanya berubah sesuai posisi. Lihat aturan di bawah.",
+              note: "Bacanya berubah sesuai posisi, lihat aturan di bawah.",
               example: {
                 word: "의사",
                 meaning: "dokter",
@@ -274,99 +225,51 @@ export const m5WVowels: ModuleContent = {
               },
             },
           ],
-          { showRomanization: false },
-        ),
-        heading("Tiga ejaan, satu bunyi we", 3),
-        p(
-          "ㅙ, ㅞ, dan ㅚ ditulis berbeda, tetapi dalam bahasa Korea sehari-hari ketiganya terdengar sama: ",
-          b("we"),
-          ". Sama seperti ㅐ dan ㅔ di Modul 3, kamu cukup menghafal ejaan tiap kata. Orang Korea sendiri pun kadang salah tulis antara 돼 dan 되.",
+          NO_ROMANIZATION,
         ),
         contrast(
-          "Dengarkan: bunyinya sama",
-          "Putar ketiganya. Telingamu tidak perlu membedakannya; matamu yang membedakan ejaan.",
+          "ㅙ ㅚ ㅞ: bunyinya hampir sama",
+          "Putar ketiganya. Sekarang ketiganya terdengar hampir sama, jadi hafalkan ejaan katanya seperti ㅐ dan ㅔ.",
           [
             {
               items: [
                 { text: "왜", meaning: "kenapa (ㅙ)" },
-                { text: "웨이터", meaning: "pelayan (ㅞ)" },
                 { text: "외모", meaning: "penampilan (ㅚ)" },
+                { text: "웨이터", meaning: "pelayan (ㅞ)" },
               ],
-              note: "Suku kata pertama ketiga kata ini sama-sama dibaca 'we'.",
+              note: "Suku kata pertamanya sama-sama dibaca we.",
             },
             {
               items: [
                 { text: "위", meaning: "atas" },
                 { text: "이", meaning: "gigi; dua" },
               ],
-              note: "ㅟ diawali bibir bulat, ㅣ tidak.",
-            },
-            {
-              items: [
-                { text: "의자", meaning: "kursi" },
-                { text: "이자", meaning: "bunga (uang)" },
-              ],
-              note: "Di awal kata, ㅢ dimulai dengan ㅡ yang singkat.",
+              note: "ㅟ mulai dengan bibir bulat, ㅣ tidak.",
             },
           ],
-          { showRomanization: false },
+          NO_ROMANIZATION,
         ),
-        heading("ㅢ dibaca tiga cara", 3),
-        p(
-          "ㅢ adalah satu-satunya vokal yang bacaannya berubah menurut posisi. Hafalkan tiga aturan pendek ini:",
-        ),
-        table([
-          ["Posisi", "Dibaca", "Contoh"],
-          [
-            "Di awal kata, tanpa konsonan",
-            "의 (ㅡ cepat ke ㅣ)",
-            "의사 [의사], 의자 [의자]",
+        rules({
+          title: "Cara baca ㅢ",
+          intro: "ㅢ satu-satunya vokal yang bacaannya berubah menurut posisi.",
+          theme: "green",
+          columns: ["Posisi", "Dibaca", "Contoh"],
+          rows: [
+            { when: "Di awal kata", result: "의", example: "의사, 의자" },
+            { when: "Setelah konsonan", result: "ㅣ", example: "저희 → 저히" },
           ],
-          ["Setelah konsonan", "ㅣ saja", "저희 [저히], 무늬 [무니]"],
-          [
-            "Sebagai partikel 'punya' (의)",
-            "biasanya [에]",
-            "나의 [나에], 아이의 [아이에]",
-          ],
-        ]),
-        p(
-          "Ada satu kelonggaran lagi: kalau ㅢ tanpa konsonan ada di suku kata selain yang pertama, boleh dibaca [이]. Contohnya 회의 (rapat) boleh dibaca [회의] atau [회이].",
-        ),
-        callout(
-          "info",
-          "Tidak perlu menghafal semua kasus sekarang. Pegang saja ini: di awal kata baca 의, setelah konsonan baca 이. Partikel 'punya' akan kamu temui lagi saat belajar tata bahasa.",
-        ),
-        heading("Latihan membaca", 3),
+          tip: {
+            title: "의 yang berarti punya",
+            text: 'Kalau 의 berarti "punya", biasanya dibaca 에: 나의 → 나에.',
+          },
+        }),
         syllableGrid(
-          "ㅚ dan ㅟ dengan konsonan yang sudah kamu kenal",
+          "Sekarang kamu bisa baca",
           ["ㅇ", "ㄱ", "ㄷ", "ㅅ", "ㅈ", "ㅊ", "ㅎ"],
           ["ㅚ", "ㅟ"],
+          NO_ROMANIZATION,
         ),
-        table([
-          ["Hangeul", "Arti"],
-          ["회사", "perusahaan, kantor"],
-          ["회의", "rapat"],
-          ["최고", "terbaik, nomor satu"],
-          ["교회", "gereja"],
-          ["가위", "gunting"],
-          ["귀", "telinga"],
-          ["위", "atas"],
-          ["의사", "dokter"],
-          ["의자", "kursi"],
-          ["저희", "kami (sopan, merendah)"],
-        ]),
-        p(
-          "Kalau kamu ingin bekerja di Korea lewat EPS, 회사 (perusahaan), 회의 (rapat), dan 의사 (dokter) akan sering kamu dengar.",
-        ),
-        listen("최고예요!", "최고예요!", "최고예요! = Yang terbaik!"),
-        heading("Semua vokal sudah lengkap", 3),
-        p(
-          "Selamat! Dengan ㅚ ㅟ ㅢ, kamu sudah mengenal ",
-          b("21 vokal"),
-          " Hangeul (10 vokal dasar dan 11 vokal gabungan) dan ",
-          b("19 konsonan awal"),
-          ". Sekarang kamu bisa membaca setiap blok yang tidak punya huruf di bagian bawah.",
-        ),
+        audioClip("최고예요!", "최고예요! = Yang terbaik!"),
         vocabularyRef("m5-vocab-i"),
         game(
           "word-builder",
@@ -374,9 +277,11 @@ export const m5WVowels: ModuleContent = {
           "Susun kata dengan vokal W",
           "Susun 회사, 가위, 과자, dan kata lain dari huruf-hurufnya.",
         ),
+        assessmentRef("m5-quiz"),
         callout(
           "success",
-          "Ringkasnya: ㅚ = we (sama dengan ㅙ ㅞ), ㅟ = wi, ㅢ = 의 di awal kata dan 이 setelah konsonan. Kamu sudah mengenal semua 21 vokal Hangeul.",
+          b("Ingat: "),
+          "ㅢ di awal kata dibaca 의, setelah konsonan dibaca ㅣ saja.",
         ),
       ],
     },
@@ -540,7 +445,7 @@ export const m5WVowels: ModuleContent = {
           "m5-review-hear-keopi",
           [
             p("Ulasan Modul 4. Dengarkan, lalu pilih kata yang kamu dengar."),
-            listen("커피"),
+            audioClip("커피"),
           ],
           "커피",
           ["거피", "꺼피", "코피"],
@@ -550,7 +455,7 @@ export const m5WVowels: ModuleContent = {
           "m5-review-hear-ssada",
           [
             p("Ulasan Modul 4. Dengarkan, lalu pilih kata yang kamu dengar."),
-            listen("싸다"),
+            audioClip("싸다"),
           ],
           "싸다",
           ["사다", "짜다", "차다"],

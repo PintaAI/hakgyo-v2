@@ -1,15 +1,14 @@
 import {
+  assessmentRef,
   audioClip,
   b,
-  bullet,
   callout,
   contrast,
   game,
-  heading,
   letters,
   p,
+  rules,
   syllableGrid,
-  table,
   vocabularyRef,
 } from "../blocks";
 import type {
@@ -18,17 +17,9 @@ import type {
   QuestionContent,
 } from "../content-types";
 
-// An audio clip whose player label does not reveal the Korean text (the
-// builder's default file name is the text itself, which would give away
-// listening answers).
-const listen = (
-  text: string,
-  label = "Dengarkan",
-  caption = "",
-): BlockNoteBlock => {
-  const block = audioClip(text, caption);
-  return { ...block, props: { ...block.props, fileName: label } };
-};
+// An audio clip whose player label does not reveal the Korean text, for
+// listening questions.
+const listen = (text: string): BlockNoteBlock => audioClip(text);
 
 const choice = (
   key: string,
@@ -56,90 +47,66 @@ export const m7BatchimBasics: ModuleContent = {
   key: "m7-batchim-basics",
   title: "Batchim",
   description:
-    "Konsonan di bagian bawah blok. Tujuh bunyi akhir yang semuanya sudah ada dalam bahasa Indonesia: ㄴ ㅁ ㅇ, ㄹ, dan ㄱ ㅂ ㄷ, lalu banyak huruf yang dibaca dengan satu bunyi.",
+    "Huruf di lantai bawah blok. Hanya ada tujuh bunyi akhir, dan semuanya sudah ada di bahasa Indonesia.",
   items: [
     {
       type: "material",
       key: "m7-batchim-nasals",
-      title: "Apa itu batchim? Mulai dari ㄴ ㅁ ㅇ",
+      title: "Batchim: mulai dari ㄴ ㅁ ㅇ",
       description:
-        "Lantai bawah blok, tujuh bunyi akhir, dan tiga batchim sengau yang paling mudah.",
-      minutes: 16,
+        "Lantai bawah blok, tujuh bunyi akhir, dan batchim ㄴ ㅁ ㅇ.",
+      minutes: 7,
       blocks: [
-        heading("Lantai bawah blok"),
-        p(
-          "Sampai sekarang setiap blok berakhir dengan vokal: 가, 고, 과. Sekarang kita isi ",
-          b("lantai bawahnya"),
-          ". Konsonan yang ditulis di bagian bawah blok disebut ",
-          b("받침 (batchim)"),
-          ", artinya 'penopang' atau 'alas'. Batchim dibaca di akhir suku kata.",
+        callout(
+          "info",
+          b("Batchim = huruf di lantai bawah blok."),
+          " Dibaca paling akhir: 산 = ㅅ, ㅏ, lalu ㄴ.",
         ),
-        table([
-          ["Bentuk blok", "Contoh", "Urutan baca"],
-          ["konsonan + vokal tegak + batchim", "산", "ㅅ → ㅏ → ㄴ"],
-          ["konsonan + vokal datar + batchim", "곰", "ㄱ → ㅗ → ㅁ"],
-          ["konsonan + vokal gabungan + batchim", "관", "ㄱ → ㅘ → ㄴ"],
-        ]),
-        p(
-          "Urutan membaca tetap sama seperti biasa: dari atas ke bawah, dari kiri ke kanan. Batchim selalu dibaca paling akhir.",
-        ),
-        heading("Kabar baik: tujuh bunyi saja", 3),
-        p(
-          "Banyak huruf bisa ditulis sebagai batchim, tetapi di akhir suku kata hanya ada ",
-          b("tujuh bunyi"),
-          ". Dan semuanya sudah kamu ucapkan setiap hari dalam bahasa Indonesia:",
-        ),
-        table([
-          ["Batchim", "Seperti akhir kata Indonesia", "Contoh Korea"],
-          ["ㄱ", "musik, plastik", "책 (buku)"],
-          ["ㄴ", "makan", "산 (gunung)"],
-          ["ㄷ", "surat, sehat", "곧 (segera)"],
-          ["ㄹ", "mobil, hotel", "물 (air)"],
-          ["ㅁ", "malam", "밤 (malam)"],
-          ["ㅂ", "siap, atap", "밥 (nasi)"],
-          ["ㅇ", "uang, bang", "방 (kamar)"],
-        ]),
-        p(
-          "Kita belajar dengan urutan dari yang termudah: ㄴ ㅁ ㅇ di pelajaran ini, lalu ㄹ, lalu ㄱ ㅂ ㄷ, dan terakhir huruf-huruf lain yang dibaca dengan salah satu dari tujuh bunyi ini.",
-        ),
-        heading("ㄴ ㅁ ㅇ: bunyi sengau", 3),
+        rules({
+          title: "Tujuh bunyi akhir",
+          intro:
+            "Di bawah blok hanya ada tujuh bunyi. Semuanya sudah kamu ucapkan di akhir kata Indonesia.",
+          columns: ["Mirip akhir", "Batchim", "Contoh"],
+          rows: [
+            { when: "musik", result: "ㄱ", example: "책 (buku)" },
+            { when: "makan", result: "ㄴ", example: "산 (gunung)" },
+            { when: "surat", result: "ㄷ", example: "곧 (segera)" },
+            { when: "mobil", result: "ㄹ", example: "물 (air)" },
+            { when: "malam", result: "ㅁ", example: "밤 (malam)" },
+            { when: "siap", result: "ㅂ", example: "밥 (nasi)" },
+            { when: "uang", result: "ㅇ", example: "방 (kamar)" },
+          ],
+          tip: {
+            title: "Berhenti di batchim",
+            text: 'Jangan tambah vokal. 산 dibaca "san", bukan "sa-ne".',
+          },
+        }),
         letters(
-          "Tiga batchim sengau",
+          "Batchim ㄴ ㅁ ㅇ",
           [
             {
               character: "ㄴ",
-              name: "니은",
-              cue: "-n seperti di akhir 'makan'",
+              cue: 'Seperti "n" di akhir "makan".',
               say: "안",
               note: "Ujung lidah menempel di belakang gigi atas.",
-              example: { word: "산", meaning: "gunung", romanization: "san" },
+              example: { word: "산", meaning: "gunung" },
             },
             {
               character: "ㅁ",
-              name: "미음",
-              cue: "-m seperti di akhir 'malam'",
+              cue: 'Seperti "m" di akhir "malam".',
               say: "암",
               note: "Bibir menutup rapat.",
-              example: { word: "밤", meaning: "malam", romanization: "bam" },
+              example: { word: "밤", meaning: "malam" },
             },
             {
               character: "ㅇ",
-              name: "이응",
-              cue: "-ng seperti di akhir 'uang'",
+              cue: 'Seperti "ng" di akhir "uang".',
               say: "앙",
-              note: "Di atas, ㅇ diam. Di bawah, ㅇ dibaca ng.",
-              example: { word: "방", meaning: "kamar", romanization: "bang" },
+              note: 'Di atas ㅇ diam, di bawah ㅇ dibaca ng: 앙 = "ang".',
+              example: { word: "방", meaning: "kamar" },
             },
           ],
           { showRomanization: false },
-        ),
-        callout(
-          "tip",
-          "ㅇ punya dua tugas. Di blok 앙, ㅇ di atas diam dan ㅇ di bawah dibaca ng. Jadi 앙 dibaca 'ang'.",
-        ),
-        callout(
-          "warning",
-          "Jangan tambahkan vokal setelah batchim. 산 adalah satu ketukan, 'san', bukan 'sa-ne'. Begitu sampai di batchim, berhentilah.",
         ),
         contrast(
           "n, m, atau ng?",
@@ -147,101 +114,40 @@ export const m7BatchimBasics: ModuleContent = {
           [
             {
               items: [
-                { text: "반", meaning: "kelas; setengah", romanization: "ban" },
-                { text: "밤", meaning: "malam", romanization: "bam" },
-                { text: "방", meaning: "kamar", romanization: "bang" },
+                { text: "반", meaning: "kelas; setengah" },
+                { text: "밤", meaning: "malam" },
+                { text: "방", meaning: "kamar" },
               ],
               note: "Lidah di depan (ㄴ), bibir menutup (ㅁ), pangkal lidah naik (ㅇ).",
             },
             {
               items: [
-                { text: "산", meaning: "gunung", romanization: "san" },
-                { text: "삼", meaning: "tiga", romanization: "sam" },
-                {
-                  text: "상",
-                  meaning: "meja makan; hadiah",
-                  romanization: "sang",
-                },
+                { text: "산", meaning: "gunung" },
+                { text: "삼", meaning: "tiga" },
+                { text: "상", meaning: "meja makan; hadiah" },
               ],
             },
             {
               items: [
-                { text: "간", meaning: "hati (organ)", romanization: "gan" },
-                { text: "감", meaning: "kesemek", romanization: "gam" },
-                { text: "강", meaning: "sungai", romanization: "gang" },
+                { text: "간", meaning: "hati (organ)" },
+                { text: "감", meaning: "kesemek" },
+                { text: "강", meaning: "sungai" },
               ],
             },
           ],
           { showRomanization: false },
         ),
         syllableGrid(
-          "Batchim ㄴ",
+          "Sekarang kamu bisa baca",
           ["ㅇ", "ㄱ", "ㄴ", "ㅅ", "ㅎ"],
           ["ㅏ", "ㅓ", "ㅗ", "ㅜ"],
-          {
-            final: "ㄴ",
-          },
-        ),
-        syllableGrid(
-          "Batchim ㅁ",
-          ["ㅇ", "ㄱ", "ㄴ", "ㅅ", "ㅎ"],
-          ["ㅏ", "ㅓ", "ㅗ", "ㅜ"],
-          {
-            final: "ㅁ",
-          },
-        ),
-        syllableGrid(
-          "Batchim ㅇ",
-          ["ㅇ", "ㄱ", "ㄴ", "ㅅ", "ㅎ"],
-          ["ㅏ", "ㅓ", "ㅗ", "ㅜ"],
-          {
-            final: "ㅇ",
-          },
-        ),
-        heading("Kata yang sekarang bisa kamu baca", 3),
-        table([
-          ["Hangeul", "Arti"],
-          ["엄마", "ibu (akrab)"],
-          ["이름", "nama"],
-          ["사람", "orang"],
-          ["친구", "teman"],
-          ["시간", "waktu"],
-          ["사랑", "cinta"],
-          ["영화", "film"],
-          ["빵", "roti"],
-          ["선생님", "guru (sapaan hormat)"],
-          ["한강", "Sungai Han di Seoul"],
-        ]),
-        heading("Momen pertama: 안녕하세요", 3),
-        p(
-          "Masih ingat frasa yang kamu dengar di Modul 0? Waktu itu kamu hanya bisa mendengarnya. Sekarang coba baca sendiri, blok demi blok:",
-        ),
-        table([
-          ["Blok", "Huruf"],
-          ["안", "ㅇ (diam) + ㅏ + ㄴ"],
-          ["녕", "ㄴ + ㅕ + ㅇ (ng)"],
-          ["하", "ㅎ + ㅏ"],
-          ["세", "ㅅ + ㅔ"],
-          ["요", "ㅇ (diam) + ㅛ"],
-        ]),
-        listen(
-          "안녕하세요",
-          "안녕하세요",
-          "안녕하세요 = Halo, apa kabar? (sopan)",
+          { final: "ㄴ" },
         ),
         p(
-          "Kamu baru saja membaca 안녕하세요 tanpa bantuan! Dengan cara yang sama, kamu juga bisa membaca ",
-          b("사랑해요"),
-          " (aku sayang kamu): 사 + 랑 (ㄹ + ㅏ + ㅇ) + 해 + 요.",
+          "Ingat 안녕하세요 dari Modul 0? Sekarang kamu bisa membacanya sendiri: 안-녕-하-세-요.",
         ),
-        listen("사랑해요", "사랑해요", "사랑해요 = Aku sayang kamu."),
-        p(
-          "Frasa ketiga dari Modul 0, 감사합니다, punya satu rahasia bunyi. Kamu akan membukanya di Modul 8.",
-        ),
-        callout(
-          "info",
-          "Mengetik batchim itu mudah: ketik saja konsonannya setelah vokal. 산 = ㅅ ㅏ ㄴ. Keyboard menaruhnya di bawah secara otomatis.",
-        ),
+        audioClip("안녕하세요", "Halo, apa kabar? (sopan)", "안녕하세요"),
+        audioClip("사랑해요", "Aku sayang kamu.", "사랑해요"),
         game(
           "syllable-forge",
           "batchim",
@@ -250,95 +156,64 @@ export const m7BatchimBasics: ModuleContent = {
         ),
         callout(
           "success",
-          "Ringkasnya: batchim adalah konsonan di bawah blok dan dibaca paling akhir. Hanya ada tujuh bunyi akhir. ㄴ = n (makan), ㅁ = m (malam), ㅇ = ng (uang). Kamu sudah bisa membaca 안녕하세요 dan 사랑해요!",
+          b("Ingat: "),
+          "batchim dibaca paling akhir, lalu berhenti. ㄴ = n, ㅁ = m, ㅇ = ng.",
         ),
       ],
     },
     {
       type: "material",
       key: "m7-batchim-rieul",
-      title: "Batchim ㄹ: l seperti di 'mobil'",
-      description:
-        "ㄹ di akhir suku kata dibaca l, bukan r. Ditambah ㄹㄹ yang dibaca l panjang.",
-      minutes: 13,
+      title: 'Batchim ㄹ: l seperti di "mobil"',
+      description: "ㄹ di bawah blok dibaca l, bukan r.",
+      minutes: 6,
       blocks: [
-        heading("ㄹ punya dua wajah"),
-        p(
-          "Di Modul 2 kamu belajar bahwa ㄹ di awal suku kata dibaca seperti r yang diketuk sekali dengan ringan. Di posisi batchim, ㄹ berubah menjadi ",
+        callout(
+          "info",
+          "ㄹ di awal blok dibaca r ringan. Di bawah blok, ㄹ dibaca ",
           b("l"),
-          ", seperti di akhir kata 'mobil' atau 'hotel'. Ujung lidah menempel di gusi belakang gigi atas, lalu diam di situ.",
+          ".",
         ),
+        rules({
+          title: "Tiga bunyi ㄹ",
+          columns: ["Posisi", "Dibaca", "Contoh"],
+          rows: [
+            {
+              when: "di awal blok",
+              result: "r ringan",
+              example: "나라 (negara)",
+            },
+            { when: "di bawah blok", result: "l", example: "물 (air)" },
+            {
+              when: "ㄹ bertemu ㄹ",
+              result: "l panjang",
+              example: '빨리 (cepat) = "ppal-li"',
+            },
+          ],
+        }),
         letters(
-          "Dua bunyi ㄹ",
+          "Batchim ㄹ",
           [
             {
               character: "ㄹ",
-              name: "리을",
-              cue: "di awal: r ringan, satu ketukan, tidak digetarkan",
-              say: "라",
-              example: {
-                word: "나라",
-                meaning: "negara",
-                romanization: "nara",
-              },
-            },
-            {
-              character: "ㄹ",
-              name: "리을",
-              cue: "di bawah: l seperti di akhir 'mobil'",
+              cue: 'Seperti "l" di akhir "mobil".',
               say: "알",
-              note: "Jangan menggetarkan lidah dan jangan menambah vokal.",
-              example: { word: "물", meaning: "air", romanization: "mul" },
+              note: "Lidah menempel lalu diam, jangan digetarkan.",
+              example: { word: "물", meaning: "air" },
             },
           ],
           { showRomanization: false },
         ),
-        syllableGrid(
-          "Batchim ㄹ",
-          ["ㅇ", "ㄱ", "ㄷ", "ㅁ", "ㅂ", "ㅅ"],
-          ["ㅏ", "ㅓ", "ㅗ", "ㅜ", "ㅣ"],
-          { final: "ㄹ" },
-        ),
-        table([
-          ["Hangeul", "Arti"],
-          ["물", "air"],
-          ["말", "kata, bahasa; kuda"],
-          ["일", "pekerjaan; satu"],
-          ["길", "jalan"],
-          ["발", "kaki (telapak)"],
-          ["달", "bulan"],
-          ["별", "bintang"],
-          ["딸", "anak perempuan"],
-          ["서울", "Seoul"],
-          ["오늘", "hari ini"],
-          ["얼굴", "wajah"],
-          ["겨울", "musim dingin"],
-          ["아이돌", "idola K-pop"],
-          ["할머니", "nenek"],
-        ]),
-        heading("ㄹ + ㄹ = l panjang", 3),
-        p(
-          "Kalau batchim ㄹ bertemu ㄹ di awal suku kata berikutnya, lidah tetap menempel dan bunyinya menjadi ",
-          b("l panjang"),
-          ". 빨리 (cepat) dibaca 'ppal-li', bukan 'ppa-ri'.",
-        ),
-        bullet(b("빨리"), ": cepat"),
-        bullet(b("몰라요"), ": saya tidak tahu"),
-        bullet(b("달러"), ": dolar"),
-        bullet(
-          b("발리"),
-          ": Bali. Ingat di Modul 6? Sekarang kamu bisa membacanya.",
-        ),
         contrast(
-          "Di akhir l, di tengah r",
-          "Putar setiap baris. Dengarkan bedanya ㄹ di bawah dan ㄹ di awal suku kata.",
+          "Di bawah l, di awal r",
+          "Putar setiap baris. Dengarkan beda ㄹ di bawah dan ㄹ di awal blok.",
           [
             {
               items: [
                 { text: "달", meaning: "bulan" },
                 { text: "다리", meaning: "kaki; jembatan" },
               ],
-              note: "달: lidah menempel (l). 다리: lidah mengetuk sekali (r ringan).",
+              note: "달: lidah menempel (l). 다리: lidah mengetuk sekali (r).",
             },
             {
               items: [
@@ -348,30 +223,22 @@ export const m7BatchimBasics: ModuleContent = {
             },
             {
               items: [
-                { text: "불", meaning: "api" },
-                { text: "풀", meaning: "rumput; lem" },
-                { text: "뿔", meaning: "tanduk" },
-              ],
-              note: "Ulasan tiga serangkai: polos, aspirasi, tegang, sekarang dengan batchim.",
-            },
-            {
-              items: [
                 { text: "달", meaning: "bulan" },
                 { text: "탈", meaning: "topeng" },
                 { text: "딸", meaning: "anak perempuan" },
               ],
+              note: "Ulasan: polos, pakai hembusan napas, tegang.",
             },
           ],
           { showRomanization: false },
         ),
-        heading("Kalimat pertama dengan batchim", 3),
-        table([
-          ["Hangeul", "Arti"],
-          ["물 주세요.", "Tolong beri air."],
-          ["오늘 추워요.", "Hari ini dingin."],
-          ["빨리 와요!", "Cepat datang!"],
-        ]),
-        listen("물 주세요.", "물 주세요.", "물 주세요. = Tolong beri air."),
+        syllableGrid(
+          "Sekarang kamu bisa baca",
+          ["ㅇ", "ㄱ", "ㄷ", "ㅁ", "ㅂ", "ㅅ"],
+          ["ㅏ", "ㅓ", "ㅗ", "ㅜ", "ㅣ"],
+          { final: "ㄹ" },
+        ),
+        audioClip("물 주세요.", "Tolong beri air.", "물 주세요."),
         game(
           "word-builder",
           "batchim",
@@ -380,83 +247,55 @@ export const m7BatchimBasics: ModuleContent = {
         ),
         callout(
           "success",
-          "Ringkasnya: ㄹ di awal suku kata = r ringan yang diketuk sekali; ㄹ di bawah = l seperti di 'mobil'. ㄹ bertemu ㄹ = l panjang (빨리, 발리).",
+          b("Ingat: "),
+          'ㄹ di bawah = l seperti di "mobil", ㄹ di awal = r ringan.',
         ),
       ],
     },
     {
       type: "material",
       key: "m7-batchim-stops",
-      title: "ㄱ ㅂ ㄷ: tutup, jangan meledak",
+      title: "ㄱ ㅂ ㄷ: tutup, lalu diam",
       description:
-        "Tiga batchim letup yang ditahan tanpa hembusan, seperti akhir 'musik', 'siap', dan 'surat'.",
-      minutes: 15,
+        "Batchim yang ditahan tanpa hembusan, dan banyak huruf yang dibaca dengan tujuh bunyi.",
+      minutes: 8,
       blocks: [
-        heading("Tutup mulut, lalu diam"),
-        p(
-          "ㄱ, ㅂ, dan ㄷ di posisi batchim tidak 'meledak'. Mulutmu menutup jalan udara, lalu ",
-          b("diam di situ"),
-          ": tidak ada hembusan, tidak ada vokal tambahan. Kabar baiknya, orang Indonesia sudah melakukan ini. Coba ucapkan 'siap' pelan-pelan: bibirmu menutup di akhir dan tidak dibuka lagi. Itulah batchim ㅂ.",
+        callout(
+          "info",
+          "ㄱ ㅂ ㄷ di bawah blok ditutup lalu ",
+          b("diam"),
+          ': tanpa hembusan, tanpa vokal tambahan. Seperti akhir "siap".',
         ),
         letters(
-          "Tiga batchim letup",
+          "Batchim ㄱ ㅂ ㄷ",
           [
             {
               character: "ㄱ",
-              name: "기역",
-              cue: "-k seperti di akhir 'musik': pangkal lidah menutup, lalu diam",
+              cue: 'Seperti "k" di akhir "musik".',
               say: "악",
-              example: { word: "책", meaning: "buku", romanization: "chaek" },
+              note: 'Pangkal lidah menutup rapat, beda dengan "k" di "tidak" yang hanya tertahan di tenggorokan.',
+              example: { word: "책", meaning: "buku" },
             },
             {
               character: "ㅂ",
-              name: "비읍",
-              cue: "-p seperti di akhir 'siap': bibir menutup, lalu diam",
+              cue: 'Seperti "p" di akhir "siap".',
               say: "압",
-              example: {
-                word: "밥",
-                meaning: "nasi; makanan",
-                romanization: "bap",
-              },
+              note: "Bibir menutup dan tidak dibuka lagi.",
+              example: { word: "밥", meaning: "nasi; makanan" },
             },
             {
               character: "ㄷ",
-              name: "디귿",
-              cue: "-t seperti di akhir 'surat': ujung lidah menempel, lalu diam",
+              cue: 'Seperti "t" di akhir "surat".',
               say: "곧",
-              note: "Jarang ditulis ㄷ. Bunyi ini lebih sering datang dari ㅅ, ㅈ, dan teman-temannya (pelajaran berikutnya).",
-              example: {
-                word: "받침",
-                meaning: "batchim",
-                romanization: "batchim",
-              },
+              note: "Bunyi ini lebih sering ditulis dengan huruf lain, lihat aturan di bawah.",
+              example: { word: "받침", meaning: "batchim" },
             },
           ],
           { showRomanization: false },
         ),
-        callout(
-          "tip",
-          "Banyak orang Indonesia mengucapkan k di akhir 'tidak' atau 'bapak' sebagai hentian di tenggorokan. Untuk batchim ㄱ, pastikan pangkal lidah benar-benar naik dan menutup, seperti di akhir 'musik' atau 'plastik'.",
-        ),
-        callout(
-          "warning",
-          "Jangan meledak! 책 bukan 'chae-keu', 밥 bukan 'ba-beu'. Kata serapan seperti 케이크 menulis ㅡ secara jelas (크); batchim asli tidak pernah punya vokal tambahan.",
-        ),
-        syllableGrid(
-          "Batchim ㄱ",
-          ["ㄱ", "ㄴ", "ㅂ", "ㅅ", "ㅈ"],
-          ["ㅏ", "ㅓ", "ㅗ", "ㅜ", "ㅣ"],
-          { final: "ㄱ" },
-        ),
-        syllableGrid(
-          "Batchim ㅂ",
-          ["ㄱ", "ㄴ", "ㅂ", "ㅅ", "ㅈ"],
-          ["ㅏ", "ㅓ", "ㅗ", "ㅜ", "ㅣ"],
-          { final: "ㅂ" },
-        ),
         contrast(
-          "Tujuh akhir, satu per satu",
-          "Putar setiap baris. Bedanya hanya di akhir suku kata.",
+          "Tutup atau sengau?",
+          "Putar setiap baris. Bedanya hanya di akhir blok.",
           [
             {
               items: [
@@ -464,173 +303,96 @@ export const m7BatchimBasics: ModuleContent = {
                 { text: "밤", meaning: "malam" },
                 { text: "방", meaning: "kamar" },
               ],
-              note: "ㅂ dan ㅁ sama-sama menutup bibir; ㅁ mengalirkan udara lewat hidung.",
+              note: "ㅂ dan ㅁ sama-sama menutup bibir. ㅁ berbunyi sengau lewat hidung.",
             },
             {
               items: [
                 { text: "약", meaning: "obat" },
                 { text: "양", meaning: "domba" },
               ],
-              note: "ㄱ dan ㅇ sama-sama di pangkal lidah; ㅇ mengalirkan udara lewat hidung.",
-            },
-            {
-              items: [
-                { text: "집", meaning: "rumah" },
-                { text: "짐", meaning: "barang bawaan" },
-              ],
-            },
-            {
-              items: [
-                { text: "입", meaning: "mulut" },
-                { text: "일", meaning: "pekerjaan; satu" },
-                { text: "이", meaning: "gigi; dua" },
-              ],
+              note: "ㄱ dan ㅇ sama-sama di pangkal lidah. ㅇ berbunyi sengau lewat hidung.",
             },
           ],
           { showRomanization: false },
         ),
-        heading("Kata dengan ㄱ ㅂ ㄷ", 3),
-        table([
-          ["Hangeul", "Arti"],
-          ["책", "buku"],
-          ["약", "obat"],
-          ["국", "sup"],
-          ["떡", "kue beras"],
-          ["수박", "semangka"],
-          ["한국", "Korea"],
-          ["대박", "mantap! luar biasa!"],
-          ["밥", "nasi; makanan"],
-          ["집", "rumah"],
-          ["입", "mulut"],
-          ["십", "sepuluh"],
-          ["수업", "pelajaran, kelas"],
-          ["곧", "segera"],
-        ]),
-        callout(
-          "info",
-          "Kamu mungkin menemukan kata seperti 학교 (sekolah) dan 학생 (siswa). Bacalah per blok dulu. Saat diucapkan cepat, konsonan setelah ㄱ ㅂ ㄷ terdengar lebih tegang: 학교 terdengar [학꾜]. Penjelasannya ada di Modul 8.",
+        rules({
+          title: "Banyak huruf, tujuh bunyi",
+          intro:
+            "Hampir semua konsonan boleh jadi batchim, tapi dibaca dengan salah satu dari tujuh bunyi.",
+          theme: "green",
+          columns: ["Ditulis", "Dibaca", "Contoh"],
+          rows: [
+            { when: "ㄱ ㅋ ㄲ", result: "[ㄱ]", example: "밖 (luar) = [박]" },
+            {
+              when: "ㄷ ㅅ ㅆ ㅈ ㅊ ㅌ ㅎ",
+              result: "[ㄷ]",
+              example: "옷 (baju) = [옫]",
+            },
+            { when: "ㅂ ㅍ", result: "[ㅂ]", example: "앞 (depan) = [압]" },
+            {
+              when: "ㄴ ㄹ ㅁ ㅇ",
+              result: "tetap",
+              example: "산, 물, 밤, 방",
+            },
+          ],
+          tip: {
+            title: "Kenapa ejaannya beda?",
+            text: "Huruf aslinya terdengar lagi kalau setelahnya ada vokal: 옷이 dibaca [오시]. Itu di Modul 8.",
+          },
+        }),
+        contrast(
+          "Ejaan beda, bunyi sama",
+          "Putar setiap baris. Kata dalam satu baris terdengar sama kalau berdiri sendiri.",
+          [
+            {
+              items: [
+                { text: "낫", meaning: "sabit" },
+                { text: "낮", meaning: "siang" },
+                { text: "낯", meaning: "muka, raut" },
+              ],
+              note: "ㅅ, ㅈ, ㅊ di bawah semuanya dibaca [ㄷ]: [낟].",
+            },
+            {
+              items: [
+                { text: "입", meaning: "mulut" },
+                { text: "잎", meaning: "daun" },
+              ],
+              note: "ㅍ di bawah dibaca [ㅂ]: [입].",
+            },
+            {
+              items: [
+                { text: "박", meaning: "labu" },
+                { text: "밖", meaning: "luar" },
+              ],
+              note: "ㄲ di bawah dibaca [ㄱ]: [박].",
+            },
+          ],
+          { showRomanization: false },
         ),
+        syllableGrid(
+          "Sekarang kamu bisa baca",
+          ["ㄱ", "ㄴ", "ㅂ", "ㅅ", "ㅈ"],
+          ["ㅏ", "ㅓ", "ㅗ", "ㅜ", "ㅣ"],
+          { final: "ㄱ" },
+        ),
+        vocabularyRef("m7-vocab-batchim"),
         game(
           "syllable-forge",
           "batchim",
           "Susun blok dengan ㄱ ㅂ ㄷ",
           "Latih blok yang ditutup tanpa meledak.",
         ),
-        callout(
-          "success",
-          "Ringkasnya: batchim ㄱ ㅂ ㄷ ditutup lalu diam, tanpa hembusan dan tanpa vokal tambahan, seperti akhir 'musik', 'siap', dan 'surat'.",
-        ),
-      ],
-    },
-    {
-      type: "material",
-      key: "m7-many-letters-one-sound",
-      title: "Banyak huruf, satu bunyi",
-      description:
-        "ㅋ ㄲ dibaca [ㄱ], ㅍ dibaca [ㅂ], dan ㅅ ㅆ ㅈ ㅊ ㅌ ㅎ dibaca [ㄷ] di posisi batchim. Ditutup dengan kosakata batchim.",
-      minutes: 15,
-      blocks: [
-        heading("Tujuh bunyi, banyak ejaan"),
-        p(
-          "Hampir semua konsonan boleh ditulis sebagai batchim. Tetapi karena hanya ada tujuh bunyi akhir, huruf-huruf lain ",
-          b("dibaca seperti salah satu dari tujuh bunyi itu"),
-          ". Kuncinya, kelompokkan menurut tempat mulut menutup:",
-        ),
-        table([
-          ["Dibaca", "Ditulis dengan", "Contoh"],
-          ["[ㄱ]", "ㄱ ㅋ ㄲ", "부엌 (dapur) [부억], 밖 (luar) [박]"],
-          [
-            "[ㄷ]",
-            "ㄷ ㅅ ㅆ ㅈ ㅊ ㅌ ㅎ",
-            "옷 (baju) [옫], 낮 (siang) [낟], 꽃 (bunga) [꼳], 밭 (ladang) [받]",
-          ],
-          ["[ㅂ]", "ㅂ ㅍ", "앞 (depan) [압], 옆 (samping) [엽]"],
-          ["[ㄴ] [ㄹ] [ㅁ] [ㅇ]", "huruf itu sendiri", "산, 물, 밤, 방"],
-        ]),
-        callout(
-          "tip",
-          "Cara mengingat: semua huruf yang dibuat di ujung lidah atau gigi (ㅅ ㅆ ㅈ ㅊ ㅌ, ditambah ㅎ) berakhir dengan ujung lidah menempel, jadi dibaca [ㄷ]. Keluarga ㄱ menjadi [ㄱ], keluarga ㅂ menjadi [ㅂ].",
-        ),
-        contrast(
-          "Ejaan berbeda, bunyi sama",
-          "Putar setiap baris. Kata dalam satu baris terdengar sama ketika berdiri sendiri.",
-          [
-            {
-              items: [
-                { text: "낫", meaning: "sabit · dibaca [낟]" },
-                { text: "낮", meaning: "siang · dibaca [낟]" },
-                { text: "낯", meaning: "muka, raut · dibaca [낟]" },
-              ],
-              note: "ㅅ, ㅈ, ㅊ di bawah semuanya dibaca [ㄷ].",
-            },
-            {
-              items: [
-                { text: "입", meaning: "mulut · dibaca [입]" },
-                { text: "잎", meaning: "daun · dibaca [입]" },
-              ],
-              note: "ㅍ di bawah dibaca [ㅂ].",
-            },
-            {
-              items: [
-                { text: "박", meaning: "labu · dibaca [박]" },
-                { text: "밖", meaning: "luar · dibaca [박]" },
-              ],
-              note: "ㄲ di bawah dibaca [ㄱ].",
-            },
-            {
-              items: [
-                { text: "곧", meaning: "segera · dibaca [곧]" },
-                { text: "곳", meaning: "tempat · dibaca [곧]" },
-              ],
-            },
-          ],
-          { showRomanization: false },
-        ),
-        heading("Latihan membaca", 3),
-        table([
-          ["Ditulis", "Dibaca", "Arti"],
-          ["부엌", "[부억]", "dapur"],
-          ["밖", "[박]", "luar"],
-          ["앞", "[압]", "depan"],
-          ["옆", "[엽]", "samping"],
-          ["숲", "[숩]", "hutan"],
-          ["옷", "[옫]", "baju, pakaian"],
-          ["꽃", "[꼳]", "bunga"],
-          ["밭", "[받]", "ladang"],
-          ["낮", "[낟]", "siang"],
-        ]),
-        heading("Lalu kenapa ejaannya dibedakan?", 3),
-        p(
-          "Karena huruf aslinya ",
-          b("muncul kembali"),
-          " ketika setelahnya ada vokal. Ingat, ㅇ di awal blok itu kosong, jadi batchim boleh 'pindah' ke situ:",
-        ),
-        bullet(b("옷"), " [옫] → 옷이 [오시]: ㅅ yang asli terdengar lagi."),
-        bullet(b("꽃"), " [꼳] → 꽃이 [꼬치]: ㅊ yang asli terdengar lagi."),
-        bullet(b("앞"), " [압] → 앞에 [아페]: ㅍ yang asli terdengar lagi."),
-        p(
-          "Perpindahan ini disebut 연음 dan menjadi pelajaran pertama di Modul 8. Untuk sekarang, cukup ingat: ",
-          b("ejaan menyimpan huruf aslinya"),
-          ".",
-        ),
-        callout(
-          "info",
-          "Batchim ㅎ jarang berdiri sendiri di akhir kata. Ia biasanya muncul di kata kerja seperti 좋다 (baik) dan langsung memengaruhi huruf berikutnya. Itu juga bagian dari Modul 8.",
-        ),
-        heading("Kosakata batchim", 3),
-        p(
-          "Set ini berisi kata penting untuk bekerja di Korea dan kata favorit penggemar K-pop. Semuanya memakai batchim yang baru kamu pelajari. Latih sampai semua kartu selesai.",
-        ),
-        vocabularyRef("m7-vocab-batchim"),
         game(
           "word-builder",
           "batchim",
           "Susun kata batchim",
           "Susun 한국, 사랑, 선생님, dan kata lain dari huruf-hurufnya.",
         ),
+        assessmentRef("m7-quiz"),
         callout(
           "success",
-          "Ringkasnya: di posisi batchim hanya ada tujuh bunyi. ㅋ ㄲ → [ㄱ]; ㅍ → [ㅂ]; ㅅ ㅆ ㅈ ㅊ ㅌ ㅎ → [ㄷ]; ㄴ ㄹ ㅁ ㅇ tetap. Ejaan menyimpan huruf aslinya, yang terdengar lagi saat diikuti vokal.",
+          b("Ingat: "),
+          "di bawah blok hanya ada tujuh bunyi, dan ㄱ ㅂ ㄷ ditutup lalu diam.",
         ),
       ],
     },

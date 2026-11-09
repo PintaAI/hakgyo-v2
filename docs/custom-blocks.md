@@ -68,6 +68,15 @@ props the same way.
   resolver (offline copies first). The grid keeps its consonant column fixed
   while the vowels scroll horizontally.
 
+## Grammar Block Optional Fields
+
+For learners, the `grammar` block hides its optional fields when they are
+empty: eyebrow, number, the Korean and translated description, the examples
+section and the Korean or translated tip. Hangeul Mastery uses this for its
+rule cards (`rules()` in `apps/web/scripts/hangeul-mastery/blocks.ts`), which
+leave the Korean fields empty because beginners cannot read them yet. Authors
+still see every field while editing.
+
 ## Material Links
 
 Links between materials are not a block: they are BlockNote `link` inline

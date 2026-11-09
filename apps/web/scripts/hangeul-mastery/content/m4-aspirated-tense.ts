@@ -2,16 +2,13 @@ import {
   assessmentRef,
   audioClip,
   b,
-  bullet,
   callout,
   contrast,
   game,
-  heading,
   letters,
-  numbered,
   p,
+  rules,
   syllableGrid,
-  table,
   vocabularyRef,
 } from "../blocks";
 import type { ModuleContent, QuestionContent } from "../content-types";
@@ -44,61 +41,56 @@ const NO_ROMANIZATION = { showRomanization: false };
 
 export const m4AspiratedTense: ModuleContent = {
   key: "m4-aspirated-tense",
-  title: "Konsonan aspirasi dan tegang",
+  title: "Konsonan berhembus dan tegang",
   description:
-    "Konsonan berhembus ㅋ ㅌ ㅍ ㅊ, konsonan tegang ㄲ ㄸ ㅃ ㅆ ㅉ, dan lab tiga serangkai untuk membedakan 자다, 차다, dan 짜다.",
+    "Konsonan berhembus ㅋ ㅌ ㅍ ㅊ, konsonan tegang ㄲ ㄸ ㅃ ㅆ ㅉ, dan lab untuk membedakan 자다, 차다, dan 짜다.",
   items: [
     {
       type: "material",
       key: "m4-aspirated",
       title: "Hembusan napas: ㅋ ㅌ ㅍ ㅊ",
-      description:
-        "Empat konsonan yang diucapkan dengan semburan napas, tes tisu, trik nada, dan banyak kata serapan seperti 커피 dan 피자.",
-      minutes: 16,
+      description: "Empat konsonan yang diucapkan dengan hembusan napas kuat.",
+      minutes: 7,
       blocks: [
-        heading("Konsonan yang berhembus"),
-        p(
-          'Dalam bahasa Indonesia, "p", "t", "k", dan "c" diucapkan tanpa hembusan napas. Bahasa Korea punya versi yang ',
+        callout(
+          "info",
+          '"k", "t", "p", dan "c" Indonesia diucapkan tanpa hembusan napas. Bahasa Korea juga punya versi yang ',
           b("berhembus kuat"),
-          ", yang disebut konsonan aspirasi. Bentuknya mudah diingat: tambahkan satu garis pada konsonan polos.",
+          ".",
         ),
-        table([
-          ["Polos", "Aspirasi", "Rasakan"],
-          ["ㄱ", "ㅋ", '"k" + hembusan'],
-          ["ㄷ", "ㅌ", '"t" + hembusan'],
-          ["ㅂ", "ㅍ", '"p" + hembusan'],
-          ["ㅈ", "ㅊ", '"c" + hembusan'],
-        ]),
-        heading("Tes tisu", 3),
-        numbered(
-          "Pegang selembar tisu atau kertas tipis sekitar sepuluh sentimeter di depan mulutmu.",
-        ),
-        numbered(
-          'Ucapkan "ka" seperti bahasa Indonesia. Tisunya hampir tidak bergerak.',
-        ),
-        numbered(
-          'Sekarang ucapkan 카 dengan semburan napas, seolah ada "h" kecil setelah "k". Tisunya harus bergerak.',
-        ),
-        p("Lakukan hal yang sama untuk 타, 파, dan 차."),
+        rules({
+          title: "Tambah garis = tambah hembusan napas",
+          intro:
+            "Konsonan berhembus dibuat dari konsonan polos yang sudah kamu kenal, ditambah satu garis.",
+          columns: ["Polos", "Berhembus", "Dibaca"],
+          rows: [
+            { when: "ㄱ + satu garis", result: "ㅋ", example: "가 → 카" },
+            { when: "ㄷ + satu garis", result: "ㅌ", example: "다 → 타" },
+            { when: "ㅂ (bentuk baru)", result: "ㅍ", example: "바 → 파" },
+            { when: "ㅈ + satu garis", result: "ㅊ", example: "자 → 차" },
+          ],
+          tip: {
+            title: "Tes kertas tisu",
+            text: "Pegang tisu di depan mulut. Ucapkan 카: tisunya harus bergerak. Ucapkan 가: tisunya hampir diam.",
+          },
+        }),
         letters(
           "Huruf baru",
           [
             {
               character: "ㅋ",
-              name: "키읔",
-              cue: '"k" dengan semburan napas yang kuat.',
+              cue: '"k" dengan hembusan napas kuat.',
               romanization: "k",
               say: "카",
-              note: "ㄱ + satu garis. Cara menulis: (1) garis datar dari kiri ke kanan lalu turun, seperti ㄱ, (2) garis pendek di tengah dari kiri ke kanan.",
+              note: "ㄱ dengan satu garis di tengah.",
               example: { word: "커피", meaning: "kopi", romanization: "keopi" },
             },
             {
               character: "ㅌ",
-              name: "티읕",
-              cue: '"t" dengan semburan napas.',
+              cue: '"t" dengan hembusan napas.',
               romanization: "t",
               say: "타",
-              note: "ㄷ + satu garis. Cara menulis: (1) garis datar atas dan (2) garis datar tengah, keduanya dari kiri ke kanan, lalu (3) turun di sisi kiri dan belok ke kanan.",
+              note: "ㄷ dengan satu garis di tengah.",
               example: {
                 word: "토마토",
                 meaning: "tomat",
@@ -107,11 +99,9 @@ export const m4AspiratedTense: ModuleContent = {
             },
             {
               character: "ㅍ",
-              name: "피읖",
-              cue: '"p" dengan semburan napas.',
+              cue: '"p" dengan hembusan napas.',
               romanization: "p",
               say: "파",
-              note: "Cara menulis: empat goresan. (1) garis datar atas dari kiri ke kanan, (2) garis tegak pendek kiri, (3) garis tegak pendek kanan, (4) garis datar bawah dari kiri ke kanan.",
               example: {
                 word: "포도",
                 meaning: "anggur",
@@ -120,29 +110,20 @@ export const m4AspiratedTense: ModuleContent = {
             },
             {
               character: "ㅊ",
-              name: "치읓",
-              cue: 'Seperti "c" di "cari", dengan semburan napas.',
+              cue: 'Seperti "c" di "cari", dengan hembusan napas.',
               romanization: "ch",
               say: "차",
-              note: "ㅈ + satu garis kecil di atas. Cara menulis: garis pendek di paling atas dulu, lalu tulis ㅈ di bawahnya.",
+              note: "ㅈ dengan satu garis kecil di atas.",
               example: { word: "치마", meaning: "rok", romanization: "chima" },
             },
           ],
           NO_ROMANIZATION,
         ),
-        heading("Trik nada", 3),
-        p(
-          "Orang Korea tidak hanya membedakan konsonan dari hembusannya, tetapi juga dari nada. Vokal setelah ㅋ ㅌ ㅍ ㅊ diucapkan dengan nada ",
-          b("lebih tinggi"),
-          ", sedangkan vokal setelah ㄱ ㄷ ㅂ ㅈ di awal kata bernada lebih rendah dan santai. Dengarkan 자 dan 차: 차 terdengar lebih tinggi dan lebih tajam.",
-        ),
         contrast(
           "Polos atau berhembus?",
-          "Putar setiap pasangan. Yang kedua harus terdengar lebih berhembus, dengan nada yang lebih tinggi.",
+          "Putar tiap pasangan. Yang kedua lebih berhembus dan nadanya lebih tinggi.",
           [
             { items: [{ text: "가" }, { text: "카" }] },
-            { items: [{ text: "다" }, { text: "타" }] },
-            { items: [{ text: "바" }, { text: "파" }] },
             { items: [{ text: "자" }, { text: "차" }] },
             {
               items: [
@@ -161,75 +142,27 @@ export const m4AspiratedTense: ModuleContent = {
           NO_ROMANIZATION,
         ),
         syllableGrid(
-          "Tabel suku kata konsonan aspirasi",
+          "Sekarang kamu bisa baca",
           ["ㅋ", "ㅌ", "ㅍ", "ㅊ"],
           VOWELS,
           NO_ROMANIZATION,
         ),
-        heading("Cara menulis", 3),
-        bullet(
-          "Setiap huruf aspirasi adalah huruf polos dengan satu garis tambahan. Tulis bentuk dasarnya seperti biasa, lalu tambahkan garisnya di tempat yang benar.",
-        ),
-        bullet(
-          "Di ㅊ, garis kecil di atas boleh ditulis tegak atau sedikit miring. Keduanya benar.",
-        ),
-        heading("Tebak kata serapan", 3),
         p(
-          'Bunyi "p", "t", dan "k" di awal kata asing biasanya ditulis dengan ㅍ, ㅌ, dan ㅋ. Tebak dulu artinya, lalu cek.',
+          "Huruf ini banyak dipakai di kata serapan. Baca dulu, tebak artinya, lalu putar.",
         ),
-        audioClip("커피", "커피"),
-        audioClip("아파트", "아파트"),
-        table([
-          ["Hangeul", "Arti"],
-          ["커피", "kopi"],
-          ["카메라", "kamera"],
-          ["토마토", "tomat"],
-          ["피자", "pizza"],
-          ["파티", "pesta"],
-          ["아파트", "apartemen"],
-          ["티셔츠", "kaus oblong"],
-          ["케이크", "kue tar"],
-          ["치즈", "keju"],
-          ["피아노", "piano"],
-          ["카드", "kartu"],
-          ["오토바이", "sepeda motor"],
-        ]),
-        heading("Latihan baca", 3),
-        table([
-          ["Hangeul", "Arti"],
-          ["코", "hidung"],
-          ["키", "tinggi badan; kunci"],
-          ["차", "teh; mobil"],
-          ["기차", "kereta"],
-          ["고추", "cabai"],
-          ["치마", "rok"],
-          ["포도", "anggur"],
-          ["크다", "besar"],
-          ["아프다", "sakit"],
-          ["표", "tiket; karcis"],
-          ["우표", "prangko"],
-        ]),
-        heading("Frasa pendek", 3),
-        audioClip("어디 아파요?", "어디 아파요?"),
-        table([
-          ["Frasa", "Arti"],
-          ["커피 주세요.", "Minta kopi."],
-          ["기차 표 주세요.", "Minta tiket kereta."],
-          ["어디 아파요?", "Sakit di mana?"],
-          ["머리 아파요.", "Kepala saya sakit."],
-        ]),
-        heading("Kosakata G", 3),
-        p("Kata-kata dengan ㅋ ㅌ ㅍ ㅊ, banyak di antaranya kata serapan."),
+        audioClip("카메라", "카메라 = kamera"),
+        audioClip("아파트", "아파트 = apartemen"),
         vocabularyRef("m4-vocab-g"),
         game(
           "stroke-master",
           "aspirated-tense",
-          "Kenali konsonan aspirasi",
-          "Main Hangeul dengan konsonan baru. Permainan ini juga memuat konsonan tegang dari pelajaran berikutnya.",
+          "Kenali konsonan berhembus",
+          "Cocokkan bentuk dan bunyi konsonan baru. Konsonan tegang juga muncul, kamu belajar di pelajaran berikutnya.",
         ),
         callout(
           "success",
-          "Ringkasan: ㅋ ㅌ ㅍ ㅊ adalah k, t, p, c dengan semburan napas dan nada yang lebih tinggi. Bentuknya huruf polos ditambah satu garis. Uji dengan tisu: tisunya harus bergerak.",
+          b("Ingat: "),
+          "ㅋ ㅌ ㅍ ㅊ adalah k, t, p, c dengan hembusan napas. Tisunya harus bergerak.",
         ),
       ],
     },
@@ -238,7 +171,7 @@ export const m4AspiratedTense: ModuleContent = {
       key: "m4-vocab-g",
       title: "Kosakata G: ㅋ ㅌ ㅍ ㅊ",
       description:
-        "Kata sehari-hari dan kata serapan yang memakai konsonan aspirasi.",
+        "Kata sehari-hari dan kata serapan yang memakai konsonan berhembus.",
       entries: [
         {
           term: "커피",
@@ -298,39 +231,40 @@ export const m4AspiratedTense: ModuleContent = {
       type: "material",
       key: "m4-tense",
       title: "Konsonan tegang: ㄲ ㄸ ㅃ ㅆ ㅉ",
-      description:
-        "Lima huruf dobel yang diucapkan tegang tanpa hembusan, cara membuat bunyinya, dan kata-kata seperti 아빠, 오빠, dan 비싸다.",
-      minutes: 16,
+      description: "Lima huruf dobel yang diucapkan tegang, tanpa hembusan.",
+      minutes: 7,
       blocks: [
-        heading("Huruf dobel, bunyi tegang"),
-        p(
-          "Lima konsonan polos bisa ditulis dobel: ㄲ ㄸ ㅃ ㅆ ㅉ. Ini konsonan ",
+        callout(
+          "info",
+          "Lima konsonan bisa ditulis dobel. Kabar baik: k, t, p, c Indonesia sudah tanpa hembusan, jadi tinggal dibuat ",
           b("tegang"),
-          ": diucapkan tanpa hembusan, dengan otot mulut dan tenggorokan yang dikencangkan. Pelajaran ini memperkenalkan lima huruf sekaligus, tetapi aturannya hanya satu: tulis dobel, ucapkan tegang.",
+          ".",
         ),
-        p(
-          'Kabar baik untuk orang Indonesia: "k", "t", "p", dan "c" Indonesia sudah diucapkan tanpa hembusan. Jadi titik awalmu adalah huruf Indonesia biasa, lalu tambahkan ketegangan.',
-        ),
-        heading("Cara membuat bunyi tegang", 3),
-        numbered(
-          'Ucapkan "a", lalu tahan napas sebentar di tenggorokan, seperti saat akan mengangkat barang berat.',
-        ),
-        numbered(
-          'Lepaskan langsung menjadi "ka" tanpa hembusan. Hasilnya 아까 (tadi), terdengar seperti "ak-ka".',
-        ),
-        numbered(
-          'Ingat cara orang Indonesia mengucapkan "Mekkah": "k" dobelnya terdengar tertahan. Rasa tertahan itulah yang kamu cari.',
-        ),
+        rules({
+          title: "Huruf dobel = tegang, tanpa napas",
+          intro:
+            "Kencangkan otot mulut dan tenggorokan, tahan napas sebentar, lalu lepas tanpa hembusan.",
+          columns: ["Polos", "Tegang", "Dibaca"],
+          rows: [
+            { when: "ㄱ dobel", result: "ㄲ", example: "가 → 까" },
+            { when: "ㄷ dobel", result: "ㄸ", example: "다 → 따" },
+            { when: "ㅂ dobel", result: "ㅃ", example: "바 → 빠" },
+            { when: "ㅅ dobel", result: "ㅆ", example: "사 → 싸" },
+            { when: "ㅈ dobel", result: "ㅉ", example: "자 → 짜" },
+          ],
+          tip: {
+            title: 'Seperti "Mekkah"',
+            text: 'Ucapkan "Mekkah": "k" dobelnya terdengar tertahan. Rasa tertahan itu yang kamu cari, seperti di 아까 (tadi).',
+          },
+        }),
         letters(
           "Huruf baru",
           [
             {
               character: "ㄲ",
-              name: "쌍기역",
-              cue: '"k" Indonesia yang tegang dan tertahan, tanpa hembusan.',
+              cue: '"k" Indonesia yang tegang dan tertahan.',
               romanization: "kk",
               say: "까",
-              note: "Tulis ㄱ dua kali, yang kiri dulu. Buat keduanya lebih sempit supaya muat di satu blok.",
               example: {
                 word: "토끼",
                 meaning: "kelinci",
@@ -339,11 +273,9 @@ export const m4AspiratedTense: ModuleContent = {
             },
             {
               character: "ㄸ",
-              name: "쌍디귿",
-              cue: '"t" Indonesia yang tegang, tanpa hembusan.',
+              cue: '"t" Indonesia yang tegang.',
               romanization: "tt",
               say: "따",
-              note: "Tulis ㄷ dua kali, yang kiri dulu.",
               example: {
                 word: "이따가",
                 meaning: "nanti",
@@ -352,11 +284,9 @@ export const m4AspiratedTense: ModuleContent = {
             },
             {
               character: "ㅃ",
-              name: "쌍비읍",
-              cue: '"p" Indonesia yang tegang, tanpa hembusan.',
+              cue: '"p" Indonesia yang tegang.',
               romanization: "pp",
               say: "빠",
-              note: "Tulis ㅂ dua kali, yang kiri dulu.",
               example: {
                 word: "오빠",
                 meaning: "kakak laki-laki (dipakai adik perempuan)",
@@ -365,11 +295,10 @@ export const m4AspiratedTense: ModuleContent = {
             },
             {
               character: "ㅆ",
-              name: "쌍시옷",
-              cue: '"s" yang tajam dan tegang, sedikit lebih panjang dari ㅅ, tanpa desah napas.',
+              cue: '"s" yang tajam dan tegang.',
               romanization: "ss",
               say: "싸",
-              note: "Tulis ㅅ dua kali, yang kiri dulu.",
+              note: "Sedikit lebih panjang dari ㅅ.",
               example: {
                 word: "비싸다",
                 meaning: "mahal",
@@ -378,27 +307,19 @@ export const m4AspiratedTense: ModuleContent = {
             },
             {
               character: "ㅉ",
-              name: "쌍지읒",
-              cue: 'Seperti "c" di "cari", tegang dan tanpa hembusan.',
+              cue: 'Seperti "c" di "cari", tapi tegang.',
               romanization: "jj",
               say: "짜",
-              note: "Tulis ㅈ dua kali, yang kiri dulu.",
               example: { word: "짜다", meaning: "asin", romanization: "jjada" },
             },
           ],
           NO_ROMANIZATION,
         ),
-        p(
-          'Nama huruf dobel diawali kata yang berarti "kembar", misalnya nama ㄲ berarti "ㄱ kembar".',
-        ),
         contrast(
           "Polos atau tegang?",
-          "Putar setiap pasangan. Yang kedua harus terdengar lebih tegang dan tajam, dengan nada lebih tinggi, tetapi tanpa hembusan.",
+          "Putar tiap pasangan. Yang kedua lebih tegang dan nadanya lebih tinggi, tapi tanpa hembusan.",
           [
             { items: [{ text: "가" }, { text: "까" }] },
-            { items: [{ text: "다" }, { text: "따" }] },
-            { items: [{ text: "바" }, { text: "빠" }] },
-            { items: [{ text: "사" }, { text: "싸" }] },
             { items: [{ text: "자" }, { text: "짜" }] },
             {
               items: [
@@ -411,69 +332,31 @@ export const m4AspiratedTense: ModuleContent = {
                 { text: "사다", meaning: "membeli" },
                 { text: "싸다", meaning: "murah" },
               ],
-              note: "Salah bunyi di toko bisa membuat orang bingung: membeli atau murah?",
+              note: "Salah bunyi di toko: membeli atau murah?",
             },
           ],
           NO_ROMANIZATION,
         ),
         syllableGrid(
-          "Tabel suku kata konsonan tegang",
+          "Sekarang kamu bisa baca",
           ["ㄲ", "ㄸ", "ㅃ", "ㅆ", "ㅉ"],
           VOWELS,
           NO_ROMANIZATION,
         ),
-        heading("Latihan baca", 3),
-        audioClip("아빠", "아빠"),
-        audioClip("아저씨", "아저씨"),
-        table([
-          ["Hangeul", "Arti"],
-          ["아빠", "ayah (sapaan akrab)"],
-          ["오빠", "kakak laki-laki (dipakai adik perempuan)"],
-          ["토끼", "kelinci"],
-          ["아저씨", "bapak; om (sapaan untuk pria dewasa)"],
-          ["아까", "tadi"],
-          ["이따가", "nanti"],
-          ["가짜", "palsu"],
-          ["꼬리", "ekor"],
-          ["쓰레기", "sampah"],
-          ["뽀뽀", "kecupan"],
-          ["싸다", "murah"],
-          ["비싸다", "mahal"],
-          ["짜다", "asin"],
-          ["바쁘다", "sibuk"],
-          ["예쁘다", "cantik"],
-          ["기쁘다", "senang"],
-        ]),
-        callout(
-          "info",
-          "Saat dipakai dalam kalimat, ㅡ di akhir 바쁘다, 예쁘다, dan 기쁘다 berubah: 바빠요 (saya sibuk), 예뻐요 (cantik). Kamu akan sering mendengar bentuk ini.",
-        ),
-        heading("Frasa pendek", 3),
-        audioClip("너무 비싸요", "너무 비싸요!"),
-        audioClip("싸게 해 주세요", "싸게 해 주세요."),
-        table([
-          ["Frasa", "Arti"],
-          ["너무 비싸요!", "Mahal sekali!"],
-          ["싸게 해 주세요.", "Tolong kasih harga murah."],
-          ["어때요?", "Bagaimana?"],
-          ["예뻐요!", "Cantik!"],
-          ["오빠, 어디 가요?", "Kak, mau ke mana?"],
-          ["아저씨, 여기요!", "Pak, permisi!"],
-        ]),
-        heading("Kosakata H", 3),
-        p(
-          "Kata-kata dengan konsonan tegang, termasuk kata sapaan yang sering muncul di drama.",
-        ),
+        p("Untuk belanja: baca dulu, lalu putar."),
+        audioClip("너무 비싸요", "너무 비싸요! = Mahal sekali!"),
+        audioClip("싸게 해 주세요", "싸게 해 주세요. = Tolong kasih murah."),
         vocabularyRef("m4-vocab-h"),
         game(
           "syllable-forge",
           "aspirated-tense",
           "Susun suku kata",
-          "Susun suku kata dengan konsonan aspirasi dan tegang. Ucapkan setiap suku kata dengan suara keras.",
+          "Susun suku kata dengan konsonan berhembus dan tegang. Ucapkan tiap suku kata dengan keras.",
         ),
         callout(
           "success",
-          "Ringkasan: ㄲ ㄸ ㅃ ㅆ ㅉ adalah huruf dobel yang diucapkan tegang, tanpa hembusan, dengan nada tinggi. Mulailah dari k, t, p, s, c Indonesia, lalu kencangkan otot dan tahan napas sebentar: 아까, 오빠, 비싸다.",
+          b("Ingat: "),
+          "huruf dobel diucapkan tegang dan tertahan, tanpa hembusan: 아까, 오빠, 비싸다.",
         ),
       ],
     },
@@ -541,39 +424,54 @@ export const m4AspiratedTense: ModuleContent = {
       key: "m4-three-way-lab",
       title: "Lab tiga serangkai",
       description:
-        "Latihan telinga dan mulut untuk membedakan konsonan polos, aspirasi, dan tegang: 사다/싸다, 자다/차다/짜다, 비/피/삐.",
-      minutes: 18,
+        "Latih telinga dan mulut untuk membedakan polos, berhembus, dan tegang.",
+      minutes: 8,
       blocks: [
-        heading("Tiga saudara"),
-        p(
-          "Sekarang kamu mengenal tiga versi dari banyak konsonan. Membedakannya adalah tantangan terbesar bagi pelajar Indonesia, jadi pelajaran ini sepenuhnya untuk melatih telinga dan mulut.",
+        callout(
+          "info",
+          "Banyak konsonan punya tiga versi: polos, berhembus, dan tegang. Pelajaran ini melatih telinga dan mulutmu untuk membedakannya.",
         ),
-        table([
-          ["Polos", "Aspirasi", "Tegang"],
-          ["ㄱ 가", "ㅋ 카", "ㄲ 까"],
-          ["ㄷ 다", "ㅌ 타", "ㄸ 따"],
-          ["ㅂ 바", "ㅍ 파", "ㅃ 빠"],
-          ["ㅈ 자", "ㅊ 차", "ㅉ 짜"],
-          ["ㅅ 사", "(tidak ada)", "ㅆ 싸"],
-        ]),
-        heading("Tiga petunjuk", 3),
-        table([
-          ["Petunjuk", "Polos", "Aspirasi", "Tegang"],
-          [
-            "Hembusan napas",
-            "sedikit",
-            "banyak, tisu bergerak",
-            "hampir tidak ada",
+        rules({
+          title: "Tiga versi, tiga cara",
+          intro:
+            "Berhembus dan tegang sama-sama bernada tinggi. Bedanya di napas: berhembus keluar, tegang tertahan.",
+          columns: ["Versi", "Rasanya", "Contoh"],
+          rows: [
+            {
+              when: "Polos ㄱ ㄷ ㅂ ㅈ ㅅ",
+              result: "santai",
+              example: "가 다 바 자 사",
+            },
+            {
+              when: "Berhembus ㅋ ㅌ ㅍ ㅊ",
+              result: "napas keluar",
+              example: "카 타 파 차",
+            },
+            {
+              when: "Tegang ㄲ ㄸ ㅃ ㅉ ㅆ",
+              result: "tertahan",
+              example: "까 따 빠 짜 싸",
+            },
           ],
-          ["Otot mulut", "santai", "santai", "tegang"],
-          ["Nada vokal di awal kata", "rendah", "tinggi", "tinggi"],
-        ]),
-        p(
-          "Aspirasi dan tegang sama-sama bernada tinggi. Yang membedakan keduanya adalah hembusannya: aspirasi berhembus, tegang tertahan.",
+          tip: {
+            title: "Tes kertas tisu",
+            text: "Pegang tisu di depan mulut. Berhembus: tisunya bergerak. Tegang: tisunya diam.",
+          },
+        }),
+        contrast(
+          "Lab suku kata",
+          "Polos, berhembus, tegang. Ucapkan ketiganya berurutan, lalu acak urutannya.",
+          [
+            { items: [{ text: "가" }, { text: "카" }, { text: "까" }] },
+            { items: [{ text: "다" }, { text: "타" }, { text: "따" }] },
+            { items: [{ text: "바" }, { text: "파" }, { text: "빠" }] },
+            { items: [{ text: "자" }, { text: "차" }, { text: "짜" }] },
+          ],
+          NO_ROMANIZATION,
         ),
         contrast(
           "Lab kata nyata",
-          "Putar setiap baris berkali-kali. Ucapkan ulang, lalu periksa dengan tes tisu.",
+          "Putar tiap baris berkali-kali, ucapkan ulang, lalu cek dengan tes tisu.",
           [
             {
               items: [
@@ -607,89 +505,24 @@ export const m4AspiratedTense: ModuleContent = {
                 { text: "토끼", meaning: "kelinci" },
               ],
             },
-            {
-              items: [
-                { text: "기자", meaning: "wartawan" },
-                { text: "기차", meaning: "kereta" },
-              ],
-            },
-            {
-              items: [
-                { text: "바다", meaning: "laut" },
-                { text: "파다", meaning: "menggali" },
-              ],
-            },
-            {
-              items: [
-                { text: "개", meaning: "anjing" },
-                { text: "깨", meaning: "wijen" },
-              ],
-            },
           ],
           NO_ROMANIZATION,
         ),
-        contrast(
-          "Lab suku kata",
-          "Tiga suku kata di setiap baris: polos, aspirasi, tegang. Ucapkan ketiganya berurutan, lalu acak urutannya.",
-          [
-            { items: [{ text: "가" }, { text: "카" }, { text: "까" }] },
-            { items: [{ text: "다" }, { text: "타" }, { text: "따" }] },
-            { items: [{ text: "바" }, { text: "파" }, { text: "빠" }] },
-            { items: [{ text: "자" }, { text: "차" }, { text: "짜" }] },
-            { items: [{ text: "고" }, { text: "코" }, { text: "꼬" }] },
-            { items: [{ text: "두" }, { text: "투" }, { text: "뚜" }] },
-          ],
-          NO_ROMANIZATION,
-        ),
-        heading("Latihan dengar", 3),
-        p(
-          "Putar setiap audio, tebak katanya, lalu cek jawabannya di tabel di bawah.",
-        ),
-        audioClip("싸다", "Nomor 1"),
-        audioClip("차다", "Nomor 2"),
-        audioClip("피", "Nomor 3"),
-        audioClip("도끼", "Nomor 4"),
-        audioClip("뿌리", "Nomor 5"),
-        audioClip("기자", "Nomor 6"),
-        audioClip("짜다", "Nomor 7"),
-        audioClip("깨", "Nomor 8"),
-        table([
-          ["Nomor", "Jawaban", "Arti"],
-          ["1", "싸다", "murah"],
-          ["2", "차다", "menendang; dingin"],
-          ["3", "피", "darah"],
-          ["4", "도끼", "kapak"],
-          ["5", "뿌리", "akar"],
-          ["6", "기자", "wartawan"],
-          ["7", "짜다", "asin"],
-          ["8", "깨", "wijen"],
-        ]),
         callout(
           "tip",
-          "Kalau masih sulit, tidak apa-apa. Pelajar tingkat lanjut pun terus melatih kontras ini. Karena itu nilai lulus kuis modul ini 75%.",
+          "Rekam suaramu saat mengucapkan 자다, 차다, 짜다, lalu bandingkan dengan audio. Masih sulit itu wajar, karena itu nilai lulus kuisnya 75%.",
         ),
-        heading("Ucapkan sendiri", 3),
-        numbered(
-          "Rekam suaramu dengan ponsel saat mengucapkan 자다, 차다, dan 짜다.",
-        ),
-        numbered(
-          "Bandingkan dengan audio di atas. Apakah 차다 berhembus? Apakah 짜다 tertahan tanpa hembusan?",
-        ),
-        numbered("Ulangi dengan 비, 피, dan 삐, lalu dengan 사다 dan 싸다."),
         game(
           "word-builder",
           "aspirated-tense",
           "Susun kata",
           "Susun kata seperti 커피, 토끼, dan 비싸다 dari suku katanya.",
         ),
-        heading("Kuis modul 4", 3),
-        p(
-          "Kuis ini banyak berisi soal mendengar, ditambah ulangan dari modul sebelumnya. Nilai lulusnya 75%.",
-        ),
         assessmentRef("m4-quiz"),
         callout(
           "success",
-          "Ringkasan: polos = santai dan bernada rendah, aspirasi = berhembus dan bernada tinggi, tegang = tertahan tanpa hembusan dan bernada tinggi. Latih pasangan 사다/싸다, 자다/차다/짜다, dan 비/피/삐 setiap hari.",
+          b("Ingat: "),
+          "polos itu santai, berhembus mengeluarkan napas, tegang menahan napas.",
         ),
       ],
     },
@@ -698,7 +531,7 @@ export const m4AspiratedTense: ModuleContent = {
       key: "m4-quiz",
       title: "Kuis modul 4: lab tiga serangkai",
       description:
-        "16 soal, sebagian besar soal mendengar, tentang konsonan polos, aspirasi, dan tegang, ditambah ulangan modul 2 dan 3.",
+        "16 soal, sebagian besar soal mendengar, tentang konsonan polos, berhembus, dan tegang, ditambah ulangan modul 2 dan 3.",
       instructions:
         "Pakai earphone kalau bisa, dan putar audionya sebanyak yang kamu perlukan. Nilai lulus 75%.",
       passingScore: 75,
@@ -784,7 +617,7 @@ export const m4AspiratedTense: ModuleContent = {
             "Tanpa hembusan, dengan otot mulut dan tenggorokan yang tegang",
           ],
           3,
-          "Konsonan tegang diucapkan tertahan, tanpa hembusan. Konsonan aspirasi (ㅋ ㅌ ㅍ ㅊ) yang berhembus.",
+          "Konsonan tegang diucapkan tertahan, tanpa hembusan. Yang berhembus adalah ㅋ ㅌ ㅍ ㅊ.",
         ),
         single(
           "review-hear-geogi",

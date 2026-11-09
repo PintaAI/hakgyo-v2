@@ -6,6 +6,7 @@ export function EditableBlockText({
   ariaLabel,
   className,
   editable,
+  hideWhenEmpty = false,
   onChange,
   placeholder,
   value,
@@ -13,6 +14,8 @@ export function EditableBlockText({
   ariaLabel: string;
   className?: string;
   editable: boolean;
+  /** Render nothing for learners when the value is empty (optional fields). */
+  hideWhenEmpty?: boolean;
   onChange: (value: string) => void;
   placeholder?: string;
   value: string;
@@ -24,6 +27,7 @@ export function EditableBlockText({
   }
 
   if (!editable) {
+    if (hideWhenEmpty && !value.trim()) return null;
     return (
       <div
         className={`${className ?? ""} max-w-full min-w-0 [overflow-wrap:anywhere] break-words whitespace-pre-wrap`}

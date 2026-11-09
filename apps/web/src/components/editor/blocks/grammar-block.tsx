@@ -241,6 +241,7 @@ export const grammarBlock = createReactBlockSpec(
                 <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                   <EditableBlockText
                     ariaLabel="Label grammar"
+                    hideWhenEmpty
                     className="text-muted-foreground min-w-32 flex-1 text-xs font-semibold tracking-[0.14em] uppercase"
                     editable={editable}
                     onChange={(eyebrow) =>
@@ -250,6 +251,7 @@ export const grammarBlock = createReactBlockSpec(
                   />
                   <EditableBlockText
                     ariaLabel="Nomor grammar"
+                    hideWhenEmpty
                     className="w-12 text-right text-2xl leading-none font-medium tabular-nums"
                     editable={editable}
                     onChange={(number) =>
@@ -278,6 +280,7 @@ export const grammarBlock = createReactBlockSpec(
               <section className="min-w-0 space-y-2">
                 <EditableBlockText
                   ariaLabel="Penjelasan grammar bahasa Korea"
+                  hideWhenEmpty
                   className="text-foreground w-full text-sm leading-relaxed"
                   editable={editable}
                   onChange={(descriptionKo) =>
@@ -287,6 +290,7 @@ export const grammarBlock = createReactBlockSpec(
                 />
                 <EditableBlockText
                   ariaLabel="Terjemahan penjelasan grammar"
+                  hideWhenEmpty
                   className="w-full text-sm leading-relaxed"
                   editable={editable}
                   onChange={(descriptionTranslation) =>
@@ -441,112 +445,115 @@ export const grammarBlock = createReactBlockSpec(
                 </button>
               ) : null}
 
-              <section className="min-w-0">
-                <EditableBlockText
-                  ariaLabel="Label contoh grammar"
-                  className="text-muted-foreground mb-3 w-full text-xs font-semibold tracking-[0.14em] uppercase"
-                  editable={editable}
-                  onChange={(examplesLabel) =>
-                    editor.updateBlock(block, { props: { examplesLabel } })
-                  }
-                  value={block.props.examplesLabel}
-                />
-                <div className="ring-foreground/10 divide-border min-w-0 divide-y overflow-hidden rounded-lg ring-1">
-                  {examples.map((example, index) => (
-                    <div
-                      className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)_auto] items-start gap-2 px-3 py-3"
-                      key={index}
-                    >
-                      <span
-                        className="pt-1 text-xs font-semibold tabular-nums"
-                        style={{ color: scheme.accent }}
+              {editable || examples.length > 0 ? (
+                <section className="min-w-0">
+                  <EditableBlockText
+                    ariaLabel="Label contoh grammar"
+                    hideWhenEmpty
+                    className="text-muted-foreground mb-3 w-full text-xs font-semibold tracking-[0.14em] uppercase"
+                    editable={editable}
+                    onChange={(examplesLabel) =>
+                      editor.updateBlock(block, { props: { examplesLabel } })
+                    }
+                    value={block.props.examplesLabel}
+                  />
+                  <div className="ring-foreground/10 divide-border min-w-0 divide-y overflow-hidden rounded-lg ring-1">
+                    {examples.map((example, index) => (
+                      <div
+                        className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)_auto] items-start gap-2 px-3 py-3"
+                        key={index}
                       >
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      {editable ? (
-                        <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(7rem,.7fr)_minmax(3rem,.35fr)]">
-                          <EditableBlockText
-                            ariaLabel={`Awal contoh ${index + 1}`}
-                            className="text-foreground w-full text-sm leading-relaxed"
-                            editable
-                            onChange={(before) => {
-                              const next = [...examples];
-                              next[index] = { ...example, before };
-                              updateExamples(next);
-                            }}
-                            placeholder="Teks sebelum"
-                            value={example.before}
-                          />
-                          <EditableBlockText
-                            ariaLabel={`Bagian penting contoh ${index + 1}`}
-                            className="w-full text-sm leading-relaxed font-semibold"
-                            editable
-                            onChange={(emphasis) => {
-                              const next = [...examples];
-                              next[index] = { ...example, emphasis };
-                              updateExamples(next);
-                            }}
-                            placeholder="Bagian penting"
-                            value={example.emphasis}
-                          />
-                          <EditableBlockText
-                            ariaLabel={`Akhir contoh ${index + 1}`}
-                            className="text-foreground w-full text-sm leading-relaxed"
-                            editable
-                            onChange={(after) => {
-                              const next = [...examples];
-                              next[index] = { ...example, after };
-                              updateExamples(next);
-                            }}
-                            placeholder="Akhir"
-                            value={example.after}
-                          />
-                        </div>
-                      ) : (
-                        <p className="text-foreground min-w-0 text-sm leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap">
-                          {example.before}
-                          <strong style={{ color: scheme.accent }}>
-                            {example.emphasis}
-                          </strong>
-                          {example.after}
-                        </p>
-                      )}
-                      {editable ? (
-                        <button
-                          aria-label={`Hapus contoh ${index + 1}`}
-                          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive grid size-7 place-items-center rounded-md transition disabled:opacity-30"
-                          disabled={examples.length === 1}
-                          onClick={() =>
-                            updateExamples(
-                              examples.filter(
-                                (_, exampleIndex) => exampleIndex !== index,
-                              ),
-                            )
-                          }
-                          type="button"
+                        <span
+                          className="pt-1 text-xs font-semibold tabular-nums"
+                          style={{ color: scheme.accent }}
                         >
-                          <Trash2Icon className="size-3.5" />
-                        </button>
-                      ) : null}
-                    </div>
-                  ))}
-                  {editable ? (
-                    <button
-                      className="text-muted-foreground hover:bg-muted/50 hover:text-foreground flex w-full items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium transition disabled:opacity-40"
-                      disabled={examples.length >= 12}
-                      onClick={() =>
-                        updateExamples([
-                          ...examples,
-                          { before: "", emphasis: "", after: "" },
-                        ])
-                      }
-                      type="button"
-                    >
-                      <PlusIcon className="size-3.5" /> Tambah contoh
-                    </button>
-                  ) : null}
-                </div>
-              </section>
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        {editable ? (
+                          <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(7rem,.7fr)_minmax(3rem,.35fr)]">
+                            <EditableBlockText
+                              ariaLabel={`Awal contoh ${index + 1}`}
+                              className="text-foreground w-full text-sm leading-relaxed"
+                              editable
+                              onChange={(before) => {
+                                const next = [...examples];
+                                next[index] = { ...example, before };
+                                updateExamples(next);
+                              }}
+                              placeholder="Teks sebelum"
+                              value={example.before}
+                            />
+                            <EditableBlockText
+                              ariaLabel={`Bagian penting contoh ${index + 1}`}
+                              className="w-full text-sm leading-relaxed font-semibold"
+                              editable
+                              onChange={(emphasis) => {
+                                const next = [...examples];
+                                next[index] = { ...example, emphasis };
+                                updateExamples(next);
+                              }}
+                              placeholder="Bagian penting"
+                              value={example.emphasis}
+                            />
+                            <EditableBlockText
+                              ariaLabel={`Akhir contoh ${index + 1}`}
+                              className="text-foreground w-full text-sm leading-relaxed"
+                              editable
+                              onChange={(after) => {
+                                const next = [...examples];
+                                next[index] = { ...example, after };
+                                updateExamples(next);
+                              }}
+                              placeholder="Akhir"
+                              value={example.after}
+                            />
+                          </div>
+                        ) : (
+                          <p className="text-foreground min-w-0 text-sm leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap">
+                            {example.before}
+                            <strong style={{ color: scheme.accent }}>
+                              {example.emphasis}
+                            </strong>
+                            {example.after}
+                          </p>
+                        )}
+                        {editable ? (
+                          <button
+                            aria-label={`Hapus contoh ${index + 1}`}
+                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive grid size-7 place-items-center rounded-md transition disabled:opacity-30"
+                            disabled={examples.length === 1}
+                            onClick={() =>
+                              updateExamples(
+                                examples.filter(
+                                  (_, exampleIndex) => exampleIndex !== index,
+                                ),
+                              )
+                            }
+                            type="button"
+                          >
+                            <Trash2Icon className="size-3.5" />
+                          </button>
+                        ) : null}
+                      </div>
+                    ))}
+                    {editable ? (
+                      <button
+                        className="text-muted-foreground hover:bg-muted/50 hover:text-foreground flex w-full items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium transition disabled:opacity-40"
+                        disabled={examples.length >= 12}
+                        onClick={() =>
+                          updateExamples([
+                            ...examples,
+                            { before: "", emphasis: "", after: "" },
+                          ])
+                        }
+                        type="button"
+                      >
+                        <PlusIcon className="size-3.5" /> Tambah contoh
+                      </button>
+                    ) : null}
+                  </div>
+                </section>
+              ) : null}
             </div>
 
             {block.props.showTip ? (
@@ -571,6 +578,7 @@ export const grammarBlock = createReactBlockSpec(
                 <div className="space-y-3">
                   <EditableBlockText
                     ariaLabel="Tip grammar bahasa Korea"
+                    hideWhenEmpty
                     className="text-foreground w-full text-sm leading-relaxed"
                     editable={editable}
                     onChange={(tipKo) =>
@@ -580,7 +588,8 @@ export const grammarBlock = createReactBlockSpec(
                   />
                   <EditableBlockText
                     ariaLabel="Terjemahan tip grammar"
-                    className="text-muted-foreground w-full text-sm leading-relaxed"
+                    hideWhenEmpty
+                    className={`${block.props.tipKo.trim() ? "text-muted-foreground" : "text-foreground"} w-full text-sm leading-relaxed`}
                     editable={editable}
                     onChange={(tipTranslation) =>
                       editor.updateBlock(block, { props: { tipTranslation } })
