@@ -32,7 +32,7 @@ Di tab **Latihan**, ketuk sebuah permainan, misalnya **Kartu** atau **Hujan Kata
 4. Set baru berikutnya di kurikulummu.
 5. Jika semua sudah selesai, set yang paling lama tidak kamu latih.
 
-Ketuk **Main** untuk langsung bermain. Untuk memilih sendiri, ketuk **Semua set kosakata**, lalu cari atau saring daftarnya. Untuk **Quiz**, Hakgyo lebih dulu memilihkan latihan atau tryout kelas yang sedang dibuka, lalu quiz yang belum selesai atau belum lulus. Geser lembarnya ke bawah untuk menutupnya.
+Bagian atas lembar menjelaskan cara bermain permainan itu. Untuk **Hujan Kata**, pilih juga bahasa jawaban dan **Level awal** di sana; pilihanmu tersimpan untuk permainan berikutnya. Ketuk **Main** untuk langsung bermain. Permainan dimulai tanpa layar pembuka; Hujan Kata menghitung mundur 3-2-1 dulu sebelum kata mulai jatuh. Untuk memilih sendiri, ketuk **Semua set kosakata**, lalu cari atau saring daftarnya. Untuk **Quiz**, Hakgyo lebih dulu memilihkan latihan atau tryout kelas yang sedang dibuka, lalu quiz yang belum selesai atau belum lulus. Geser lembarnya ke bawah untuk menutupnya.
 
 Jika kamu ikut lebih dari satu kelas, geser kartu kelas di tab **Belajar** ke kiri atau kanan. Titik-titik di atas menu bawah menunjukkan kelas yang sedang tampil.
 

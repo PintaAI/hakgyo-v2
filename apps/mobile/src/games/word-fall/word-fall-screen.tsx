@@ -25,6 +25,8 @@ import {
 import Animated, {
   cancelAnimation,
   Easing,
+  FadeOut,
+  ZoomIn,
   interpolate,
   runOnJS,
   useAnimatedReaction,
@@ -45,8 +47,9 @@ import type {
 import { withOpacity, type ThemeColors } from "../../theme/colors";
 import { toolbarIcons } from "../../theme/toolbar-icons";
 import { GameBackToolbar } from "../game-screens";
-import { GameModal, GameStartModal, GameJourneyFooter } from "../game-modals";
+import { GameModal, GameJourneyFooter } from "../game-modals";
 import type { GameLesson } from "../lesson";
+import { START_LEVEL_OPTIONS, useWordFallSettings } from "./word-fall-settings";
 import { useGameExitGuard } from "../game-navigation";
 import {
   addWordFallReviewItem,
@@ -128,11 +131,6 @@ const FORCE_REWARD_CHARGES = 10;
 const MAX_FORCE_CHARGES = 20;
 const REVEAL_DURATION_MS = 6_000;
 const MAX_REVEAL_CHARGES = 5;
-const MAX_START_LEVEL = 10;
-const START_LEVEL_OPTIONS = Array.from(
-  { length: MAX_START_LEVEL },
-  (_, index) => index + 1,
-);
 
 function powerUpForRoll(roll: number): WordFallPowerUp | undefined {
   if (roll >= 0.15) return undefined;
@@ -662,7 +660,10 @@ function levelDetail(level: number) {
   return `~${fallSeconds} dtk per kata · maks. ${maxWords} sekaligus`;
 }
 
-function LevelSelector({
+const COUNTDOWN_FROM = 3;
+const COUNTDOWN_STEP_MS = 700;
+
+export function LevelSelector({
   selected,
   onSelect,
 }: {
@@ -739,7 +740,7 @@ function LevelSelector({
   );
 }
 
-function WordFallModeSelector({
+export function WordFallModeSelector({
   mode,
   onChange,
 }: {
@@ -910,9 +911,13 @@ export function WordFallScreen({
   const [bursts, setBursts] = useState<BurstModel[]>([]);
   const [frozen, setFrozen] = useState(false);
   const [pendingReportCount, setPendingReportCount] = useState(0);
-  const [startLevel, setStartLevel] = useState(1);
-  const [answerMode, setAnswerMode] = useState<WordFallAnswerMode>("ID");
-  const [showLevelPicker, setShowLevelPicker] = useState(false);
+  // Chosen in Latihan's source sheet before the game opens; the answer
+  // language can change again before "Main lagi".
+  const [{ startLevel, answerMode }, updateSettings] = useWordFallSettings();
+  const setAnswerMode = useCallback(
+    (mode: WordFallAnswerMode) => updateSettings({ answerMode: mode }),
+    [updateSettings],
+  );
   const playerLift = useSharedValue(0);
   const playerRecoil = useSharedValue(0);
   const wrongInputPulse = useSharedValue(0);
@@ -1359,7 +1364,6 @@ export function WordFallScreen({
     setInput("");
     setLockedTargetId(null);
     setFrozen(false);
-    setShowLevelPicker(false);
     progressSessionIdRef.current = onSessionStart();
     setPhase("running");
     focusInputOnAndroid();
@@ -1382,15 +1386,24 @@ export function WordFallScreen({
     focusInputOnAndroid();
   }, [focusInputOnAndroid]);
 
-  // A lesson round starts at once, without the start sheet (whose dismissal
-  // would otherwise focus the input on iOS).
-  const lessonStarted = useRef(false);
+  // A lesson round starts at once. Opened from Latihan (whose source sheet
+  // took the settings), words start falling after a 3-2-1.
+  const [countdown, setCountdown] = useState<number | null>(
+    lesson ? 0 : COUNTDOWN_FROM,
+  );
   useEffect(() => {
-    if (!lesson || lessonStarted.current) return;
-    lessonStarted.current = true;
+    if (countdown === null) return;
+    if (countdown > 0) {
+      const timer = setTimeout(
+        () => setCountdown((current) => (current ? current - 1 : 0)),
+        COUNTDOWN_STEP_MS,
+      );
+      return () => clearTimeout(timer);
+    }
+    setCountdown(null);
     resetGame();
     if (Platform.OS === "ios") focusInput();
-  }, [focusInput, lesson, resetGame]);
+  }, [countdown, focusInput, resetGame]);
 
   // It ends once every word has fallen and been shot down or missed, and
   // every answer is saved.
@@ -1794,26 +1807,18 @@ export function WordFallScreen({
         ) : null}
       </View>
 
-      <GameStartModal
-        content={
-          <WordFallModeSelector mode={answerMode} onChange={setAnswerMode} />
-        }
-        detail="Ketik jawaban sebelum setiap kata mengenai kapalmu. Huruf yang benar akan terbuka saat kamu mengetik."
-        gameKey="word-fall"
-        onDismiss={focusInputAfterModalDismiss}
-        onPrimary={resetGame}
-        onSecondary={exit}
-        tertiaryLabel={showLevelPicker ? "Selesai memilih" : "Pilih level"}
-        tertiaryDetail={showLevelPicker ? undefined : `Level ${startLevel}`}
-        onTertiary={() => setShowLevelPicker((current) => !current)}
-        tertiaryContent={
-          showLevelPicker ? (
-            <LevelSelector selected={startLevel} onSelect={setStartLevel} />
-          ) : undefined
-        }
-        title="Hujan Kata"
-        visible={phase === "ready" && !lesson}
-      />
+      {countdown ? (
+        <View pointerEvents="none" style={styles.countdown}>
+          <Animated.Text
+            entering={ZoomIn.springify().damping(12)}
+            exiting={FadeOut.duration(160)}
+            key={countdown}
+            style={[styles.countdownNumber, { color: colors.primary }]}
+          >
+            {countdown}
+          </Animated.Text>
+        </View>
+      ) : null}
       <GameModal
         detail={`Skor ${score} · Level ${level}`}
         eyebrow="Hujan kata"
@@ -1863,6 +1868,16 @@ export function WordFallScreen({
 }
 
 const styles = StyleSheet.create({
+  countdown: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countdownNumber: { fontSize: 96, fontWeight: "900" },
   screen: { flex: 1 },
   field: { flex: 1, overflow: "hidden" },
   headerStats: { alignItems: "center", flexDirection: "row", gap: 9 },

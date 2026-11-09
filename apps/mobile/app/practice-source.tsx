@@ -1,3 +1,4 @@
+import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
@@ -15,7 +16,13 @@ import {
   type LibraryItem,
 } from "../src/components/practice-hub";
 import { SymbolIcon } from "../src/components/ui/symbol-icon";
-import { isGameKey } from "../src/games/catalog";
+import { isGameKey, type GameKey } from "../src/games/catalog";
+import { gameHeroAssets } from "../src/games/game-modals";
+import {
+  LevelSelector,
+  WordFallModeSelector,
+} from "../src/games/word-fall/word-fall-screen";
+import { useWordFallSettings } from "../src/games/word-fall/word-fall-settings";
 import { authClient } from "../src/lib/auth-client";
 import { getCourseResumeItem } from "../src/lib/course-learning-path";
 import { openAssessmentEvent } from "../src/lib/navigation";
@@ -32,6 +39,61 @@ import { firstParam } from "../src/lib/route-params";
 import { usePracticeSources } from "../src/lib/use-practice-sources";
 import { useAppTheme } from "../src/providers/AppThemeProvider";
 import { withOpacity } from "../src/theme/colors";
+
+/** How to play each game the sheet starts, from its old start screen. */
+const howToPlay: Partial<Record<GameKey, string>> = {
+  cards:
+    "Lihat kata, ingat artinya, lalu balik kartunya. Kata yang belum kamu latih muncul lebih dulu.",
+  "word-fall":
+    "Ketik jawaban sebelum setiap kata mengenai kapalmu. Huruf yang benar terbuka saat kamu mengetik.",
+  sentences:
+    "Ketuk kata untuk menyusun contoh kalimat. Tanpa batas waktu, dan petunjuk bisa diminta kapan pun.",
+  match:
+    "Hubungkan setiap kata dengan artinya. Seret dari kiri, atau ketuk satu kartu di setiap sisi.",
+};
+
+/** Hujan Kata's settings, saved on the phone for the next game. */
+function WordFallOptions() {
+  const [settings, update] = useWordFallSettings();
+  const [showLevels, setShowLevels] = useState(false);
+  return (
+    <View className="gap-3 rounded-2xl bg-muted/60 p-4">
+      <WordFallModeSelector
+        mode={settings.answerMode}
+        onChange={(answerMode) => update({ answerMode })}
+      />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: showLevels }}
+        className="flex-row items-center justify-between active:opacity-60"
+        onPress={() => setShowLevels((open) => !open)}
+      >
+        <Text className="text-sm font-semibold text-foreground">
+          Level awal
+        </Text>
+        <Text className="text-sm font-bold text-primary">
+          {showLevels ? "Selesai" : `Level ${settings.startLevel}`}
+        </Text>
+      </Pressable>
+      {showLevels ? (
+        <LevelSelector
+          selected={settings.startLevel}
+          onSelect={(startLevel) => update({ startLevel })}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+/** The course, and how far the learner is with the set when known. */
+function setContext(
+  item: LibraryItem,
+  summary: { total: number; learned: number } | undefined,
+) {
+  return summary && summary.total > 0
+    ? `${item.courseTitle} · ${summary.learned}/${summary.total} kata dipelajari`
+    : `${item.courseTitle} · ${item.moduleTitle}`;
+}
 
 /** One suggestion, whatever it opens. */
 type Pick = {
@@ -231,7 +293,7 @@ export default function PracticeSourceSheet() {
       }).map((suggestion) => ({
         key: suggestion.item.key,
         title: suggestion.item.title,
-        context: `${suggestion.item.courseTitle} · ${suggestion.item.moduleTitle}`,
+        context: setContext(suggestion.item, summaries?.[suggestion.item.id]),
         label: suggestion.label,
         reason: suggestion.reason,
         action: "Main",
@@ -251,24 +313,28 @@ export default function PracticeSourceSheet() {
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <View className="flex-row items-center gap-3">
-        <GameIcon size={44} tool={tool} />
-        <View className="min-w-0 flex-1 gap-0.5">
-          <Text
-            accessibilityRole="header"
-            className="text-xl font-black text-foreground"
-            numberOfLines={1}
-          >
-            {tool.title}
-          </Text>
-          <Text className="text-sm text-muted-foreground" numberOfLines={1}>
-            {tool.subtitle}
-          </Text>
-        </View>
+      {/* The game's illustration and how to play, which its start screen
+          used to show: picking a source starts the game at once. */}
+      <View className="items-center">
+        {gameKey ? (
+          <Image
+            accessibilityIgnoresInvertColors
+            cachePolicy="memory-disk"
+            contentFit="contain"
+            priority="high"
+            source={gameHeroAssets[gameKey]}
+            style={{ width: "100%", height: 150 }}
+            transition={0}
+          />
+        ) : (
+          <View className="w-full items-start">
+            <GameIcon size={52} tool={tool} />
+          </View>
+        )}
         <Pressable
           accessibilityLabel="Tutup"
           accessibilityRole="button"
-          className="size-9 items-center justify-center rounded-full bg-muted active:opacity-60"
+          className="absolute right-0 top-0 size-9 items-center justify-center rounded-full bg-muted active:opacity-60"
           onPress={() => router.back()}
         >
           <SymbolIcon
@@ -279,6 +345,18 @@ export default function PracticeSourceSheet() {
           />
         </Pressable>
       </View>
+      <View className="gap-1">
+        <Text
+          accessibilityRole="header"
+          className="text-2xl font-black text-foreground"
+        >
+          {tool.title}
+        </Text>
+        <Text className="text-sm leading-5 text-muted-foreground">
+          {gameKey ? howToPlay[gameKey] : tool.subtitle}
+        </Text>
+      </View>
+      {gameKey === "word-fall" ? <WordFallOptions /> : null}
 
       <QueryState
         error={index.error}

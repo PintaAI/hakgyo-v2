@@ -223,15 +223,20 @@ describe("word fall engine", () => {
     }
   });
 
-  test("lets the player pick a starting level on the start screen", () => {
+  test("starts at the level picked in Latihan's source sheet", () => {
     const screenSource = readFileSync(
       new URL("./word-fall-screen.tsx", import.meta.url),
       "utf8",
     );
-    expect(screenSource).toContain("<LevelSelector");
+    const sheetSource = readFileSync(
+      new URL("../../../app/practice-source.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(sheetSource).toContain("<LevelSelector");
+    expect(sheetSource).toContain("useWordFallSettings()");
+    expect(screenSource).toContain("useWordFallSettings()");
     expect(screenSource).toContain(
       "setDestroyed(destroyedForLevel(startLevel))",
     );
-    expect(screenSource).toContain("tertiaryLabel={");
   });
 });

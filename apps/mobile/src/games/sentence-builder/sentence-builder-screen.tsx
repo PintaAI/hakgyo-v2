@@ -14,7 +14,7 @@ import { StudyAction } from "../../components/study-glass";
 import type { VocabularyAttempt } from "../../lib/use-vocabulary-progress";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
-import { GameJourneyFooter, GameModal, GameStartModal } from "../game-modals";
+import { GameJourneyFooter, GameModal } from "../game-modals";
 import { useGameExitGuard } from "../game-navigation";
 import type { GameLesson } from "../lesson";
 import { GameBackToolbar } from "../game-screens";
@@ -108,13 +108,14 @@ export function SentenceBuilderScreen({
     lesson?.onRoundComplete();
   }, [lesson, onComplete, session.phase]);
 
-  // A lesson round starts at once, without the start sheet.
-  const lessonStarted = useRef(false);
+  // Starts at once: Latihan's source sheet (or the lesson) already showed
+  // what the game is.
+  const started = useRef(false);
   useEffect(() => {
-    if (!lesson || lessonStarted.current) return;
-    lessonStarted.current = true;
+    if (started.current) return;
+    started.current = true;
     start();
-  }, [lesson, start]);
+  }, [start]);
 
   useEffect(() => {
     if (!challenge) return;
@@ -423,21 +424,6 @@ export function SentenceBuilderScreen({
         </ScrollView>
       ) : null}
 
-      <GameStartModal
-        gameKey="sentences"
-        visible={session.phase === "intro" && !lesson}
-        title="Susun makna"
-        detail="Susun kata-kata menjadi contoh kalimat dari kosakata yang kamu pelajari."
-        content={
-          <Text style={[styles.modalCopy, { color: colors.mutedForeground }]}>
-            Tanpa batas waktu{"\n"}Ketuk kata untuk menyusun. Kamu bisa
-            melepasnya atau meminta petunjuk kapan pun.
-          </Text>
-        }
-        primaryLabel="Mulai menyusun"
-        onPrimary={start}
-        onSecondary={exit}
-      />
       <GameModal
         gameKey="sentences"
         visible={session.phase === "complete" && !lesson}
