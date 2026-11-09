@@ -14,15 +14,9 @@ import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
 import { openCourseItem } from "../../lib/navigation";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../providers/MobileSyncProvider";
-import {
-  hangeulCompletionBadgeCopy,
-  isHangeulShownAgain,
-} from "../../lib/hangeul-visibility";
-import {
-  readCourseOutline,
-  useCourseOutline,
-  useSyncIndex,
-} from "../../sync/hooks";
+import { hangeulCompletionBadgeCopy } from "../../lib/hangeul-visibility";
+import { useHangeulBadgeState } from "../../lib/use-cohort-archive";
+import { readCourseOutline, useCourseOutline } from "../../sync/hooks";
 import { HangeulMasteryBadge } from "../hangeul-mastery-medal";
 import { Action, Eyebrow, ProgressBar } from "../learning-ui";
 import { StudyAction } from "../study-glass";
@@ -127,7 +121,6 @@ export function useLearningContinuation({
   const queryClient = useQueryClient();
   const outline = useCourseOutline(courseId);
   const { activeOrganizationId } = useAppTheme();
-  const index = useSyncIndex(activeOrganizationId);
   const { completeContent } = useMobileSyncActions();
   const baseline = useRef(initialOutline);
   const inFlight = useRef(false);
@@ -295,8 +288,6 @@ export function useLearningContinuation({
     finishingModule,
     assessmentIncomplete,
     outlineFailed: outline.isError,
-    /** The learner index, for the Hangeul Mastery badge. */
-    index: index.data,
   };
 }
 
@@ -406,8 +397,9 @@ export function LearningFooterView({
     finishingModule,
     assessmentIncomplete,
     outlineFailed,
-    index,
   } = learning;
+  // A finished Hangeul Mastery: claim it on Belajar, then Diarsipkan.
+  const hangeulBadge = useHangeulBadgeState();
 
   const continueAction = (
     <StudyAction
@@ -599,9 +591,7 @@ export function LearningFooterView({
       </View>
 
       {milestone.courseCompleted && courseId === HANGEUL_MASTERY_COURSE_ID ? (
-        <HangeulMasteryBadge
-          {...hangeulCompletionBadgeCopy(isHangeulShownAgain(index))}
-        />
+        <HangeulMasteryBadge {...hangeulCompletionBadgeCopy(hangeulBadge)} />
       ) : null}
 
       {milestone.unlockedModuleTitle || milestone.nextItem ? (

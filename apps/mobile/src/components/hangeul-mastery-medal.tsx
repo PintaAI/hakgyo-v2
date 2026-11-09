@@ -6,7 +6,7 @@ import { withOpacity } from "../theme/colors";
 
 // A fixed gold, the same in light and dark mode, so the medal reads as an
 // award rather than another brand-coloured control.
-const GOLD = {
+export const GOLD = {
   rim: "#B7791F",
   face: "#F2C14E",
   ring: "#FFF4D6",
@@ -14,8 +14,35 @@ const GOLD = {
   glow: "#D69E2E",
 } as const;
 
+/** The medal before its badge is claimed: the same disc in silver-grey. */
+const UNCLAIMED = {
+  rim: "#8A9099",
+  face: "#C9CED6",
+  ring: "#EEF0F3",
+  glyph: "#4B525C",
+  glow: "#8A9099",
+} as const;
+
 /** The Hangeul Mastery medal: a gold disc with 한 inside a fine ring. */
 export function HangeulMasteryMedal({ size = 56 }: { size?: number }) {
+  return <CourseMedal size={size} glyph="한" />;
+}
+
+/**
+ * A finished curriculum's medal: the same gold disc, with the first letter
+ * of the course (or 한 for Hangeul Mastery).
+ */
+export function CourseMedal({
+  size = 56,
+  glyph,
+  unclaimed = false,
+}: {
+  size?: number;
+  glyph: string;
+  /** Grey, for a badge earned but not claimed yet. */
+  unclaimed?: boolean;
+}) {
+  const palette = unclaimed ? UNCLAIMED : GOLD;
   const rim = Math.max(2, Math.round(size / 18));
   const inset = Math.max(3, Math.round(size / 9));
   return (
@@ -26,9 +53,9 @@ export function HangeulMasteryMedal({ size = 56 }: { size?: number }) {
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: GOLD.rim,
+        backgroundColor: palette.rim,
         padding: rim,
-        shadowColor: GOLD.glow,
+        shadowColor: palette.glow,
         shadowOpacity: 0.45,
         shadowRadius: size / 6,
         shadowOffset: { width: 0, height: size / 14 },
@@ -37,7 +64,7 @@ export function HangeulMasteryMedal({ size = 56 }: { size?: number }) {
     >
       <View
         className="flex-1 items-center justify-center"
-        style={{ borderRadius: size / 2, backgroundColor: GOLD.face }}
+        style={{ borderRadius: size / 2, backgroundColor: palette.face }}
       >
         <View
           pointerEvents="none"
@@ -49,19 +76,19 @@ export function HangeulMasteryMedal({ size = 56 }: { size?: number }) {
             left: inset - rim,
             borderRadius: size / 2,
             borderWidth: 1,
-            borderColor: withOpacity(GOLD.ring, 0.85),
+            borderColor: withOpacity(palette.ring, 0.85),
           }}
         />
         <Text
           allowFontScaling={false}
           style={{
-            color: GOLD.glyph,
+            color: palette.glyph,
             fontSize: Math.round(size * 0.44),
             lineHeight: Math.round(size * 0.52),
             fontWeight: "900",
           }}
         >
-          한
+          {glyph}
         </Text>
       </View>
     </View>

@@ -65,7 +65,7 @@ type HubProps = {
   outlines: Record<string, CourseOutline>;
   onResourceFocus?: (offsetY: number) => void;
   preselectedSource?: PreselectedVocabularySource;
-  /** Leaves out the "Penguasaan Hangeul" games once Hangeul is mastered. */
+  /** Leaves out the "Penguasaan Hangeul" games while Hangeul is archived. */
   hangeulHidden?: boolean;
 };
 

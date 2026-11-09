@@ -1,5 +1,6 @@
 import {
   memo,
+  type ReactNode,
   useCallback,
   useLayoutEffect,
   useMemo,
@@ -71,6 +72,9 @@ export const CourseOutlineList = memo(function CourseOutlineList({
   showHeader = true,
   showActiveState = true,
   collapsible = false,
+  hideCompleted = false,
+  onShowCompleted,
+  completionSlot,
   offlineMedia,
 }: {
   courseId: string;
@@ -88,6 +92,18 @@ export const CourseOutlineList = memo(function CourseOutlineList({
    * (or next) activity open, so a long curriculum mounts a few rows.
    */
   collapsible?: boolean;
+  /**
+   * Leaves out finished chapters and finished activities, so the list shows
+   * what is left; finished chapters fold into one row that calls
+   * `onShowCompleted`.
+   */
+  hideCompleted?: boolean;
+  onShowCompleted?: () => void;
+  /**
+   * With `hideCompleted`, shown in place of the chapters once every one is
+   * finished (Belajar's badge claim).
+   */
+  completionSlot?: ReactNode;
   /** Shows each open chapter's offline state and a download button. */
   offlineMedia?: CourseOfflineMedia | null;
 }) {
@@ -138,9 +154,9 @@ export const CourseOutlineList = memo(function CourseOutlineList({
 
   // Chapters the learner folded or unfolded against the default, which keeps
   // following the current activity as it moves on.
-  const [toggledModuleIds, setToggledModuleIds] = useState<
-    ReadonlySet<string>
-  >(() => new Set());
+  const [toggledModuleIds, setToggledModuleIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const toggleModule = useCallback((moduleId: string) => {
     setToggledModuleIds((current) => {
       const next = new Set(current);
@@ -157,6 +173,14 @@ export const CourseOutlineList = memo(function CourseOutlineList({
           )?.id
         : undefined,
     [course, focusItemId],
+  );
+
+  const shownModules = useMemo(
+    () =>
+      (course?.modules ?? []).flatMap((module, moduleIndex) =>
+        hideCompleted && module.isCompleted ? [] : [{ module, moduleIndex }],
+      ),
+    [course, hideCompleted],
   );
 
   if (!course) {
@@ -190,11 +214,13 @@ export const CourseOutlineList = memo(function CourseOutlineList({
           Bab yang dipublikasikan akan muncul di sini.
         </EmptyState>
       ) : (
-        course.modules.map((module, moduleIndex) => (
+        shownModules.map(({ module, moduleIndex }, position) => (
           <OutlineModuleSection
             key={module.id}
             module={module}
             moduleIndex={moduleIndex}
+            separated={position > 0}
+            hideCompleted={hideCompleted}
             unread={unreadModuleIds.has(module.id)}
             open={
               !collapsible ||
@@ -212,13 +238,71 @@ export const CourseOutlineList = memo(function CourseOutlineList({
           />
         ))
       )}
+      {hideCompleted &&
+      course.modules.length > 0 &&
+      shownModules.length === 0 &&
+      completionSlot
+        ? completionSlot
+        : null}
+      {course.modules.length > shownModules.length ? (
+        <FinishedChaptersRow
+          count={course.modules.length - shownModules.length}
+          separated={shownModules.length > 0 || !!completionSlot}
+          onPress={onShowCompleted}
+        />
+      ) : null}
     </View>
   );
 });
 
+function FinishedChaptersRow({
+  count,
+  separated,
+  onPress,
+}: {
+  count: number;
+  separated: boolean;
+  onPress?: () => void;
+}) {
+  const { colors } = useAppTheme();
+  return (
+    <Pressable
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityHint={
+        onPress ? "Lihat aktivitas yang sudah selesai" : undefined
+      }
+      className={`flex-row items-center gap-3 ${separated ? "border-t border-border pt-4" : ""} ${onPress ? "active:opacity-60" : ""}`}
+      disabled={!onPress}
+      onPress={onPress}
+    >
+      <View className="size-9 items-center justify-center rounded-md border border-primary bg-primary">
+        <SymbolIcon
+          name="checkmark"
+          size={14}
+          weight="bold"
+          tintColor={colors.primaryForeground}
+        />
+      </View>
+      <Text className="min-w-0 flex-1 text-base font-bold text-foreground">
+        {separated ? `${count} bab selesai` : "Semua bab selesai"}
+      </Text>
+      {onPress ? (
+        <SymbolIcon
+          name="chevron.right"
+          size={14}
+          weight="semibold"
+          tintColor={colors.mutedForeground}
+        />
+      ) : null}
+    </Pressable>
+  );
+}
+
 const OutlineModuleSection = memo(function OutlineModuleSection({
   module,
   moduleIndex,
+  separated,
+  hideCompleted,
   unread,
   open,
   collapsible,
@@ -233,6 +317,10 @@ const OutlineModuleSection = memo(function OutlineModuleSection({
 }: {
   module: OutlineModule;
   moduleIndex: number;
+  /** Not the first chapter shown: draws the divider above. */
+  separated: boolean;
+  /** Lists only the chapter's unfinished activities. */
+  hideCompleted: boolean;
   unread: boolean;
   open: boolean;
   collapsible: boolean;
@@ -250,12 +338,14 @@ const OutlineModuleSection = memo(function OutlineModuleSection({
   const locked = module.access === "LOCKED";
   const hasSubtitle = locked || !!module.description;
   const completedItems = module.items.filter((item) => item.isCompleted).length;
-  const separator =
-    moduleIndex > 0
-      ? collapsible
-        ? "border-t border-border pt-4"
-        : "border-t border-border pt-6"
-      : "";
+  const items = hideCompleted
+    ? module.items.filter((item) => !item.isCompleted)
+    : module.items;
+  const separator = separated
+    ? collapsible
+      ? "border-t border-border pt-4"
+      : "border-t border-border pt-6"
+    : "";
 
   const header = (
     <View
@@ -346,14 +436,14 @@ const OutlineModuleSection = memo(function OutlineModuleSection({
         header
       )}
 
-      {!open ? null : module.items.length === 0 ? (
+      {!open ? null : items.length === 0 ? (
         <Text className="py-5 pl-12 text-sm text-muted-foreground">
           Belum ada aktivitas di bab ini.
         </Text>
       ) : (
         <View className="relative ml-3 mt-6">
           <View className="absolute -left-1 -top-6 h-10 w-2 rounded-bl-lg border-b-2 border-l-2 border-border" />
-          {module.items.map((item, itemIndex) => (
+          {items.map((item, itemIndex) => (
             <OutlineItemRow
               key={item.id}
               item={item}
@@ -364,7 +454,7 @@ const OutlineModuleSection = memo(function OutlineModuleSection({
                   ? attemptByItem.get(item.id)
                   : undefined
               }
-              isLast={itemIndex === module.items.length - 1}
+              isLast={itemIndex === items.length - 1}
               isCurrent={item.id === currentItemId}
               isNext={item.id === resumeItemId}
               showActiveState={showActiveState}

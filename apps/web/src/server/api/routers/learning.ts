@@ -91,17 +91,18 @@ export function recordVocabularyAttemptsForUser(
 
 /**
  * The learner's classes on the Belajar screen: running classes and the Kelas
- * Mandiri they study in, without Hangeul Mastery once they hid it.
+ * Mandiri they study in, without Hangeul Mastery once they hid it (unless
+ * `includeHiddenHangeul`: the mobile app files it under Diarsipkan itself).
  */
 async function myClassCohortWhere(
   ctx: { db: typeof db; actorUserId: string },
   organizationId: string | undefined,
   now: Date,
+  includeHiddenHangeul = false,
 ) {
-  const { hangeulHidden } = await getRequestHangeulVisibility(
-    ctx.db,
-    ctx.actorUserId,
-  );
+  const { hangeulHidden } = includeHiddenHangeul
+    ? { hangeulHidden: false }
+    : await getRequestHangeulVisibility(ctx.db, ctx.actorUserId);
   return {
     organizationId,
     course: { status: "PUBLISHED" },
@@ -112,6 +113,14 @@ async function myClassCohortWhere(
     }),
   } satisfies Prisma.CohortWhereInput;
 }
+
+const myClassCohortsInput = z
+  .object({
+    organizationId: z.string().min(1).optional(),
+    /** Keeps a mastered, hidden Hangeul Mastery in the list (mobile). */
+    includeHiddenHangeul: z.boolean().optional(),
+  })
+  .optional();
 
 const myClassCohortOrder = [
   { startsAt: "asc" },
@@ -135,13 +144,16 @@ export const learningRouter = createTRPCRouter({
   // Enrollment-scoped student view. Staff membership alone must not populate
   // the mobile learning experience or expose meeting links.
   listMyCohorts: protectedProcedure
-    .input(
-      z.object({ organizationId: z.string().min(1).optional() }).optional(),
-    )
+    .input(myClassCohortsInput)
     .query(async ({ ctx, input }) => {
       const now = new Date();
       const found = await ctx.db.cohort.findMany({
-        where: await myClassCohortWhere(ctx, input?.organizationId, now),
+        where: await myClassCohortWhere(
+          ctx,
+          input?.organizationId,
+          now,
+          input?.includeHiddenHangeul,
+        ),
         orderBy: myClassCohortOrder,
         select: {
           id: true,
@@ -570,14 +582,13 @@ export const learningRouter = createTRPCRouter({
   // Learn tab. Derived from existing progress + assessment evidence (no new
   // schema): completed materials/vocabulary sets + passed assessments.
   listMyCohortMilestones: protectedProcedure
-    .input(
-      z.object({ organizationId: z.string().min(1).optional() }).optional(),
-    )
+    .input(myClassCohortsInput)
     .query(async ({ ctx, input }) => {
       const cohortWhere = await myClassCohortWhere(
         ctx,
         input?.organizationId,
         new Date(),
+        input?.includeHiddenHangeul,
       );
       // Cohorts of the same course share one course tree load.
       const [cohorts, courses] = await Promise.all([

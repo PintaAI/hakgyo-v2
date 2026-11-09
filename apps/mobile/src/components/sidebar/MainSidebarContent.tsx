@@ -4,11 +4,15 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import {
-  isHangeulHidden,
-  withoutHiddenHangeulCourse,
+  isHangeulMastered,
+  withoutArchivedHangeulCourse,
 } from "../../lib/hangeul-visibility";
 import { requestLearnCohortFocus } from "../../lib/learn-cohort-focus";
 import { openAssessmentEvent } from "../../lib/navigation";
+import {
+  useCohortArchive,
+  useHangeulArchived,
+} from "../../lib/use-cohort-archive";
 import { useSyncIndex } from "../../sync/hooks";
 import {
   countUnreadIndicators,
@@ -150,6 +154,8 @@ export function MainSidebarContent({
 
   // Local learner index (events, cohorts, attempts, courses).
   const dashboard = useSyncIndex(activeOrganizationId);
+  const archive = useCohortArchive(now);
+  const hangeulArchived = useHangeulArchived(isHangeulMastered(dashboard.data));
 
   const upcomingEvents = (dashboard.data?.events ?? [])
     .filter((event) => !isStaleClosedOnDemandAssessment(event, now))
@@ -179,14 +185,18 @@ export function MainSidebarContent({
     .filter((attempt) => attempt.status === "GRADED")
     .slice(0, 3);
 
-  const cohorts = dashboard.data?.cohorts ?? [];
+  const allCohorts = dashboard.data?.cohorts ?? [];
+  // Classes under Diarsipkan on Belajar leave the list too.
+  const cohorts = allCohorts.filter(
+    (cohort) => !archive.states.get(cohort.id)?.archived,
+  );
   // Cohort cards on Belajar already cover their course; only direct
   // enrollments (Hangeul foundation, open or invited courses) need a row.
-  // Hangeul Mastery leaves once mastered, unless shown again in Pengaturan.
-  const cohortCourseIds = new Set(cohorts.map((cohort) => cohort.course.id));
-  const standaloneCourses = withoutHiddenHangeulCourse(
+  // Hangeul Mastery leaves while it is archived.
+  const cohortCourseIds = new Set(allCohorts.map((cohort) => cohort.course.id));
+  const standaloneCourses = withoutArchivedHangeulCourse(
     dashboard.data?.courses ?? [],
-    isHangeulHidden(dashboard.data),
+    hangeulArchived,
   ).filter((course) => !cohortCourseIds.has(course.id));
 
   return (

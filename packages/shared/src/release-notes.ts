@@ -31,6 +31,18 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    id: "2026-11-09",
+    version: "1.0.1",
+    date: "2026-11-09",
+    title: "Lencana kurikulum dan kelas selesai",
+    items: [
+      "Daftar Bab di kartu kelas sekarang hanya menampilkan materi yang belum selesai.",
+      "Tuntaskan semua bab, lalu klaim lencana kurikulumnya di akhir daftar Bab.",
+      "Lencana yang sudah diklaim tampil di Profil.",
+      "Kelas yang sudah selesai pindah ke Diarsipkan di bawah kartu kelas. Tekan lama untuk menampilkannya lagi.",
+    ],
+  },
+  {
     id: "2026-11-06.2",
     version: "1.0.1",
     date: "2026-11-06",

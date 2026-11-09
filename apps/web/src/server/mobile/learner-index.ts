@@ -224,7 +224,10 @@ export async function buildLearnerIndex(
   const gamification = gamificationRouter.createCaller(callerCtx);
 
   const coursesPromise = learning.listMyCourses(scope);
-  const cohortsPromise = learning.listMyCohorts(scope);
+  // The app files a mastered Hangeul Mastery under Diarsipkan on Belajar
+  // itself, so it gets the class even when the web would hide it.
+  const cohortScope = { ...scope, includeHiddenHangeul: true };
+  const cohortsPromise = learning.listMyCohorts(cohortScope);
   // Both outline views of every enrolled course from one batched load: the
   // default view drives sidebar indicators, the learner view drives practice.
   const outlineViewsPromise = Promise.all([
@@ -312,7 +315,7 @@ export async function buildLearnerIndex(
       ...scope,
       includeScheduled: input.includeScheduledEvents ?? false,
     }),
-    learning.listMyCohortMilestones(scope),
+    learning.listMyCohortMilestones(cohortScope),
     attemptsPromise,
     gamification.getMySummary(),
     practicePromise,
@@ -323,7 +326,7 @@ export async function buildLearnerIndex(
       where: { userId: actorUserId, expiresAt: { gt: now } },
       select: { expiresAt: true },
     }),
-    // Shares the lookup listMyCohorts and listMyCohortMilestones make.
+    // Still sent for builds that hid Hangeul from this flag (see below).
     runWithRequestCache(callerCtx.requestCache, () =>
       getRequestHangeulVisibility(ctx.db, actorUserId),
     ),

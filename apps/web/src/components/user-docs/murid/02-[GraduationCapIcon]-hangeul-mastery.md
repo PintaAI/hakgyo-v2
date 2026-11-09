@@ -57,11 +57,12 @@ Setelah semua materi, kosakata, dan kuis selesai, termasuk ujian akhir, atau set
 
 Bersamaan dengan lencana, kamu otomatis masuk ke kelas lanjutan **Pola Bahasa**: kurikulum **Indonesia → Korea** dan **Korea → Indonesia**. Keduanya muncul di **Kurikulum saya** dan di tab **Belajar** di aplikasi.
 
-Setelah kamu mendapat lencana, Hangeul Mastery dan bagian **Penguasaan Hangeul** di tab **Latihan** disembunyikan supaya menu belajarmu lebih rapi. Di **Cari**, materi, kuis, dan permainan Hangeul juga tidak muncul lagi. Kosakatanya tetap muncul di latihan harian dan tetap bisa kamu cari.
+Setelah kamu mendapat lencana, Hangeul Mastery disingkirkan supaya menu belajarmu lebih rapi. Kosakatanya tetap muncul di latihan harian dan tetap bisa kamu cari.
+
+- **Di situs web:** Hangeul Mastery disembunyikan dari menu belajar.
+- **Di aplikasi:** klaim lencananya di akhir daftar **Bab** pada kartu Hangeul Mastery di tab **Belajar**. Setelah itu kartunya pindah ke **Diarsipkan**. Bagian **Penguasaan Hangeul** di tab **Latihan** juga disembunyikan, dan di **Cari** materi, kuis, dan permainan Hangeul tidak muncul lagi.
 
 ## Menampilkan lagi Hangeul Mastery
 
-- **Di situs web:** klik namamu di menu samping, pilih **Pengaturan**, buka **Pembelajaran**, lalu nyalakan **Tampilkan Hangeul Mastery**.
-- **Di aplikasi:** buka **Profil**, pilih **Pengaturan**, lalu nyalakan **Tampilkan Hangeul Mastery**.
-
-Pilihan ini hanya muncul setelah kamu mendapat lencananya. Matikan lagi kapan saja untuk menyembunyikannya.
+- **Di situs web:** klik namamu di menu samping, pilih **Pengaturan**, buka **Pembelajaran**, lalu nyalakan **Tampilkan Hangeul Mastery**. Pilihan ini hanya muncul setelah kamu mendapat lencananya. Matikan lagi kapan saja untuk menyembunyikannya.
+- **Di aplikasi:** buka tab **Belajar**, ketuk **Diarsipkan**, tekan lama **Hangeul Mastery**, lalu pilih **Tampilkan lagi**. Untuk menyingkirkannya lagi, ketuk tombol **⋯** di kartunya, lalu pilih **Arsipkan kelas**. Baca [Aplikasi Ponsel](/docs/murid/aplikasi-ponsel) untuk penjelasan **Diarsipkan**.

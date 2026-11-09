@@ -128,4 +128,15 @@ describe("classes on Belajar", () => {
       JSON.stringify(shown.findCohorts.mock.calls[0]?.[0].where),
     ).not.toContain(HANGEUL_MASTERY_COURSE_ID);
   });
+
+  test("keeps a hidden Hangeul Kelas Mandiri for the mobile archive", async () => {
+    const { caller, findCohorts, readUser } = createCaller([], {
+      hangeulMastered: true,
+    });
+    await caller.listMyCohorts({ includeHiddenHangeul: true });
+    expect(JSON.stringify(findCohorts.mock.calls[0]?.[0].where)).not.toContain(
+      HANGEUL_MASTERY_COURSE_ID,
+    );
+    expect(readUser).not.toHaveBeenCalled();
+  });
 });

@@ -1,31 +1,29 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  isHangeulHidden,
-  isHangeulHiddenInIndexes,
   hangeulCompletionBadgeCopy,
-  isHangeulShownAgain,
+  isHangeulMastered,
+  isHangeulMasteredInIndexes,
   isHiddenHangeulDocument,
-  withHangeulPreference,
-  withoutHiddenHangeulCourse,
+  withoutArchivedHangeulCourse,
 } from "./hangeul-visibility";
 import { achievementLabel } from "./study";
 
 const HANGEUL = "hakgyo-foundation-hangeul-mastery";
 
 describe("Hangeul visibility", () => {
-  test("indexes cached before the field existed are not hidden", () => {
-    expect(isHangeulHidden(undefined)).toBe(false);
-    expect(isHangeulHidden({})).toBe(false);
-    expect(isHangeulHidden({ hangeul: { mastered: true, hidden: true } })).toBe(
-      true,
-    );
+  test("indexes cached before the field existed are not mastered", () => {
+    expect(isHangeulMastered(undefined)).toBe(false);
+    expect(isHangeulMastered({})).toBe(false);
+    expect(
+      isHangeulMastered({ hangeul: { mastered: true, hidden: true } }),
+    ).toBe(true);
   });
 
-  test("filters only the Hangeul Mastery course, only while hidden", () => {
+  test("filters only the Hangeul Mastery course, only while archived", () => {
     const courses = [{ id: HANGEUL }, { id: "course-2" }];
-    expect(withoutHiddenHangeulCourse(courses, false)).toEqual(courses);
-    expect(withoutHiddenHangeulCourse(courses, true)).toEqual([
+    expect(withoutArchivedHangeulCourse(courses, false)).toEqual(courses);
+    expect(withoutArchivedHangeulCourse(courses, true)).toEqual([
       { id: "course-2" },
     ]);
   });
@@ -90,49 +88,25 @@ describe("Hangeul visibility", () => {
     ).toBe(false);
   });
 
-  test("the badge copy says whether the course stays listed", () => {
-    expect(
-      isHangeulShownAgain({ hangeul: { mastered: true, hidden: false } }),
-    ).toBe(true);
-    expect(
-      isHangeulShownAgain({ hangeul: { mastered: true, hidden: true } }),
-    ).toBe(false);
-    expect(isHangeulShownAgain(undefined)).toBe(false);
-    expect(hangeulCompletionBadgeCopy(false).eyebrow).toBe("Lencana baru");
-    expect(hangeulCompletionBadgeCopy(true).detail).toContain("tetap tampil");
+  test("the badge copy says whether the class moved to Diarsipkan", () => {
+    expect(hangeulCompletionBadgeCopy("unclaimed").detail).toContain("Klaim");
+    expect(hangeulCompletionBadgeCopy("archived").detail).toContain(
+      "Diarsipkan",
+    );
+    expect(hangeulCompletionBadgeCopy("shown").detail).toContain(
+      "tetap tampil",
+    );
   });
 
-  test("the newest index that carries the flag decides", () => {
+  test("any stored index can say mastered", () => {
     expect(
-      isHangeulHiddenInIndexes([
-        {
-          generatedAt: "2026-10-22T01:00:00.000Z",
-          hangeul: { mastered: true, hidden: true },
-        },
-        {
-          generatedAt: "2026-10-22T02:00:00.000Z",
-          hangeul: { mastered: true, hidden: false },
-        },
-        { generatedAt: "2026-10-22T03:00:00.000Z" },
+      isHangeulMasteredInIndexes([
+        { hangeul: { mastered: false, hidden: false } },
+        { hangeul: { mastered: true, hidden: true } },
+        {},
       ]),
-    ).toBe(false);
-    expect(isHangeulHiddenInIndexes([])).toBe(false);
-  });
-
-  test("applies the switch optimistically, only after mastery", () => {
-    const mastered = { courses: [], hangeul: { mastered: true, hidden: true } };
-    expect(withHangeulPreference(mastered, true).hangeul).toEqual({
-      mastered: true,
-      hidden: false,
-    });
-    expect(withHangeulPreference(mastered, false).hangeul).toEqual({
-      mastered: true,
-      hidden: true,
-    });
-    expect(withHangeulPreference({ courses: [] }, false).hangeul).toEqual({
-      mastered: false,
-      hidden: false,
-    });
+    ).toBe(true);
+    expect(isHangeulMasteredInIndexes([])).toBe(false);
   });
 
   test("labels the achievement", () => {
