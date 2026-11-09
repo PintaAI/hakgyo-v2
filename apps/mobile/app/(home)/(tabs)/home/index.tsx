@@ -5,6 +5,7 @@ import { Gesture } from "react-native-gesture-handler";
 import { HomeSkeleton } from "../../../../src/components/home-skeleton";
 import { Avatar, QueryState } from "../../../../src/components/learning-ui";
 import { TabScreen } from "../../../../src/components/tab-screen";
+import { TodayAgenda } from "../../../../src/components/today-agenda";
 import { WeeklyStreak } from "../../../../src/components/weekly-streak";
 import { authClient } from "../../../../src/lib/auth-client";
 import { TodayVocabularyPractice } from "../../../../src/components/today-vocabulary-practice";
@@ -82,6 +83,8 @@ export default function HomeTab() {
           <TourTarget id="home.streak">
             <WeeklyStreak summary={dashboard.data.gamification} />
           </TourTarget>
+          {/* Meetings and class assessments coming up, one tap away. */}
+          <TodayAgenda index={dashboard.data} />
           {session && activeOrganizationId ? (
             <TourTarget id="home.vocabulary">
               <TodayVocabularyPractice

@@ -15,14 +15,16 @@ Gunakan akun yang sama dengan di situs web supaya kelasmu muncul.
 
 | Tab | Isinya |
 |---|---|
-| **Hari Ini** | Streak, kosakata hari ini, dan soal harian |
+| **Hari Ini** | Streak, agenda kelas, kosakata hari ini, dan soal harian |
 | **Belajar** | Kelas, materi, dan pembaruan terbaru |
 | **Latihan** | Kartu kosakata, permainan Hangeul, serta latihan dan tryout |
 | **Cari** | Pencarian materi, kosakata, dan soal dari semua kurikulummu |
 
 **Profil** berisi XP, pencapaian, pengaturan, dan bantuan. Bukalah dari tombol menu di kiri atas, dari namamu di tab **Hari Ini**, atau dari tombol pengaturan di kanan atas.
 
-Di tab **Hari Ini**, **Soal harian** berisi lima soal acak dari kurikulummu. Geser ke kiri atau kanan untuk pindah soal, atau pakai panah di bawah soal. Tombol **Daftar soal** di antara panah membuka semua nomor soal. Titik di atas soal menunjukkan keadaan setiap soal: hijau jawabanmu benar, merah salah, kuning sudah dibuka tapi belum dijawab, dan abu-abu belum dibuka. Titik yang memanjang adalah soal yang sedang tampil. Ketuk titik-titik itu untuk membuka daftar soal, yang memakai warna yang sama. Setelah kamu menjawab, pembahasan muncul di bawah soal. Matikan **Tampilkan penjelasan** kalau kamu tidak ingin melihatnya; pilihanmu tersimpan di ponsel untuk soal-soal berikutnya. Setelah soal terakhir, ada kartu **Ringkasan** yang menunjukkan berapa soal yang benar. Tekan **Coba lagi** (ikon dadu) di kartu itu untuk mengambil lima soal acak yang baru. Jawabanmu dinilai, tapi nilai, percobaan, dan XP tidak berubah.
+Di tab **Hari Ini**, **Agenda** di bawah streak menampilkan pertemuan kelas dan latihan atau tryout yang perlu kamu kerjakan dalam 7 hari ke depan, yang paling mendesak di atas. Pertemuan yang sedang live bertanda merah; ketuk **Gabung** untuk langsung masuk. Ketuk **Mulai** atau **Lanjutkan** untuk membuka latihan atau tryout. Agenda tidak muncul kalau tidak ada yang akan datang.
+
+Di tab **Hari Ini**, **Soal harian** berisi lima soal acak dari kurikulummu. Geser ke kiri atau kanan untuk pindah soal, atau pakai panah di bawah soal. Tombol **Daftar soal** di antara panah membuka semua nomor soal. Titik di atas soal menunjukkan keadaan setiap soal: hijau jawabanmu benar, merah salah, kuning sudah dibuka tapi belum dijawab, dan abu-abu belum dibuka. Titik yang memanjang adalah soal yang sedang tampil. Ketuk titik-titik itu untuk membuka daftar soal, yang memakai warna yang sama. Setelah kamu menjawab, jawaban yang benar berwarna hijau, dan pilihanmu berwarna merah kalau salah. Ketuk **Lihat penjelasan** untuk membaca pembahasannya, atau **Sembunyikan penjelasan** untuk menutupnya; pilihanmu tersimpan di ponsel untuk soal-soal berikutnya. Ketuk **Lanjut** untuk ke soal yang belum dijawab. Setelah soal terakhir, ada kartu **Ringkasan** yang menunjukkan berapa soal yang benar. Tekan **Coba lagi** (ikon dadu) di kartu itu untuk mengambil lima soal acak yang baru. Jawabanmu dinilai, tapi nilai, percobaan, dan XP tidak berubah.
 
 Di tab **Latihan**, ketuk sebuah permainan, misalnya **Kartu** atau **Hujan Kata**. Sebuah lembar terbuka dari bawah layar. Di bagian **Untukmu**, Hakgyo memilihkan satu set kosakata beserta alasannya, lalu dua **Pilihan lain**. Urutannya:
 
@@ -33,6 +35,8 @@ Di tab **Latihan**, ketuk sebuah permainan, misalnya **Kartu** atau **Hujan Kata
 5. Jika semua sudah selesai, set yang paling lama tidak kamu latih.
 
 Bagian atas lembar menjelaskan cara bermain permainan itu. Untuk **Hujan Kata**, pilih juga bahasa jawaban dan **Level awal** di sana; pilihanmu tersimpan untuk permainan berikutnya. Ketuk **Main** untuk langsung bermain. Permainan dimulai tanpa layar pembuka; Hujan Kata menghitung mundur 3-2-1 dulu sebelum kata mulai jatuh. Di bawahnya, **Rekomendasi** berisi dua pilihan lain. Untuk memilih sendiri, pilih **Cari set** (untuk Quiz: **Cari tugas**), lalu cari atau saring daftarnya. Untuk **Quiz**, Hakgyo lebih dulu memilihkan latihan atau tryout kelas yang sedang dibuka, lalu quiz yang belum selesai atau belum lulus. Geser lembarnya ke bawah untuk menutupnya.
+
+Sebelum kamu mengetik di tab **Cari**, muncul **Pencarian terakhir** dan **Terakhir dibuka**. Ketuk sebuah pencarian untuk mencarinya lagi, atau tekan lama untuk menghapusnya; **Hapus** menghapus semua riwayat pencarian. Riwayat ini hanya tersimpan di ponselmu dan hanya menyimpan 8 pencarian dan 10 hasil terakhir.
 
 Jika kamu ikut lebih dari satu kelas, geser kartu kelas di tab **Belajar** ke kiri atau kanan. Titik-titik di atas menu bawah menunjukkan kelas yang sedang tampil.
 

@@ -1,8 +1,8 @@
 import { Children, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
-import { Card } from "./ui/card";
 import { SymbolIcon } from "./ui/symbol-icon";
 import { useAppTheme } from "../providers/AppThemeProvider";
+import { QUESTION_DONE_COLOR } from "../lib/question-colors";
 import { withOpacity } from "../theme/colors";
 
 // EPS-TOPIK numbers picture options ①–④.
@@ -57,21 +57,29 @@ export function AssessmentOption({
       : wrong
         ? "Jawaban kamu · Salah"
         : undefined;
-  const emphasized = selected || correct === true;
-  const tone = wrong ? colors.destructive : colors.primary;
+  // Graded: green for the right answer (the colour of a right question in
+  // the status dots), red for a wrong choice. Before grading the choice
+  // takes the brand colour.
+  const right = correct === true;
+  const tone = wrong
+    ? colors.destructive
+    : right
+      ? QUESTION_DONE_COLOR
+      : colors.primary;
+  const emphasized = selected || right;
+  const badgeColor = wrong || right || selected ? tone : undefined;
   const body = (
     <View className={tile ? "gap-2" : "flex-row items-center gap-4"}>
       <View
-        className={`size-8 items-center justify-center rounded-xl border ${wrong ? "border-destructive bg-destructive" : selected || correct === true ? "border-primary bg-primary" : "border-border bg-muted"}`}
+        className={`size-8 items-center justify-center rounded-xl ${badgeColor ? "" : "border border-border bg-muted"}`}
+        style={badgeColor ? { backgroundColor: badgeColor } : undefined}
       >
-        {correct === true || wrong ? (
+        {right || wrong ? (
           <SymbolIcon
             name={wrong ? "xmark" : "checkmark"}
             size={16}
             weight="bold"
-            tintColor={
-              wrong ? colors.destructiveForeground : colors.primaryForeground
-            }
+            tintColor="#ffffff"
           />
         ) : (
           <Text
@@ -85,9 +93,7 @@ export function AssessmentOption({
       </View>
       <View className={tile ? "gap-2" : "min-w-0 flex-1 gap-2"}>
         {label ? (
-          <Text
-            className={`text-xs font-bold ${wrong ? "text-destructive" : "text-primary"}`}
-          >
+          <Text className="text-xs font-bold" style={{ color: tone }}>
             {label}
           </Text>
         ) : null}
@@ -99,8 +105,9 @@ export function AssessmentOption({
     <View
       className={`rounded-2xl border ${tile ? "gap-2 p-3" : "gap-4 p-5"}`}
       style={{
-        backgroundColor: emphasized ? withOpacity(tone, 0.08) : colors.card,
-        borderColor: emphasized ? tone : colors.border,
+        backgroundColor: emphasized ? withOpacity(tone, 0.1) : colors.card,
+        // A light edge: the tint carries the state, not a heavy outline.
+        borderColor: emphasized ? withOpacity(tone, 0.45) : colors.border,
       }}
     >
       {body}
@@ -119,25 +126,5 @@ export function AssessmentOption({
     >
       {content}
     </Pressable>
-  );
-}
-
-export function AssessmentFeedback({
-  correct,
-  children,
-}: {
-  correct: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <Card tone={correct ? "primary" : "destructive"} className="gap-4 p-5">
-      <Text
-        accessibilityLiveRegion="polite"
-        className={`text-2xl font-black ${correct ? "text-primary" : "text-destructive"}`}
-      >
-        {correct ? "Tepat sekali." : "Hampir."}
-      </Text>
-      {children}
-    </Card>
   );
 }

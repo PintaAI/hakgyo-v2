@@ -29,6 +29,8 @@ export const materialSymbols = {
   "chevron.down": "expand_more",
   "chevron.left": "chevron_left",
   "chevron.right": "chevron_right",
+  "chevron.up": "expand_less",
+  clock: "history",
   "clock.badge.exclamationmark": "schedule",
   "dice.fill": "casino",
   "doc.text": "description",
