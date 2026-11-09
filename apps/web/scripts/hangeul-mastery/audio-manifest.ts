@@ -109,8 +109,8 @@ export function collectCourseAudioTexts(content: CourseContent) {
       }
       if (item.type === "vocabulary") {
         for (const entry of item.entries) {
-          const term = normalizeTerm(entry.term);
-          if (term) texts.add(term);
+          const spoken = normalizeTerm(entry.say ?? entry.term);
+          if (spoken) texts.add(spoken);
         }
       }
     }

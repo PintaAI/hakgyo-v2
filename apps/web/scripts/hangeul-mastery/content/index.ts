@@ -1,7 +1,6 @@
 // The Hangeul Mastery course, module by module. The importer reads this
 // object; module and item keys are stable ids (see ../content-types.ts).
 import type { CourseContent } from "../content-types";
-import { m0Welcome } from "./m0-welcome";
 import { m1BasicVowels } from "./m1-basic-vowels";
 import { m2CoreConsonants } from "./m2-core-consonants";
 import { m3YVowels } from "./m3-y-vowels";
@@ -17,7 +16,6 @@ export const hangeulMasteryCourse: CourseContent = {
   description:
     "Fondasi membaca dan menulis Hangeul sebelum memulai perjalanan belajar bahasa Korea.",
   modules: [
-    m0Welcome,
     m1BasicVowels,
     m2CoreConsonants,
     m3YVowels,

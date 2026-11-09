@@ -144,7 +144,7 @@ export const m7BatchimBasics: ModuleContent = {
           { final: "ㄴ" },
         ),
         p(
-          "Ingat 안녕하세요 dari Modul 0? Sekarang kamu bisa membacanya sendiri: 안-녕-하-세-요.",
+          "Ingat 안녕하세요 dari Perkenalan? Sekarang kamu bisa membacanya sendiri: 안-녕-하-세-요.",
         ),
         audioClip("안녕하세요", "Halo, apa kabar? (sopan)", "안녕하세요"),
         audioClip("사랑해요", "Aku sayang kamu.", "사랑해요"),

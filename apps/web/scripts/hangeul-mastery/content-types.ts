@@ -37,6 +37,11 @@ export type VocabularyEntryContent = {
   /** Indonesian meaning. Changing it resets learners' progress on the entry. */
   definition: string;
   romanization: string;
+  /**
+   * Korean to speak instead of the term, for terms the voice cannot say on
+   * their own: a single letter is spoken as a syllable (가 for ㄱ, 아 for ㅏ).
+   */
+  say?: string;
   /** Short example sentences or notes in Indonesian/Korean. */
   examples?: string[];
 };
