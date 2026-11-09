@@ -27,16 +27,21 @@ const HEADER_CLEARANCE = 64;
 export function HakgyoHero({
   children,
   className = "",
+  inSheet = false,
 }: {
   children: ReactNode;
   className?: string;
+  /** At the top of a sheet: no status bar or navigation bar to clear. */
+  inSheet?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const { colors, colorScheme } = useAppTheme();
   return (
     <View
       className={`-mx-5 overflow-hidden px-5 pb-6 ${className}`}
-      style={{ paddingTop: ios ? insets.top + HEADER_CLEARANCE : 24 }}
+      style={{
+        paddingTop: inSheet ? 28 : ios ? insets.top + HEADER_CLEARANCE : 24,
+      }}
     >
       <View
         pointerEvents="none"

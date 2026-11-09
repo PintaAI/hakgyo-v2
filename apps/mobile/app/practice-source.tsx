@@ -4,7 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { closesLabel } from "../src/components/learn/cohort-card";
-import { Action, Eyebrow, QueryState } from "../src/components/learning-ui";
+import { HakgyoHero, HERO_TITLE } from "../src/components/learn/hakgyo-hero";
+import { LearningItemRow } from "../src/components/learn/learning-item-row";
+import {
+  Action,
+  Eyebrow,
+  ProgressBar,
+  QueryState,
+} from "../src/components/learning-ui";
 import {
   AssessmentQueue,
   GameIcon,
@@ -14,14 +21,13 @@ import {
   selectedTool,
   type Event,
   type LibraryItem,
+  type PracticeFilter,
 } from "../src/components/practice-hub";
 import { SymbolIcon } from "../src/components/ui/symbol-icon";
+import type { SymbolName } from "../src/components/ui/symbol-names";
 import { isGameKey, type GameKey } from "../src/games/catalog";
 import { gameHeroAssets } from "../src/games/game-modals";
-import {
-  LevelSelector,
-  WordFallModeSelector,
-} from "../src/games/word-fall/word-fall-screen";
+import { LevelSelector } from "../src/games/word-fall/word-fall-screen";
 import { useWordFallSettings } from "../src/games/word-fall/word-fall-settings";
 import { authClient } from "../src/lib/auth-client";
 import { getCourseResumeItem } from "../src/lib/course-learning-path";
@@ -52,83 +58,151 @@ const howToPlay: Partial<Record<GameKey, string>> = {
     "Hubungkan setiap kata dengan artinya. Seret dari kiri, atau ketuk satu kartu di setiap sisi.",
 };
 
-/** Hujan Kata's settings, saved on the phone for the next game. */
-function WordFallOptions() {
+/**
+ * A fact about the game under the hero title, in the chip style of a tugas's
+ * facts (time, attempts). Tappable chips change a setting.
+ */
+function FactChip({
+  icon,
+  text,
+  onPress,
+  accessibilityHint,
+  active = false,
+}: {
+  icon: SymbolName;
+  text: string;
+  onPress?: () => void;
+  accessibilityHint?: string;
+  active?: boolean;
+}) {
+  const { colors } = useAppTheme();
+  const body = (
+    <View
+      className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5"
+      style={{
+        backgroundColor: active
+          ? withOpacity(colors.primary, 0.14)
+          : colors.muted,
+      }}
+    >
+      <SymbolIcon
+        name={icon}
+        size={13}
+        tintColor={onPress ? colors.primary : colors.mutedForeground}
+        weight="semibold"
+      />
+      <Text className="text-sm font-semibold text-foreground">{text}</Text>
+      {onPress ? (
+        <SymbolIcon
+          name="chevron.down"
+          size={10}
+          tintColor={colors.mutedForeground}
+          weight="bold"
+        />
+      ) : null}
+    </View>
+  );
+  if (!onPress) {
+    return (
+      <View accessible accessibilityLabel={text}>
+        {body}
+      </View>
+    );
+  }
+  return (
+    <Pressable
+      accessibilityHint={accessibilityHint}
+      accessibilityLabel={text}
+      accessibilityRole="button"
+      className="active:opacity-60"
+      onPress={onPress}
+    >
+      {body}
+    </Pressable>
+  );
+}
+
+/**
+ * Hujan Kata's settings as chips under the title: the answer language
+ * toggles on tap, the level opens a picker. Saved on the phone.
+ */
+function WordFallFacts() {
   const [settings, update] = useWordFallSettings();
   const [showLevels, setShowLevels] = useState(false);
   return (
-    <View className="gap-3 rounded-2xl bg-muted/60 p-4">
-      <WordFallModeSelector
-        mode={settings.answerMode}
-        onChange={(answerMode) => update({ answerMode })}
-      />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: showLevels }}
-        className="flex-row items-center justify-between active:opacity-60"
-        onPress={() => setShowLevels((open) => !open)}
-      >
-        <Text className="text-sm font-semibold text-foreground">
-          Level awal
-        </Text>
-        <Text className="text-sm font-bold text-primary">
-          {showLevels ? "Selesai" : `Level ${settings.startLevel}`}
-        </Text>
-      </Pressable>
+    <View className="w-full gap-3">
+      <View className="flex-row flex-wrap justify-center gap-2">
+        <FactChip
+          accessibilityHint="Ganti bahasa jawaban"
+          icon="keyboard.fill"
+          onPress={() =>
+            update({ answerMode: settings.answerMode === "ID" ? "KR" : "ID" })
+          }
+          text={
+            settings.answerMode === "ID" ? "Jawab: Indonesia" : "Jawab: Korea"
+          }
+        />
+        <FactChip
+          accessibilityHint="Pilih level awal"
+          active={showLevels}
+          icon="flame.fill"
+          onPress={() => setShowLevels((open) => !open)}
+          text={`Level ${settings.startLevel}`}
+        />
+      </View>
+      <Text className="text-center text-xs leading-4 text-muted-foreground">
+        {settings.answerMode === "ID"
+          ? "Lihat kata Korea, ketik artinya."
+          : "Lihat arti Indonesia, ketik kata Koreanya."}
+      </Text>
       {showLevels ? (
         <LevelSelector
           selected={settings.startLevel}
-          onSelect={(startLevel) => update({ startLevel })}
+          onSelect={(startLevel) => {
+            update({ startLevel });
+            setShowLevels(false);
+          }}
         />
       ) : null}
     </View>
   );
 }
 
-/** The course, and how far the learner is with the set when known. */
-function setContext(
-  item: LibraryItem,
-  summary: { total: number; learned: number } | undefined,
-) {
-  return summary && summary.total > 0
-    ? `${item.courseTitle} · ${summary.learned}/${summary.total} kata dipelajari`
-    : `${item.courseTitle} · ${item.moduleTitle}`;
-}
-
 /** One suggestion, whatever it opens. */
 type Pick = {
   key: string;
+  type: PracticeFilter;
   title: string;
   /** The course, or the class for a tugas. */
   context: string;
   label: string;
   reason: string;
+  /** Learned words of a set, when known. */
+  progress?: { learned: number; total: number };
   /** Verb on the main pick's button. */
   action: string;
   open: () => void;
 };
 
+/**
+ * The suggested source, in the look of a course item's hero card: why it
+ * was picked, the title, where it is from, the set's progress, and the
+ * button that starts the game.
+ */
 function MainPick({ pick }: { pick: Pick }) {
-  const { colors } = useAppTheme();
+  const { colors, colorScheme } = useAppTheme();
   return (
     <View
-      className="gap-3 rounded-2xl border p-4"
+      className="gap-4 rounded-[20px] border p-5"
       style={{
+        backgroundColor: colors.card,
         borderColor: withOpacity(colors.primary, 0.3),
-        backgroundColor: withOpacity(colors.primary, 0.1),
+        shadowColor: "#000",
+        shadowOpacity: colorScheme === "dark" ? 0 : 0.06,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
       }}
     >
-      <View className="gap-1">
-        <Text
-          className="text-lg font-black leading-6 text-foreground"
-          numberOfLines={2}
-        >
-          {pick.title}
-        </Text>
-        <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-          {pick.context}
-        </Text>
-      </View>
       <View className="flex-row items-center gap-2">
         <View className="rounded-full bg-primary px-2.5 py-1">
           <Text className="text-[11px] font-bold text-primary-foreground">
@@ -136,54 +210,52 @@ function MainPick({ pick }: { pick: Pick }) {
           </Text>
         </View>
         <Text
-          className="min-w-0 flex-1 text-xs text-muted-foreground"
+          className="min-w-0 flex-1 text-xs font-semibold text-muted-foreground"
           numberOfLines={1}
         >
           {pick.reason}
         </Text>
       </View>
-      <Action accessibilityHint={pick.reason} onPress={pick.open}>
+      <View className="gap-1">
+        <Text
+          className="text-xl font-black leading-7 tracking-tight text-foreground"
+          numberOfLines={2}
+        >
+          {pick.title}
+        </Text>
+        <Text className="text-sm text-muted-foreground" numberOfLines={1}>
+          {pick.context}
+        </Text>
+      </View>
+      {pick.progress && pick.progress.total > 0 ? (
+        <View className="gap-1.5">
+          <ProgressBar
+            accessibilityLabel={`${pick.progress.learned} dari ${pick.progress.total} kata dipelajari`}
+            max={pick.progress.total}
+            value={pick.progress.learned}
+          />
+          <Text className="text-xs font-semibold text-muted-foreground">
+            {pick.progress.learned} dari {pick.progress.total} kata dipelajari
+          </Text>
+        </View>
+      ) : null}
+      <Action
+        accessibilityHint={pick.reason}
+        onPress={pick.open}
+        trailingIcon="arrow.right"
+      >
         {pick.action}
       </Action>
     </View>
   );
 }
 
-function OtherPick({ pick, isLast }: { pick: Pick; isLast: boolean }) {
-  const { colors } = useAppTheme();
-  return (
-    <Pressable
-      accessibilityHint={pick.reason}
-      accessibilityRole="button"
-      className={`flex-row items-center gap-3 py-3 active:opacity-60 ${isLast ? "" : "border-b border-border/60"}`}
-      onPress={pick.open}
-    >
-      <View className="min-w-0 flex-1 gap-0.5">
-        <Text
-          className="text-[15px] font-semibold text-foreground"
-          numberOfLines={1}
-        >
-          {pick.title}
-        </Text>
-        <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-          {pick.reason}
-        </Text>
-      </View>
-      <SymbolIcon
-        name="chevron.right"
-        size={13}
-        tintColor={colors.mutedForeground}
-        weight="semibold"
-      />
-    </Pressable>
-  );
-}
-
 /**
- * Latihan's source picker, as a sheet over the game menu. It opens on one
- * suggested vocabulary set (or tugas, for Quiz) with the reason, and two
- * alternatives; the full list stays one tap away under "Semua". Picking one
- * closes the sheet and starts the game.
+ * Latihan's source picker, as a sheet over the game menu, in the look of a
+ * course item's page: a Hakgyo hero with the game's illustration, title, how
+ * to play and its settings; then one suggested vocabulary set (or tugas, for
+ * Quiz) with its reason, two alternatives, and the full list under "Semua".
+ * Picking one closes the sheet and starts the game.
  */
 export default function PracticeSourceSheet() {
   const { colors } = useAppTheme();
@@ -260,6 +332,7 @@ export default function PracticeSourceSheet() {
         suggestion.kind === "event"
           ? {
               key: suggestion.item.key,
+              type: "ASSESSMENT",
               title: suggestion.item.event.title,
               context: suggestion.item.event.course.title,
               label: suggestion.label,
@@ -272,6 +345,7 @@ export default function PracticeSourceSheet() {
             }
           : {
               key: suggestion.item.key,
+              type: "ASSESSMENT",
               title: suggestion.item.quiz.title,
               context: `${suggestion.item.quiz.courseTitle} · ${suggestion.item.quiz.moduleTitle}`,
               label: suggestion.label,
@@ -290,15 +364,22 @@ export default function PracticeSourceSheet() {
         gameKey,
         lastPlayed,
         now,
-      }).map((suggestion) => ({
-        key: suggestion.item.key,
-        title: suggestion.item.title,
-        context: setContext(suggestion.item, summaries?.[suggestion.item.id]),
-        label: suggestion.label,
-        reason: suggestion.reason,
-        action: "Main",
-        open: () => openItem(suggestion.item),
-      }));
+      }).map((suggestion) => {
+        const summary = summaries?.[suggestion.item.id];
+        return {
+          key: suggestion.item.key,
+          type: "VOCABULARY_SET",
+          title: suggestion.item.title,
+          context: `${suggestion.item.courseTitle} · ${suggestion.item.moduleTitle}`,
+          label: suggestion.label,
+          reason: suggestion.reason,
+          progress: summary
+            ? { learned: summary.learned, total: summary.total }
+            : undefined,
+          action: "Main",
+          open: () => openItem(suggestion.item),
+        };
+      });
   const [mainPick, ...otherPicks] = picks;
   const total = items.length + (isQuiz ? events.length : 0);
   // Nothing to suggest (no sets yet): the list explains why.
@@ -308,14 +389,13 @@ export default function PracticeSourceSheet() {
     <ScrollView
       automaticallyAdjustKeyboardInsets
       className="flex-1"
-      contentContainerClassName="gap-5 px-5 pb-10 pt-5"
-      contentInsetAdjustmentBehavior="automatic"
+      contentContainerClassName="gap-6 px-5 pb-10"
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      {/* The game's illustration and how to play, which its start screen
-          used to show: picking a source starts the game at once. */}
-      <View className="items-center">
+      {/* The game's illustration, title and how to play, which its start
+          screen used to show: picking a source starts the game at once. */}
+      <HakgyoHero inSheet>
         {gameKey ? (
           <Image
             accessibilityIgnoresInvertColors
@@ -323,40 +403,46 @@ export default function PracticeSourceSheet() {
             contentFit="contain"
             priority="high"
             source={gameHeroAssets[gameKey]}
-            style={{ width: "100%", height: 150 }}
+            style={{ width: "100%", height: 140 }}
             transition={0}
           />
         ) : (
-          <View className="w-full items-start">
-            <GameIcon size={52} tool={tool} />
+          <View className="items-center">
+            <GameIcon size={72} tool={tool} />
           </View>
         )}
-        <Pressable
-          accessibilityLabel="Tutup"
-          accessibilityRole="button"
-          className="absolute right-0 top-0 size-9 items-center justify-center rounded-full bg-muted active:opacity-60"
-          onPress={() => router.back()}
-        >
-          <SymbolIcon
-            name="xmark"
-            size={14}
-            tintColor={colors.mutedForeground}
-            weight="bold"
-          />
-        </Pressable>
-      </View>
-      <View className="gap-1">
-        <Text
-          accessibilityRole="header"
-          className="text-2xl font-black text-foreground"
-        >
-          {tool.title}
-        </Text>
-        <Text className="text-sm leading-5 text-muted-foreground">
-          {gameKey ? howToPlay[gameKey] : tool.subtitle}
-        </Text>
-      </View>
-      {gameKey === "word-fall" ? <WordFallOptions /> : null}
+        <View className="items-center gap-2">
+          <Eyebrow size="md" tone="primary">
+            {isQuiz ? "Latihan soal" : "Game kosakata"}
+          </Eyebrow>
+          <Text
+            accessibilityRole="header"
+            className="text-center font-black tracking-tight text-foreground"
+            numberOfLines={2}
+            style={HERO_TITLE}
+          >
+            {tool.title}
+          </Text>
+          <Text className="text-center text-sm leading-6 text-muted-foreground">
+            {gameKey
+              ? (howToPlay[gameKey] ?? tool.subtitle)
+              : "Kerjakan latihan dan tryout kelas, atau quiz dari kurikulummu."}
+          </Text>
+        </View>
+        {gameKey === "word-fall" ? (
+          <WordFallFacts />
+        ) : (
+          <View className="flex-row flex-wrap justify-center gap-2">
+            <FactChip
+              icon={isQuiz ? "doc.text" : "rectangle.stack.fill"}
+              text={isQuiz ? `${items.length} quiz` : `${items.length} set`}
+            />
+            {isQuiz && events.length > 0 ? (
+              <FactChip icon="calendar" text={`${events.length} tugas kelas`} />
+            ) : null}
+          </View>
+        )}
+      </HakgyoHero>
 
       <QueryState
         error={index.error}
@@ -365,22 +451,30 @@ export default function PracticeSourceSheet() {
       />
 
       {mainPick ? (
-        <View className="gap-2">
+        <View className="-mt-2 gap-3">
           <Eyebrow tone="primary">Untukmu</Eyebrow>
           <MainPick pick={mainPick} />
         </View>
       ) : null}
 
       {otherPicks.length > 0 ? (
-        <View>
+        <View className="gap-1">
           <Eyebrow>Pilihan lain</Eyebrow>
-          {otherPicks.map((pick, position) => (
-            <OtherPick
-              isLast={position === otherPicks.length - 1}
-              key={pick.key}
-              pick={pick}
-            />
-          ))}
+          <View>
+            {otherPicks.map((pick, position) => (
+              <LearningItemRow
+                accessibilityHint={pick.reason}
+                completed={false}
+                detailLines={1}
+                isLast={position === otherPicks.length - 1}
+                key={pick.key}
+                onPress={pick.open}
+                statusText={pick.reason}
+                title={pick.title}
+                type={pick.type}
+              />
+            ))}
+          </View>
         </View>
       ) : null}
 
@@ -388,13 +482,21 @@ export default function PracticeSourceSheet() {
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ expanded: listOpen }}
-          className="flex-row items-center gap-3 rounded-2xl bg-muted px-4 py-3.5 active:opacity-70"
+          className="flex-row items-center gap-3 border-t border-border pt-5 active:opacity-60"
           onPress={() => setShowAll((open) => !open)}
         >
-          <Text className="min-w-0 flex-1 text-sm font-bold text-foreground">
-            {isQuiz ? "Semua tugas & quiz" : "Semua set kosakata"} ({total})
-          </Text>
+          <View className="min-w-0 flex-1 gap-0.5">
+            <Text className="text-base font-bold text-foreground">
+              {isQuiz ? "Semua tugas & quiz" : "Semua set kosakata"}
+            </Text>
+            <Text className="text-xs text-muted-foreground">
+              {listOpen
+                ? "Cari atau saring sendiri"
+                : `${total} pilihan · pilih sendiri`}
+            </Text>
+          </View>
           <View
+            className="size-8 items-center justify-center rounded-full bg-muted"
             style={listOpen ? { transform: [{ rotate: "180deg" }] } : undefined}
           >
             <SymbolIcon
@@ -423,6 +525,22 @@ export default function PracticeSourceSheet() {
           />
         </>
       ) : null}
+
+      {/* Floats over the hero, top right, in its padding. */}
+      <Pressable
+        accessibilityLabel="Tutup"
+        accessibilityRole="button"
+        className="absolute right-5 top-4 size-9 items-center justify-center rounded-full active:opacity-60"
+        onPress={() => router.back()}
+        style={{ backgroundColor: withOpacity(colors.background, 0.8) }}
+      >
+        <SymbolIcon
+          name="xmark"
+          size={14}
+          tintColor={colors.foreground}
+          weight="bold"
+        />
+      </Pressable>
     </ScrollView>
   );
 }
