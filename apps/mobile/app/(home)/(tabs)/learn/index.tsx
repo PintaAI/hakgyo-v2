@@ -1,7 +1,13 @@
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useNavigation } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import {
+  Platform,
+  StyleSheet,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-screens/experimental";
@@ -43,6 +49,9 @@ import {
   useSyncIndex,
   type CourseOutline,
 } from "../../../../src/sync/hooks";
+
+/** How far the page scrolls before the header frosts. */
+const SCROLL_FROST_AT = 8;
 
 // Lets the sidebar drawer finish closing so the slide to the cohort is seen.
 const FOCUS_SLIDE_DELAY_MS = 380;
@@ -219,6 +228,25 @@ export default function LearnTab() {
   const pagePosition = useSharedValue(0);
   const insets = useSafeAreaInsets();
 
+  // Clear at rest, so the class card runs up to the top unfrosted; once the
+  // page scrolls, the header frosts like on Hari Ini. (The soft edge would
+  // frost it even at rest: the card starts under the header.)
+  const navigation = useNavigation();
+  const [scrolled, setScrolled] = useState(false);
+  const onScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const next = event.nativeEvent.contentOffset.y > SCROLL_FROST_AT;
+      setScrolled((current) => (current === next ? current : next));
+    },
+    [],
+  );
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    navigation.setOptions({
+      scrollEdgeEffects: { top: scrolled ? "soft" : "hidden" },
+    });
+  }, [navigation, scrolled]);
+
   // Another organization's carousel starts again from its first card (or the
   // saved one, which scrolls the dots along).
   useEffect(() => {
@@ -330,6 +358,7 @@ export default function LearnTab() {
           />
         ) : null
       }
+      onScroll={onScroll}
       refreshing={dashboard.isRefetching || isSyncing}
       onRefresh={() => {
         void syncNow(activeOrganizationId ?? undefined);

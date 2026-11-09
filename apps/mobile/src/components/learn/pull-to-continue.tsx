@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useRef } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import Animated, {
   cancelAnimation,
@@ -22,6 +22,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
+import { formatCountdown } from "../../lib/reading-time";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { SymbolIcon } from "../ui/symbol-icon";
 
@@ -542,7 +543,81 @@ export function PullToContinueIndicator({
   );
 }
 
+/**
+ * In place of the pull arrow while the reading guard holds "next": a ring
+ * that fills as the reading time runs, and how long is left. Shows once
+ * the end is reached, like the arrow it stands in for.
+ */
+export function ReadingGuardIndicator({
+  remaining,
+  required,
+  atEnd,
+}: {
+  remaining: number;
+  required: number;
+  atEnd: SharedValue<boolean>;
+}) {
+  const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const shown = useAnimatedStyle(() => ({
+    opacity: withTiming(atEnd.value ? 1 : 0, { duration: 220 }),
+    transform: [
+      { translateY: withTiming(atEnd.value ? HINT_Y : HIDDEN_Y, HINT_RETURN) },
+    ],
+  }));
+  const done = required > 0 ? 1 - remaining / required : 1;
+  const ticks = Math.round(done * RING_TICKS);
+  return (
+    <Animated.View
+      accessibilityLiveRegion="polite"
+      accessibilityLabel={`Baca dulu, ${formatCountdown(remaining)} lagi sebelum lanjut`}
+      pointerEvents="none"
+      className="absolute left-0 right-0 items-center gap-1.5"
+      style={[{ bottom: Math.max(insets.bottom, 12) + 4 }, shown]}
+    >
+      <View style={[{ width: RING, height: RING }, styles.center]}>
+        {Array.from({ length: RING_TICKS }, (_, tick) => (
+          <View
+            key={tick}
+            style={[
+              styles.tick,
+              {
+                backgroundColor: tick < ticks ? colors.primary : colors.border,
+                transform: [
+                  { rotate: `${(tick * 360) / RING_TICKS}deg` },
+                  { translateY: -RING / 2 + 3 },
+                ],
+              },
+            ]}
+          />
+        ))}
+        <SymbolIcon
+          name="book.closed"
+          size={16}
+          weight="semibold"
+          tintColor={colors.mutedForeground}
+        />
+      </View>
+      <Text className="text-xs font-semibold tabular-nums text-muted-foreground">
+        Baca dulu · {formatCountdown(remaining)}
+      </Text>
+    </Animated.View>
+  );
+}
+
+/** Ticks around the reading-guard ring. */
+const RING_TICKS = 24;
+
 const styles = StyleSheet.create({
+  // Centred in the ring, then turned and pushed out to its edge.
+  tick: {
+    position: "absolute",
+    left: RING / 2 - 1,
+    top: RING / 2 - 3,
+    width: 2,
+    height: 6,
+    borderRadius: 1,
+  },
   center: { alignItems: "center", justifyContent: "center" },
   // Stretches up from its base, toward the pulling finger.
   stretch: { transformOrigin: "bottom" },

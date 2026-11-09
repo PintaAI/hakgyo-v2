@@ -15,7 +15,10 @@ import {
 } from "../lib/vocabulary-speech";
 import { useDeckTutorial } from "../lib/use-deck-tutorial";
 import { useHandsFreeSpeech } from "../lib/use-hands-free-speech";
-import { HandsFreeAnswerField } from "./hands-free-answer-field";
+import {
+  AnswerActionButton,
+  HandsFreeAnswerField,
+} from "./hands-free-answer-field";
 import {
   DeckTutorialCoach,
   DeckTutorialOverlay,
@@ -465,6 +468,22 @@ export function TodayVocabularyPractice({
                         }
                       : undefined
                   }
+                  // The answer language sits inside the pill; check and next
+                  // beside it, where the thumb rests.
+                  trailing={
+                    <VocabularyModeSwitch
+                      bare
+                      mode={mode}
+                      onChange={(next) => {
+                        tutorial.onLanguageChange();
+                        handleModeChange(next);
+                      }}
+                      disabled={moving || speech.speechBusy}
+                      highlight={tutorial.highlightLanguage}
+                    />
+                  }
+                />
+                <AnswerActionButton
                   action={
                     answered
                       ? {
@@ -500,15 +519,6 @@ export function TodayVocabularyPractice({
                           onPress: () => void checkAnswer(),
                         }
                   }
-                />
-                <VocabularyModeSwitch
-                  mode={mode}
-                  onChange={(next) => {
-                    tutorial.onLanguageChange();
-                    handleModeChange(next);
-                  }}
-                  disabled={moving || speech.speechBusy}
-                  highlight={tutorial.highlightLanguage}
                 />
               </View>
             </View>

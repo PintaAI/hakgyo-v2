@@ -191,7 +191,7 @@ const COACH_COPY: Record<
   language: {
     badge: "3",
     title: "Ganti bahasa jawaban",
-    detail: "Ketuk bendera di samping kolom jawaban.",
+    detail: "Ketuk tombol bendera untuk mengganti bahasa jawaban.",
   },
   done: {
     badge: "",

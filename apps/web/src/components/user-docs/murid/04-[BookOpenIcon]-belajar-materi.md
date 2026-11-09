@@ -36,6 +36,8 @@ Jika bab tidak kunjung terbuka, periksa:
 
 Di aplikasi ponsel, tidak ada tombol **Selesai & lanjutkan**. Setelah sampai di bawah materi, panah kecil dengan tulisan **Tarik untuk lanjut** muncul di bagian bawah layar. Tarik layar ke atas sekali lagi dan tahan sampai lingkaran di sekitar panah penuh dan tulisannya menjadi **Lepas untuk lanjut**, lalu lepaskan. Materi langsung ditandai selesai dan item berikutnya terbuka. Jika materinya berisi halaman buku PDF, baca semua halamannya dulu. Jika VoiceOver atau TalkBack aktif, tombol **Selesai & lanjutkan** tetap muncul di bawah materi.
 
+Materi yang belum selesai perlu dibaca dulu sebentar sebelum bisa dilanjutkan. Lama waktunya sekitar separuh perkiraan waktu baca materi itu (paling sedikit 10 detik, paling lama 3 menit). Selama waktunya belum habis, di bawah materi muncul lingkaran dengan tulisan **Baca dulu** dan sisa waktunya. Waktu hanya berjalan saat halaman materi terbuka, dan tetap tersimpan kalau kamu keluar lalu kembali lagi. Materi yang sudah selesai bisa dibuka ulang dan dilanjutkan kapan saja tanpa menunggu.
+
 Di item terakhir sebuah bab, tombolnya menjadi **Selesaikan bab**. Di item terakhir kurikulum, tombolnya **Selesaikan kurikulum**. Kamu akan melihat layar perayaan setiap menyelesaikan bab atau kurikulum.
 
 Item yang sudah selesai akan tetap selesai, walaupun kamu membukanya lagi.

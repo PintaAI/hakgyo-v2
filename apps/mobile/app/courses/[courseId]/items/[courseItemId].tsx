@@ -3,7 +3,14 @@ import { HeaderHeightContext } from "expo-router/react-navigation";
 import { resolveAssessmentEntry, RUNTIME_VERSION } from "@hakgyo/shared";
 import type { MaterialLinkTarget } from "@hakgyo/shared/material-links";
 import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import Animated from "react-native-reanimated";
@@ -25,8 +32,14 @@ import {
 } from "../../../../src/components/learn/course-learning-footer";
 import {
   PullToContinueIndicator,
+  ReadingGuardIndicator,
   usePullToContinue,
 } from "../../../../src/components/learn/pull-to-continue";
+import {
+  formatCountdown,
+  readingGuardSeconds,
+} from "../../../../src/lib/reading-time";
+import { useReadingGuard } from "../../../../src/lib/use-reading-guard";
 import { requirementActionsFor } from "../../../../src/components/learn/requirement-actions";
 import {
   AssessmentFacts,
@@ -115,11 +128,14 @@ function CourseItemContent({
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd());
   }, [learning]);
   const pullToContinue = usePullToContinue({ onRelease: continueFromEnd });
-  // Not before every PDF page has been read, nor while the footer shows a
-  // milestone or a required activity instead.
+  // The reading guard of an unfinished material holds "next" (see below).
+  const readingLocked = useRef(false);
+  // Not before every PDF page has been read or the reading time has run,
+  // nor while the footer shows a milestone or a required activity instead.
   const updatePullEnabled = () => {
     pullToContinue.enabled.value =
       unreadPagedBlocks.current.size === 0 &&
+      !readingLocked.current &&
       !learning.busy &&
       !learning.milestone &&
       learning.issue?.kind !== "requirements";
@@ -226,6 +242,25 @@ function CourseItemContent({
     ? getLearningPath(outline.data, courseItemId)?.item.isCompleted
     : undefined;
   const material = item?.material;
+  // Half the estimated reading time on an unfinished material before "next"
+  // unlocks, so lessons are read rather than skipped through. Counted while
+  // the page is in front of the learner, and kept across visits.
+  const materialContent = material?.content;
+  const readingSeconds = useMemo(
+    () =>
+      materialContent === undefined ? 0 : readingGuardSeconds(materialContent),
+    [materialContent],
+  );
+  const readingGuard = useReadingGuard({
+    userId: session?.user.id,
+    courseItemId,
+    requiredSeconds: readingSeconds,
+    active: Boolean(material) && itemCompleted === false,
+  });
+  readingLocked.current = readingGuard.locked;
+  useEffect(() => {
+    updatePullEnabledRef.current();
+  }, [readingGuard.locked]);
   const vocabulary = item?.vocabularySet;
   const assessment = assessmentQuery.data;
   const latestAttempt = assessment?.latestStandaloneAttempt;
@@ -609,6 +644,11 @@ function CourseItemContent({
                   // Pulling past the end continues; the button stays for
                   // screen readers, which cannot pull.
                   continueButton="screenReader"
+                  continueLock={
+                    readingGuard.locked
+                      ? `Baca dulu · ${formatCountdown(readingGuard.remaining)}`
+                      : undefined
+                  }
                   requirementActions={requirementActionsFor(
                     item,
                     { courseId, courseItemId },
@@ -618,7 +658,13 @@ function CourseItemContent({
               </View>
             </Animated.ScrollView>
           </GestureDetector>
-          {learning.milestone ? null : (
+          {learning.milestone ? null : readingGuard.locked ? (
+            <ReadingGuardIndicator
+              atEnd={pullToContinue.atEnd}
+              remaining={readingGuard.remaining}
+              required={readingGuard.required}
+            />
+          ) : (
             <PullToContinueIndicator
               pull={pullToContinue.pull}
               locked={pullToContinue.locked}

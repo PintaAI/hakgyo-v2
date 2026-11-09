@@ -18,9 +18,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
-import { useAppTheme } from "../../providers/AppThemeProvider";
-import { SymbolIcon } from "./symbol-icon";
-
 export type PagerHandle = { scrollTo: (index: number) => void };
 
 /**
@@ -35,8 +32,7 @@ export type PagerHandle = { scrollTo: (index: number) => void };
  *   `scrollTo` moves the pager from buttons, lists or a refused swipe, and
  *   leaves a page already in view alone so it never fights a gesture.
  * - `bleed` reaches out over the screen gutter so pages slide in from the
- *   screen edge; `gap` spaces pages apart; `nextArrow` shows a chevron in the
- *   right gutter while another page follows (needs a bleed to sit in).
+ *   screen edge; `gap` spaces pages apart.
  * - `position` lets the owner read the scroll offset in pages (page dots).
  */
 export function Pager({
@@ -46,7 +42,6 @@ export function Pager({
   swipeEnabled = true,
   gap = 0,
   bleed = 0,
-  nextArrow,
   position: ownerPosition,
   accessibilityRole,
   onIndexChange,
@@ -58,8 +53,6 @@ export function Pager({
   swipeEnabled?: boolean;
   gap?: number;
   bleed?: number;
-  /** Shows the next-page chevron this far from the top. */
-  nextArrow?: { top: number };
   position?: SharedValue<number>;
   accessibilityRole?: "list";
   onIndexChange?: (index: number) => void;
@@ -83,7 +76,6 @@ export function Pager({
   }, []);
   /** Measured page heights by index; 0 until a page has laid out. */
   const heights = useSharedValue<number[]>([]);
-  const { colors } = useAppTheme();
   const pages = useMemo(
     () => Array.from({ length: count }, (_, page) => page),
     [count],
@@ -155,16 +147,6 @@ export function Pager({
     return height > 0 ? { height } : {};
   });
 
-  // The arrow shows at rest when a page follows, and fades out as a swipe
-  // begins so it never sits over a page sliding by.
-  const arrowStyle = useAnimatedStyle(() => {
-    const page = Math.round(position.value);
-    const drift = Math.abs(position.value - page);
-    return {
-      opacity: page < count - 1 ? Math.max(0, 1 - drift * 6) : 0,
-    };
-  });
-
   return (
     <View onLayout={measureWidth}>
       {pageWidth > 0 ? (
@@ -217,22 +199,6 @@ export function Pager({
               </View>
             )}
           />
-          {nextArrow && bleed > 0 && swipeEnabled && count > 1 ? (
-            <Animated.View
-              pointerEvents="none"
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-              className="absolute right-0 items-center"
-              style={[{ top: nextArrow.top, width: bleed }, arrowStyle]}
-            >
-              <SymbolIcon
-                name="chevron.right"
-                size={14}
-                weight="semibold"
-                tintColor={colors.mutedForeground}
-              />
-            </Animated.View>
-          ) : null}
         </Animated.View>
       ) : null}
     </View>

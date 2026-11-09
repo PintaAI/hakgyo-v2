@@ -382,7 +382,15 @@ export function LearningFooterView({
   requirementActions = [],
   assessmentState,
   learning,
-}: FooterProps & { learning: LearningContinuation }) {
+  continueLock,
+}: FooterProps & {
+  learning: LearningContinuation;
+  /**
+   * Holds "continue" with this label (a material's reading guard: "Baca dulu
+   * · 0:42"). The pull to continue is held the same way by its owner.
+   */
+  continueLock?: string;
+}) {
   const { colors } = useAppTheme();
   const screenReader = useScreenReaderEnabled();
   const showContinue = continueButton === "always" || screenReader;
@@ -403,24 +411,26 @@ export function LearningFooterView({
 
   const continueAction = (
     <StudyAction
-      disabled={busy}
+      disabled={busy || Boolean(continueLock)}
       loading={busy}
       onPress={() => void continueLearning()}
       trailingIcon={
-        busy || (path?.courseCompleted && !path.nextItem)
+        busy || continueLock || (path?.courseCompleted && !path.nextItem)
           ? undefined
           : "arrow.right"
       }
     >
       {busy
         ? "Menyimpan progres kamu…"
-        : path?.courseCompleted && !path.nextItem
-          ? "Selesaikan kurikulum"
-          : path?.item.isCompleted || completionMode === "assessment"
-            ? "Lanjutkan belajar"
-            : finishingModule
-              ? "Selesaikan bab"
-              : "Selesai & lanjutkan"}
+        : continueLock
+          ? continueLock
+          : path?.courseCompleted && !path.nextItem
+            ? "Selesaikan kurikulum"
+            : path?.item.isCompleted || completionMode === "assessment"
+              ? "Lanjutkan belajar"
+              : finishingModule
+                ? "Selesaikan bab"
+                : "Selesai & lanjutkan"}
     </StudyAction>
   );
   const errorText =
