@@ -4,19 +4,19 @@
 
 ## Isi kurikulum
 
-Bab dibuka berurutan: bab berikutnya terbuka setelah semua isi bab sebelumnya selesai.
+Bab dibuka berurutan: bab berikutnya terbuka setelah semua isi bab sebelumnya selesai. Setiap materi pendek, sekitar 5–8 menit.
 
 | Bab | Yang dipelajari |
 |---|---|
-| **Selamat datang di Hangeul** | Mengapa belajar Hangeul, Raja Sejong, dan mengapa Hangeul disebut ilmiah |
+| **Mulai di sini** | Cara kerja Hangeul: huruf disusun jadi blok, satu blok satu suku kata |
 | **Vokal dasar dan blok suku kata** | Cara huruf disusun menjadi blok, ㅇ yang tidak dibaca, dan vokal ㅏ ㅓ ㅗ ㅜ ㅡ ㅣ |
 | **Konsonan inti** | ㄴ ㅁ ㅅ ㅂ ㄱ ㄷ ㅈ ㅎ ㄹ dan kata pertamamu |
 | **Vokal Y dan ㅐ ㅔ** | ㅑ ㅕ ㅛ ㅠ dan ㅐ ㅔ ㅒ ㅖ |
-| **Konsonan aspirasi dan tegang** | Bunyi dengan hembusan napas (ㅋ ㅌ ㅍ ㅊ) dan bunyi tegang (ㄲ ㄸ ㅃ ㅆ ㅉ) |
+| **Konsonan berhembus dan tegang** | Bunyi dengan hembusan napas (ㅋ ㅌ ㅍ ㅊ) dan bunyi tegang (ㄲ ㄸ ㅃ ㅆ ㅉ) |
 | **Vokal W** | ㅘ ㅝ ㅙ ㅞ ㅚ ㅟ ㅢ |
-| **Membaca dan menulis** | Urutan menulis, mengetik Hangeul di ponsel, dan membaca romanisasi |
+| **Membaca dan menulis** | Membaca kata nyata, urutan menulis, dan mengetik Hangeul di ponsel |
 | **Batchim** | Konsonan di bagian bawah blok dan tujuh bunyi akhirnya |
-| **Batchim ganda dan perubahan bunyi** | Batchim dua huruf dan aturan bunyi yang paling sering muncul |
+| **Batchim ganda dan perubahan bunyi** | Batchim yang pindah ke blok berikutnya, batchim dua huruf, dan dua perubahan bunyi yang paling sering (합니다, 한국말) |
 | **Ujian Hangeul Mastery** | Ujian akhir untuk semua yang sudah kamu pelajari |
 
 ## Cara belajar
@@ -26,8 +26,9 @@ Bab dibuka berurutan: bab berikutnya terbuka setelah semua isi bab sebelumnya se
 3. Di **kartu huruf**, ketuk hurufnya untuk mendengar bunyinya. Ketuk juga contoh katanya.
 4. Di **tabel suku kata**, ketuk setiap blok untuk mendengar cara membacanya.
 5. Di **pasangan bunyi**, putar setiap kata bergantian dan dengarkan bedanya, misalnya 사다 dan 싸다.
-6. Hafalkan kosakata setiap bab dengan **Hafalkan kosakata**. Kumpulan kosakata selesai setelah semua katanya kamu latih.
-7. Kerjakan kuis di akhir bab. Bab selesai setelah kamu lulus kuisnya. Kuis bisa diulang sampai lulus.
+6. **Kartu aturan** merangkum pola yang perlu kamu ingat, misalnya posisi vokal atau tujuh bunyi batchim. Setiap barisnya berisi kapan aturan itu berlaku, hasilnya, dan contohnya.
+7. Hafalkan kosakata setiap bab dengan **Hafalkan kosakata**. Kumpulan kosakata selesai setelah semua katanya kamu latih.
+8. Kerjakan kuis di akhir bab. Bab selesai setelah kamu lulus kuisnya. Kuis bisa diulang sampai lulus.
 
 > Dengarkan audionya sambil menirukan dengan suara keras. Bunyi seperti ㅓ, ㅡ, dan pasangan ㄱ ㅋ ㄲ paling mudah dipelajari dengan mendengar.
 

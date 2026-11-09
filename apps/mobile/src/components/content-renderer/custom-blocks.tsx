@@ -428,32 +428,56 @@ function Grammar({ block }: BlockRendererProps) {
     after: typeof example.after === "string" ? example.after : "",
   }));
 
+  // Optional fields (the number, the Korean text, examples, a tip) are left
+  // out when empty, for example in Hangeul Mastery rule cards.
+  const eyebrow = stringProp(block.props, "eyebrow");
+  const number = stringProp(block.props, "number");
+  const descriptionKo = stringProp(block.props, "descriptionKo");
+  const descriptionTranslation = stringProp(
+    block.props,
+    "descriptionTranslation",
+  );
+  const examplesLabel = stringProp(block.props, "examplesLabel");
+  const tipKo = stringProp(block.props, "tipKo");
+  const tipTranslation = stringProp(block.props, "tipTranslation");
+
   return (
     <View className="gap-6">
       <View className="gap-3 border-b border-border pb-5">
-        <View className="flex-row items-center justify-between gap-3">
-          <AccentDot
-            accent={accent}
-            label={stringProp(block.props, "eyebrow")}
-          />
-          <Text className="text-2xl font-black" style={{ color: accent }}>
-            {stringProp(block.props, "number")}
-          </Text>
-        </View>
+        {eyebrow || number ? (
+          <View className="flex-row items-center justify-between gap-3">
+            {eyebrow ? <AccentDot accent={accent} label={eyebrow} /> : <View />}
+            {number ? (
+              <Text className="text-2xl font-black" style={{ color: accent }}>
+                {number}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
         <Text className="text-3xl font-black leading-9 tracking-tight text-foreground">
           {stringProp(block.props, "title")}
         </Text>
-        <Text className="text-base leading-7 text-foreground">
-          {stringProp(block.props, "descriptionKo")}
-        </Text>
-        <Text className="text-sm leading-6 text-muted-foreground">
-          {stringProp(block.props, "descriptionTranslation")}
-        </Text>
+        {descriptionKo ? (
+          <Text className="text-base leading-7 text-foreground">
+            {descriptionKo}
+          </Text>
+        ) : null}
+        {descriptionTranslation ? (
+          <Text
+            className={
+              descriptionKo
+                ? "text-sm leading-6 text-muted-foreground"
+                : "text-base leading-7 text-foreground"
+            }
+          >
+            {descriptionTranslation}
+          </Text>
+        ) : null}
       </View>
 
       {rules.length ? (
         <View className="gap-2">
-          <Eyebrow size="md">Aturan tata bahasa</Eyebrow>
+          <Eyebrow size="md">Aturan</Eyebrow>
           {/* One compact row per rule (condition and form on top, the
               example below) inside a single bordered list. */}
           <View className="overflow-hidden rounded-xl border border-border">
@@ -484,26 +508,28 @@ function Grammar({ block }: BlockRendererProps) {
         </View>
       ) : null}
 
-      <View className="gap-2">
-        <Eyebrow size="md">{stringProp(block.props, "examplesLabel")}</Eyebrow>
-        {examples.map((example, index) => (
-          <View
-            className="flex-row gap-3 rounded-xl bg-muted/45 p-4"
-            key={index}
-          >
-            <Text className="text-sm font-black text-muted-foreground">
-              {String(index + 1).padStart(2, "0")}
-            </Text>
-            <Text className="min-w-0 flex-1 text-base leading-6 text-foreground">
-              {example.before}
-              <Text className="font-black" style={{ color: accent }}>
-                {example.emphasis}
+      {examples.length ? (
+        <View className="gap-2">
+          {examplesLabel ? <Eyebrow size="md">{examplesLabel}</Eyebrow> : null}
+          {examples.map((example, index) => (
+            <View
+              className="flex-row gap-3 rounded-xl bg-muted/45 p-4"
+              key={index}
+            >
+              <Text className="text-sm font-black text-muted-foreground">
+                {String(index + 1).padStart(2, "0")}
               </Text>
-              {example.after}
-            </Text>
-          </View>
-        ))}
-      </View>
+              <Text className="min-w-0 flex-1 text-base leading-6 text-foreground">
+                {example.before}
+                <Text className="font-black" style={{ color: accent }}>
+                  {example.emphasis}
+                </Text>
+                {example.after}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       {booleanProp(block.props, "showTip", true) ? (
         <View className="gap-2 rounded-xl bg-muted p-4">
@@ -511,12 +537,20 @@ function Grammar({ block }: BlockRendererProps) {
             accent={accent}
             label={stringProp(block.props, "tipTitle", "Tips")}
           />
-          <Text className="text-sm leading-6 text-foreground">
-            {stringProp(block.props, "tipKo")}
-          </Text>
-          <Text className="text-xs leading-5 text-muted-foreground">
-            {stringProp(block.props, "tipTranslation")}
-          </Text>
+          {tipKo ? (
+            <Text className="text-sm leading-6 text-foreground">{tipKo}</Text>
+          ) : null}
+          {tipTranslation ? (
+            <Text
+              className={
+                tipKo
+                  ? "text-xs leading-5 text-muted-foreground"
+                  : "text-sm leading-6 text-foreground"
+              }
+            >
+              {tipTranslation}
+            </Text>
+          ) : null}
         </View>
       ) : null}
     </View>

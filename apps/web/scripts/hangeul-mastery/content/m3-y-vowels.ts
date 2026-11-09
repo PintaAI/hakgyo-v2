@@ -2,15 +2,13 @@ import {
   assessmentRef,
   audioClip,
   b,
-  bullet,
   callout,
   contrast,
   game,
-  heading,
   letters,
   p,
+  rules,
   syllableGrid,
-  table,
   vocabularyRef,
 } from "../blocks";
 import type { ModuleContent, QuestionContent } from "../content-types";
@@ -45,34 +43,37 @@ export const m3YVowels: ModuleContent = {
   key: "m3-y-vowels",
   title: "Vokal Y dan ㅐ ㅔ",
   description:
-    "Vokal ㅑ ㅕ ㅛ ㅠ yang mendapat bunyi y, ㅐ ㅔ ㅒ ㅖ yang kini dibedakan lewat ejaan, dan sapaan sopan pertamamu. Mulai modul ini romanisasi disembunyikan.",
+    "Vokal ㅑ ㅕ ㅛ ㅠ, ㅐ dan ㅔ yang bunyinya sama, dan sapaan sopan pertamamu. Mulai modul ini tanpa romanisasi.",
   items: [
     {
       type: "material",
       key: "m3-ya-yeo-yo-yu",
       title: "ㅑ ㅕ ㅛ ㅠ: tambah garis, tambah y",
-      description:
-        "Empat vokal baru yang dibuat dari vokal dasar dengan satu garis tambahan, dan jebakan ㅕ/ㅛ.",
-      minutes: 15,
+      description: "Satu garis tambahan memberi vokal bunyi y di depannya.",
+      minutes: 6,
       blocks: [
-        heading("Satu garis lagi = bunyi y"),
-        p(
-          'Ingat titik langit ㆍ di modul 0? Kalau garis pendek pada vokal dasar ditulis dobel, vokal itu mendapat bunyi "y" di depannya. Jadi kamu tidak perlu menghafal huruf baru dari nol: cukup tambahkan satu garis.',
-        ),
-        table([
-          ["Vokal dasar", "Tambah garis", "Bunyi kira-kira"],
-          ["ㅏ", "ㅑ", '"ya" di "saya"'],
-          ["ㅓ", "ㅕ", '"y" lalu ㅓ'],
-          ["ㅗ", "ㅛ", '"yo" di "yoyo"'],
-          ["ㅜ", "ㅠ", '"yu" di "ayu"'],
-        ]),
-        p(
-          "Posisinya sama seperti vokal dasarnya: ㅑ dan ㅕ tegak, jadi ditulis di kanan konsonan; ㅛ dan ㅠ datar, jadi ditulis di bawah.",
-        ),
         callout(
           "info",
-          "Mulai modul ini romanisasi disembunyikan. Bacalah langsung dari Hangeulnya dan cek dengan audio. Kamu sudah bisa!",
+          "Empat vokal baru ini dibuat dari vokal dasar yang sudah kamu kenal. Mulai modul ini ",
+          b("tanpa romanisasi"),
+          ": baca Hangeulnya, lalu cek dengan audio.",
         ),
+        rules({
+          title: "Tambah satu garis = tambah y",
+          intro:
+            'Kalau garis pendek vokal dasar ditulis dobel, vokal itu dapat bunyi "y" di depannya.',
+          columns: ["Vokal dasar", "Jadi", "Dibaca"],
+          rows: [
+            { when: "ㅏ + satu garis", result: "ㅑ", example: "아 → 야" },
+            { when: "ㅓ + satu garis", result: "ㅕ", example: "어 → 여" },
+            { when: "ㅗ + satu garis", result: "ㅛ", example: "오 → 요" },
+            { when: "ㅜ + satu garis", result: "ㅠ", example: "우 → 유" },
+          ],
+          tip: {
+            title: "Posisinya tetap",
+            text: "ㅑ ㅕ ditulis di kanan konsonan, ㅛ ㅠ di bawah, sama seperti vokal dasarnya.",
+          },
+        }),
         letters(
           "Huruf baru",
           [
@@ -81,7 +82,6 @@ export const m3YVowels: ModuleContent = {
               cue: 'Seperti "ya" di "saya".',
               romanization: "ya",
               say: "야",
-              note: "Cara menulis: garis tegak dari atas ke bawah, lalu dua garis pendek dari kiri ke kanan, yang atas dulu.",
               example: {
                 word: "야구",
                 meaning: "bisbol",
@@ -90,10 +90,10 @@ export const m3YVowels: ModuleContent = {
             },
             {
               character: "ㅕ",
-              cue: '"y" lalu ㅓ. Bibir tetap santai; jangan dibulatkan menjadi "yo".',
+              cue: '"y" lalu ㅓ, bibir tetap santai.',
               romanization: "yeo",
               say: "여",
-              note: "Cara menulis: dua garis pendek dari kiri ke kanan, yang atas dulu, lalu garis tegak dari atas ke bawah.",
+              note: "Kalau bibirmu membulat, bunyinya jadi ㅛ.",
               example: {
                 word: "여기",
                 meaning: "di sini",
@@ -105,7 +105,6 @@ export const m3YVowels: ModuleContent = {
               cue: 'Seperti "yo" di "yoyo". Bibir bulat.',
               romanization: "yo",
               say: "요",
-              note: "Cara menulis: dua garis pendek tegak dari atas ke bawah, kiri dulu lalu kanan, kemudian garis datar dari kiri ke kanan.",
               example: {
                 word: "요리",
                 meaning: "masakan; memasak",
@@ -117,23 +116,18 @@ export const m3YVowels: ModuleContent = {
               cue: 'Seperti "yu" di "ayu". Bibir bulat dan maju.',
               romanization: "yu",
               say: "유",
-              note: "Cara menulis: garis datar dari kiri ke kanan, lalu dua garis pendek tegak di bawahnya, kiri dulu lalu kanan.",
               example: { word: "우유", meaning: "susu", romanization: "uyu" },
             },
           ],
           NO_ROMANIZATION,
         ),
-        callout(
-          "warning",
-          "ㅕ adalah jebakan terbesar di pelajaran ini. Kalau bibirmu membulat, 여 berubah menjadi 요. Ingat: ㅕ = y + ㅓ, bibir santai.",
-        ),
         contrast(
           "ㅕ atau ㅛ?",
-          "Dengarkan setiap baris. Mulailah dengan bibir santai untuk ㅕ, lalu bulatkan bibir untuk ㅛ.",
+          "Putar tiap baris. ㅕ bibir santai, ㅛ bibir bulat.",
           [
             {
               items: [{ text: "어" }, { text: "여" }],
-              note: 'Tambahkan "y" di depan ㅓ.',
+              note: 'Tambah "y" di depan ㅓ.',
             },
             {
               items: [{ text: "여" }, { text: "요" }],
@@ -145,66 +139,27 @@ export const m3YVowels: ModuleContent = {
             },
             {
               items: [{ text: "유" }, { text: "요" }],
-              note: "ㅠ lebih maju dan tertutup, ㅛ lebih terbuka.",
-            },
-            {
-              items: [{ text: "아" }, { text: "야" }],
-              note: 'Tambahkan "y" di depan ㅏ.',
+              note: "ㅠ lebih maju dan tertutup dari ㅛ.",
             },
           ],
           NO_ROMANIZATION,
         ),
         syllableGrid(
-          "Tabel suku kata vokal Y",
+          "Sekarang kamu bisa baca",
           CORE,
           ["ㅑ", "ㅕ", "ㅛ", "ㅠ"],
           NO_ROMANIZATION,
         ),
-        p(
-          "Catatan kecil: setelah ㅈ, ㅕ diucapkan seperti ㅓ, jadi 져 terdengar sama dengan 저. Kamu akan bertemu ini nanti di bentuk kata kerja.",
-        ),
-        heading("Cara menulis", 3),
-        bullet(
-          "Dua garis pendek ditulis berurutan: yang atas atau yang kiri dulu.",
-        ),
-        bullet(
-          "Jaga jarak kedua garis pendek supaya jelas terlihat dobel. ㅑ yang garisnya terlalu rapat mudah terbaca sebagai ㅏ.",
-        ),
-        heading("Latihan baca", 3),
-        p("Baca dari Hangeulnya, lalu putar audio untuk mengecek."),
-        audioClip("여기", "여기"),
-        audioClip("우유", "우유"),
-        table([
-          ["Hangeul", "Arti"],
-          ["야구", "bisbol"],
-          ["여기", "di sini"],
-          ["요리", "masakan; memasak"],
-          ["우유", "susu"],
-          ["여자", "perempuan"],
-          ["요가", "yoga"],
-          ["교사", "guru"],
-          ["휴지", "tisu"],
-          ["휴가", "cuti; liburan"],
-          ["무료", "gratis"],
-          ["여보", "sayang (panggilan suami-istri)"],
-          ["유리", "kaca"],
-        ]),
-        heading("Frasa pendek", 3),
-        table([
-          ["Frasa", "Arti"],
-          ["여기 어디야?", "Ini di mana? (santai)"],
-          ["우유 하나", "satu susu"],
-          ["야구 보러 가?", "Mau pergi nonton bisbol? (santai)"],
-        ]),
         game(
           "stroke-master",
           "y-vowels",
           "Kenali vokal Y",
-          "Main Hangeul dengan vokal baru. Permainan ini juga memuat ㅐ ㅔ ㅒ ㅖ dari pelajaran berikutnya.",
+          "Cocokkan bentuk dan bunyi vokal baru. ㅐ ㅔ ㅒ ㅖ juga muncul, kamu belajar di pelajaran berikutnya.",
         ),
         callout(
           "success",
-          "Ringkasan: garis pendek yang dobel menambahkan bunyi y: ㅑ (ya), ㅕ (y + ㅓ, bibir santai), ㅛ (yo), ㅠ (yu). Posisinya mengikuti vokal dasarnya. Hati-hati agar ㅕ tidak berubah menjadi ㅛ.",
+          b("Ingat: "),
+          "ㅕ itu y + ㅓ dengan bibir santai. Kalau bibirmu bulat, 여 jadi 요.",
         ),
       ],
     },
@@ -212,44 +167,40 @@ export const m3YVowels: ModuleContent = {
       type: "material",
       key: "m3-ae-e",
       title: "ㅐ ㅔ ㅒ ㅖ: dua ejaan, satu bunyi",
-      description:
-        'Empat vokal yang bunyinya kini hampir sama, jadi kamu belajar membedakannya lewat ejaan, serta jebakan romanisasi "e" dan "ae".',
-      minutes: 15,
+      description: "ㅐ dan ㅔ bunyinya sama, jadi kamu hafalkan ejaannya.",
+      minutes: 6,
       blocks: [
-        heading("Dua huruf, satu bunyi"),
-        p(
-          "Dulu ㅐ dan ㅔ berbeda bunyi: ㅐ diucapkan dengan mulut sedikit lebih terbuka. Sekarang ",
-          b("kebanyakan penutur Seoul mengucapkan keduanya sama"),
-          ', seperti e taling di "enak" atau "sate". Bedanya tinggal di ejaan.',
-        ),
-        p(
-          "Jadi tugasmu bukan membedakan bunyinya, tetapi menghafal ejaan setiap kata. 개 (anjing) ditulis dengan ㅐ, sedangkan 게 (kepiting) dengan ㅔ.",
+        callout(
+          "info",
+          "ㅐ dan ㅔ ditulis berbeda, tapi sekarang ",
+          b("bunyinya sama"),
+          ". Tugasmu hanya menghafal ejaan tiap kata.",
         ),
         letters(
           "Huruf baru",
           [
             {
               character: "ㅐ",
-              cue: 'E taling seperti di "enak" atau "sate", bukan e pepet di "emas".',
+              cue: 'Seperti "e" di "sate" atau "bebek".',
               romanization: "ae",
               say: "애",
-              note: "Bentuknya ㅏ + ㅣ. Cara menulis: garis tegak kiri dari atas ke bawah, garis pendek ke kanan, lalu garis tegak kanan.",
+              note: "Bentuknya ㅏ + ㅣ.",
               example: { word: "개", meaning: "anjing", romanization: "gae" },
             },
             {
               character: "ㅔ",
-              cue: 'Bunyinya sama dengan ㅐ: e taling seperti di "enak".',
+              cue: 'Sama dengan ㅐ: "e" di "sate".',
               romanization: "e",
               say: "에",
-              note: "Bentuknya ㅓ + ㅣ. Cara menulis: garis pendek dari kiri ke kanan, garis tegak kiri, lalu garis tegak kanan.",
+              note: "Bentuknya ㅓ + ㅣ.",
               example: { word: "게", meaning: "kepiting", romanization: "ge" },
             },
             {
               character: "ㅒ",
-              cue: '"y" lalu e taling.',
+              cue: '"y" lalu ㅐ.',
               romanization: "yae",
               say: "얘",
-              note: "Jarang dipakai. Cara menulis: garis tegak kiri, dua garis pendek ke kanan, lalu garis tegak kanan.",
+              note: "Jarang dipakai.",
               example: {
                 word: "얘기",
                 meaning: "cerita; obrolan",
@@ -258,93 +209,79 @@ export const m3YVowels: ModuleContent = {
             },
             {
               character: "ㅖ",
-              cue: '"y" lalu e taling. Setelah konsonan selain ㄹ, biasanya diucapkan seperti ㅔ saja.',
+              cue: '"y" lalu ㅔ.',
               romanization: "ye",
               say: "예",
-              note: "Contohnya 시계 biasa terdengar seperti 시게. Cara menulis: dua garis pendek dari kiri ke kanan, garis tegak kiri, lalu garis tegak kanan.",
+              note: "Setelah konsonan biasanya dibaca ㅔ saja: 시계 terdengar 시게.",
               example: { word: "시계", meaning: "jam", romanization: "sigye" },
             },
           ],
           NO_ROMANIZATION,
         ),
-        callout(
-          "warning",
-          'Hati-hati dengan romanisasi. "e" di romanisasi Korea adalah e taling seperti di "enak", bukan e pepet. "ae" juga bukan "a" lalu "e", melainkan satu bunyi e taling. Jadi "saranghae" diucapkan dengan akhir "he", bukan "ha-e".',
-        ),
+        rules({
+          title: "Dua ejaan, satu bunyi",
+          intro:
+            "Bunyinya sama, jadi hafalkan ejaannya per kata, bukan bunyinya.",
+          columns: ["Ejaan", "Bunyi", "Contoh"],
+          rows: [
+            {
+              when: "ㅐ (ㅏ + ㅣ)",
+              result: "e",
+              example: "개 anjing, 노래 lagu",
+            },
+            {
+              when: "ㅔ (ㅓ + ㅣ)",
+              result: "e",
+              example: "게 kepiting, 가게 toko",
+            },
+            { when: "ㅒ dan ㅖ", result: "ye", example: "얘기 cerita, 예 ya" },
+          ],
+          tip: {
+            title: "Konteks yang menentukan",
+            text: "개 menggonggong, 게 punya capit. Saat bicara, orang tahu maksudmu dari kalimatnya.",
+          },
+        }),
         contrast(
           "Bunyi sama, ejaan beda",
-          "Putar setiap pasangan. Bagi kebanyakan penutur Seoul, keduanya terdengar sama. Perhatikan ejaan dan artinya.",
+          "Putar tiap pasangan. Keduanya terdengar sama, yang beda ejaan dan artinya.",
           [
             {
               items: [
                 { text: "개", meaning: "anjing" },
                 { text: "게", meaning: "kepiting" },
               ],
-              note: "Konteks yang menentukan: 개 menggonggong, 게 punya capit.",
             },
             {
               items: [
                 { text: "내", meaning: "milikku" },
-                { text: "네", meaning: "ya; milikmu" },
+                { text: "네", meaning: "ya" },
               ],
-              note: 'Karena bunyinya sama, dalam percakapan 네 yang berarti "milikmu" sering diucapkan 니.',
             },
             {
               items: [
                 { text: "새", meaning: "burung; baru" },
-                { text: "세", meaning: "tiga (sebelum kata satuan)" },
+                { text: "세", meaning: "tiga" },
               ],
             },
-            { items: [{ text: "애" }, { text: "에" }] },
-            { items: [{ text: "얘" }, { text: "예" }] },
           ],
           NO_ROMANIZATION,
         ),
-        heading("Trik mengingat ejaan", 3),
-        bullet(
-          "ㅐ = ㅏ + ㅣ, jadi garis pendeknya ada di antara dua batang. ㅔ = ㅓ + ㅣ, jadi garis pendeknya ada di sebelah kiri.",
-        ),
-        bullet(
-          "Hafalkan kata, bukan bunyinya. Dengan ㅐ: 개, 새, 배, 노래, 배우. Dengan ㅔ: 게, 네, 가게, 어제, 메뉴, 세계.",
-        ),
-        bullet(
-          "Kesalahan ejaan ㅐ/ㅔ tidak mengubah bunyimu. Orang tetap mengerti, tetapi saat menulis, usahakan ejaannya benar.",
-        ),
         syllableGrid(
-          "Tabel suku kata ㅐ dan ㅔ",
+          "Sekarang kamu bisa baca",
           CORE,
           ["ㅐ", "ㅔ"],
           NO_ROMANIZATION,
         ),
-        heading("Latihan baca", 3),
-        audioClip("노래", "노래"),
-        audioClip("가게", "가게"),
-        table([
-          ["Hangeul", "Arti"],
-          ["개", "anjing"],
-          ["게", "kepiting"],
-          ["새", "burung; baru"],
-          ["배", "perut; perahu; buah pir"],
-          ["노래", "lagu"],
-          ["배우", "aktor; aktris"],
-          ["가게", "toko"],
-          ["어제", "kemarin"],
-          ["메뉴", "menu"],
-          ["세계", "dunia"],
-          ["시계", "jam"],
-          ["네", "ya"],
-          ["예", "ya (lebih formal)"],
-          ["얘기", "cerita; obrolan"],
-        ]),
         game(
           "syllable-forge",
           "y-vowels",
           "Susun suku kata dengan vokal baru",
-          "Susun suku kata dengan ㅑ ㅕ ㅛ ㅠ dan ㅐ ㅔ ㅒ ㅖ. Perhatikan apakah vokalnya ditulis di kanan atau di bawah.",
+          "Susun suku kata dengan ㅑ ㅕ ㅛ ㅠ dan ㅐ ㅔ ㅒ ㅖ. Perhatikan: di kanan atau di bawah?",
         ),
         callout(
           "success",
-          'Ringkasan: ㅐ dan ㅔ kini diucapkan sama, seperti e taling di "enak"; bedanya hanya di ejaan, jadi hafalkan ejaan setiap kata. ㅒ dan ㅖ menambahkan bunyi y, dan ㅖ setelah konsonan biasanya terdengar seperti ㅔ.',
+          b("Ingat: "),
+          "ㅐ dan ㅔ bunyinya sama, jadi hafalkan ejaannya per kata.",
         ),
       ],
     },
@@ -352,95 +289,50 @@ export const m3YVowels: ModuleContent = {
       type: "material",
       key: "m3-reading-phrases",
       title: "Sapaan dan kalimat pertamamu",
-      description:
-        "Ungkapan sopan yang sering dipakai di toko, di telepon, dan di tempat kerja, semuanya bisa kamu baca dengan huruf yang sudah kamu kenal.",
-      minutes: 15,
+      description: "Ungkapan sopan untuk di toko, di kafe, dan di telepon.",
+      minutes: 7,
       blocks: [
-        heading("Kamu sudah bisa membaca kalimat"),
-        p(
-          "Pelajaran ini tidak memperkenalkan huruf baru. Kamu memakai semua huruf yang sudah kamu kenal untuk membaca ungkapan yang sangat sering dipakai di Korea, termasuk di toko dan di tempat kerja.",
-        ),
-        heading("Akhiran sopan 요", 3),
-        p(
-          "Banyak kalimat sopan diakhiri 요. Bandingkan 어디? (di mana?, santai) dengan 어디예요? (di mana?, sopan). Kepada orang yang baru kamu kenal, atasan, dan pelanggan, pakailah bentuk yang memakai 요.",
-        ),
-        table([
-          ["Ungkapan", "Arti", "Kapan dipakai"],
-          ["네", "ya", "Menjawab dengan sopan"],
-          ["예", "ya", "Lebih formal, misalnya kepada atasan"],
-          ["아니요", "tidak", "Menolak atau menyangkal dengan sopan"],
-          [
-            "아니에요",
-            "bukan; tidak apa-apa",
-            "Menyangkal, atau membalas ucapan terima kasih",
-          ],
-          [
-            "주세요",
-            "tolong berikan; minta",
-            "Setelah nama barang: 우유 주세요",
-          ],
-          [
-            "여기요",
-            "permisi!; ini dia",
-            "Memanggil pelayan, atau saat menyerahkan sesuatu",
-          ],
-          ["여보세요", "halo", "Hanya di telepon"],
-          [
-            "어서 오세요",
-            "selamat datang",
-            "Diucapkan penjual saat pembeli masuk",
-          ],
-          [
-            "누구세요?",
-            "siapa, ya?",
-            "Saat ada yang mengetuk pintu atau menelepon",
-          ],
-          ["저도요", "saya juga", "Menyetujui dengan sopan"],
-        ]),
-        audioClip("주세요", "주세요: tolong berikan; minta"),
-        audioClip("여보세요", "여보세요: halo (di telepon)"),
-        audioClip("어서 오세요", "어서 오세요: selamat datang"),
         callout(
-          "tip",
-          '아니요 adalah jawaban "tidak". 아니에요 berarti "bukan", dan sering dipakai untuk membalas terima kasih, mirip "sama-sama" atau "tidak apa-apa".',
+          "info",
+          "Tidak ada huruf baru. Kamu pakai semua huruf yang sudah kamu kenal untuk membaca ungkapan sopan.",
         ),
-        heading("Di kafe", 3),
-        p("Baca dialog ini, lalu putar setiap baris."),
-        table([
-          ["Siapa", "Hangeul", "Arti"],
-          ["Pelayan", "어서 오세요.", "Selamat datang."],
-          ["Kamu", "여기요, 메뉴 주세요.", "Permisi, minta menunya."],
-          ["Pelayan", "네, 여기요.", "Ya, ini dia."],
-          [
-            "Kamu",
-            "이거 주세요. 그리고 우유도 주세요.",
-            "Minta yang ini. Lalu susu juga.",
+        rules({
+          title: "Ungkapan sopan berakhiran 요",
+          intro:
+            "Banyak ungkapan sopan diakhiri 요 atau 세요. Pakai ke orang yang baru kamu kenal, atasan, dan pelanggan.",
+          columns: ["Saat", "Ucapkan", "Artinya"],
+          rows: [
+            { when: "Menjawab ya", result: "네", example: "ya" },
+            { when: "Menjawab tidak", result: "아니요", example: "tidak" },
+            {
+              when: "Minta barang",
+              result: "주세요",
+              example: "우유 주세요 = minta susu",
+            },
+            {
+              when: "Memanggil pelayan",
+              result: "여기요",
+              example: "permisi!",
+            },
+            { when: "Angkat telepon", result: "여보세요", example: "halo" },
+            {
+              when: "Penjual menyambut",
+              result: "어서 오세요",
+              example: "selamat datang",
+            },
           ],
-          ["Pelayan", "네.", "Baik."],
-        ]),
-        audioClip("여기요, 메뉴 주세요", "여기요, 메뉴 주세요."),
-        audioClip("이거 주세요", "이거 주세요."),
-        p(
-          '이거 berarti "ini" (benda). Tunjuk barangnya, lalu ucapkan 이거 주세요. Kalimat ini sangat berguna saat kamu belum tahu nama barangnya.',
+          tip: {
+            title: "아니요 atau 아니에요?",
+            text: '아니요 = "tidak". 아니에요 = "bukan", juga dipakai untuk membalas terima kasih.',
+          },
+        }),
+        p("Di kafe: baca tiap kalimat dulu, lalu putar untuk cek."),
+        audioClip("어서 오세요", "Pelayan: 어서 오세요. = Selamat datang."),
+        audioClip(
+          "여기요, 메뉴 주세요",
+          "Kamu: 여기요, 메뉴 주세요. = Permisi, minta menunya.",
         ),
-        heading("Di telepon", 3),
-        table([
-          ["Siapa", "Hangeul", "Arti"],
-          ["A", "여보세요?", "Halo?"],
-          ["B", "네, 누구세요?", "Ya, siapa ini?"],
-          ["A", "저 미나예요.", "Saya Mina."],
-          ["B", "아, 네! 어디예요?", "Oh, ya! Kamu di mana?"],
-          ["A", "가게예요.", "Saya di toko."],
-        ]),
-        audioClip("네, 누구세요?", "네, 누구세요?"),
-        audioClip("저 미나예요", "저 미나예요."),
-        p(
-          '예요 ditempel setelah kata benda yang berakhir vokal untuk berkata "adalah" dengan sopan: 미나예요 (saya Mina), 가게예요 (ini toko; saya di toko).',
-        ),
-        heading("Kosakata F", 3),
-        p(
-          "Kata dan ungkapan dengan vokal Y serta ㅐ dan ㅔ. Latih semuanya sampai selesai.",
-        ),
+        audioClip("이거 주세요", "Kamu: 이거 주세요. = Minta yang ini."),
         vocabularyRef("m3-vocab-f"),
         game(
           "word-builder",
@@ -448,14 +340,11 @@ export const m3YVowels: ModuleContent = {
           "Susun kata",
           "Susun kata seperti 우유, 노래, dan 가게 dari suku katanya.",
         ),
-        heading("Kuis modul 3", 3),
-        p(
-          "Kuis ini tidak memakai romanisasi. Pilihan jawabannya berupa Hangeul atau arti dalam bahasa Indonesia. Sebagian soal mengulang modul 1 dan 2. Nilai lulusnya 80%.",
-        ),
         assessmentRef("m3-quiz"),
         callout(
           "success",
-          "Ringkasan: kalimat sopan sering diakhiri 요. Kamu kini bisa membaca 네, 아니요, 주세요, 여보세요, 어서 오세요, dan 이거 주세요, cukup untuk memesan di kafe dan menjawab telepon.",
+          b("Ingat: "),
+          "belum tahu nama barangnya? Tunjuk saja, lalu ucapkan 이거 주세요.",
         ),
       ],
     },
@@ -589,7 +478,7 @@ export const m3YVowels: ModuleContent = {
             "ㅐ selalu diucapkan lebih panjang dari ㅔ",
           ],
           2,
-          'Bagi kebanyakan penutur Seoul, ㅐ dan ㅔ terdengar sama, seperti e taling di "enak". Karena itu kamu menghafal ejaan setiap kata.',
+          'Bagi kebanyakan penutur Seoul, ㅐ dan ㅔ terdengar sama, seperti "e" di "sate". Karena itu kamu menghafal ejaan setiap kata.',
         ),
         single(
           "spell-dog",

@@ -1,27 +1,9 @@
-import {
-  assessmentRef,
-  audioClip,
-  b,
-  bullet,
-  callout,
-  heading,
-  numbered,
-  p,
-  table,
-} from "../blocks";
+import { assessmentRef, audioClip, b, callout, p } from "../blocks";
 import type {
   BlockNoteBlock,
   ModuleContent,
   QuestionContent,
 } from "../content-types";
-
-// An audio clip whose player label does not reveal the Korean text (the
-// builder's default file name is the text itself, which would give away
-// listening answers).
-const listen = (text: string): BlockNoteBlock => {
-  const block = audioClip(text);
-  return { ...block, props: { ...block.props, fileName: "Dengarkan" } };
-};
 
 const choice = (
   key: string,
@@ -42,33 +24,11 @@ const choice = (
 
 const hear = (text: string) => [
   p("Dengarkan, lalu pilih kata yang kamu dengar."),
-  listen(text),
+  audioClip(text),
 ];
 
-// Part 1: letter recognition (10).
+// Part 1: letter recognition (5).
 const letterQuestions: QuestionContent[] = [
-  choice(
-    "m9-exam-letter-eo",
-    "Bagaimana mulutmu bergerak saat mengucapkan ㅓ?",
-    "rahang turun seperti mengucap o, tetapi bibir tidak dibulatkan",
-    [
-      "bibir bulat seperti o di 'toko'",
-      "seperti u, tetapi bibir datar",
-      "bibir bulat dan maju seperti u di 'buku'",
-    ],
-    "ㅓ tidak punya padanan dalam bahasa Indonesia: rahang turun, bibir tidak bulat. Bibir bulat seperti 'toko' adalah ㅗ, u dengan bibir datar adalah ㅡ, u bulat adalah ㅜ.",
-  ),
-  choice(
-    "m9-exam-letter-eu",
-    "Bagaimana mulutmu bergerak saat mengucapkan ㅡ?",
-    "seperti u, tetapi bibir datar dan tidak bulat",
-    [
-      "bibir bulat dan maju seperti u di 'buku'",
-      "seperti i di 'ini'",
-      "rahang turun lebar seperti a di 'apa'",
-    ],
-    "ㅡ diucapkan seperti u dengan bibir datar. Kalau bibir dibulatkan, bunyinya menjadi ㅜ.",
-  ),
   choice(
     "m9-exam-letter-kieuk",
     "Bunyi mana yang cocok untuk ㅋ?",
@@ -78,32 +38,21 @@ const letterQuestions: QuestionContent[] = [
       "k yang tegang, tanpa hembusan",
       "ng seperti di akhir 'uang'",
     ],
-    "ㅋ adalah huruf aspirasi: k Indonesia ditambah hembusan napas. ㄱ lembut tanpa hembusan kuat, ㄲ tegang tanpa hembusan.",
-  ),
-  choice(
-    "m9-exam-letter-jj",
-    "Bunyi mana yang cocok untuk ㅉ?",
-    "c seperti di 'cari', tegang dan tanpa hembusan",
-    [
-      "c seperti di 'cari' dengan hembusan napas",
-      "j yang lembut",
-      "s yang tegang dan panjang",
-    ],
-    "ㅉ adalah huruf tegang: c Indonesia dengan otot tegang dan tanpa hembusan. Dengan hembusan adalah ㅊ, j lembut adalah ㅈ, s tegang adalah ㅆ.",
+    "ㅋ = k Indonesia ditambah hembusan napas. ㄱ lembut tanpa hembusan kuat, ㄲ tegang tanpa hembusan.",
   ),
   choice(
     "m9-exam-letter-aspirated-d",
-    "Huruf mana yang merupakan pasangan aspirasi (berhembus) dari ㄷ?",
+    "Huruf mana yang seperti ㄷ, tetapi pakai hembusan napas?",
     "ㅌ",
     ["ㄸ", "ㄴ", "ㄹ"],
-    "Keluarga ㄷ: ㄷ polos, ㅌ aspirasi (satu garis tambahan, tambah napas), ㄸ tegang (huruf dobel).",
+    "Keluarga ㄷ: ㄷ polos, ㅌ berhembus (satu garis tambahan, tambah napas), ㄸ tegang (huruf dobel).",
   ),
   choice(
     "m9-exam-letter-tense-b",
     "Huruf mana yang merupakan versi tegang dari ㅂ?",
     "ㅃ",
     ["ㅍ", "ㅁ", "ㄸ"],
-    "Huruf tegang ditulis dobel: ㅂ menjadi ㅃ. ㅍ adalah versi aspirasinya, ㄸ adalah versi tegang dari ㄷ.",
+    "Huruf tegang ditulis dobel: ㅂ menjadi ㅃ. ㅍ adalah versi berhembusnya, ㄸ adalah versi tegang dari ㄷ.",
   ),
   choice(
     "m9-exam-letter-ieung-top",
@@ -113,29 +62,15 @@ const letterQuestions: QuestionContent[] = [
     "ㅇ di awal blok hanya penanda tempat kosong dan tidak berbunyi. Di bagian bawah blok, ㅇ dibaca ng.",
   ),
   choice(
-    "m9-exam-letter-rieul-between",
-    "Bagaimana ㄹ dibaca di antara dua vokal, seperti di 나라?",
-    "r ringan yang diketuk sekali, tidak digetarkan",
-    ["r yang digetarkan panjang", "l seperti di akhir 'mobil'", "tidak dibaca"],
-    "ㄹ di awal suku kata adalah r ringan dengan satu ketukan, lebih lembut dari r Indonesia. Di posisi batchim, ㄹ dibaca l.",
-  ),
-  choice(
     "m9-exam-letter-o-plus-i",
     "Vokal mana yang dibentuk dari ㅗ + ㅣ?",
     "ㅚ",
     ["ㅟ", "ㅙ", "ㅢ"],
     "ㅗ + ㅣ = ㅚ (dibaca we). ㅟ = ㅜ + ㅣ, ㅙ = ㅗ + ㅐ, ㅢ = ㅡ + ㅣ.",
   ),
-  choice(
-    "m9-exam-letter-ae-e",
-    "Pasangan vokal mana yang ditulis berbeda tetapi dibaca sama oleh kebanyakan orang Korea sekarang?",
-    "ㅐ dan ㅔ",
-    ["ㅓ dan ㅗ", "ㅡ dan ㅜ", "ㅏ dan ㅑ"],
-    "ㅐ dan ㅔ sama-sama dibaca e taling seperti di 'sate'. Bedanya hanya ejaan, misalnya 개 (anjing) dan 게 (kepiting). ㅓ/ㅗ dan ㅡ/ㅜ justru pasangan yang harus dibedakan.",
-  ),
 ];
 
-// Part 2: listening discrimination (8): four three-way, two ㅓ/ㅗ, a nasal
+// Part 2: listening discrimination (8): four three-way, two ㅓ/ㅗ, a
 // batchim and a W vowel.
 const listeningQuestions: QuestionContent[] = [
   choice(
@@ -196,28 +131,14 @@ const listeningQuestions: QuestionContent[] = [
   ),
 ];
 
-// Part 3: read a word, pick the meaning (8).
+// Part 3: read a word, pick the meaning (6).
 const readingQuestions: QuestionContent[] = [
-  choice(
-    "m9-exam-read-keopi",
-    "Apa arti 커피?",
-    "kopi",
-    ["keju", "kue", "hidung"],
-    "커피 = kopi. Keju = 치즈, kue = 케이크, hidung = 코.",
-  ),
   choice(
     "m9-exam-read-bissada",
     "Apa arti 비싸다?",
     "mahal",
     ["murah", "sibuk", "sakit"],
     "비싸다 = mahal. Murah = 싸다, sibuk = 바쁘다, sakit = 아프다.",
-  ),
-  choice(
-    "m9-exam-read-apeuda",
-    "Apa arti 아프다?",
-    "sakit",
-    ["senang", "cantik", "sibuk"],
-    "아프다 = sakit. Senang = 기쁘다, cantik = 예쁘다, sibuk = 바쁘다.",
   ),
   choice(
     "m9-exam-read-hoesa",
@@ -256,7 +177,7 @@ const readingQuestions: QuestionContent[] = [
   ),
 ];
 
-// Part 4: syllable building (6).
+// Part 4: syllable building (4).
 const buildingQuestions: QuestionContent[] = [
   choice(
     "m9-exam-build-gwa",
@@ -280,20 +201,6 @@ const buildingQuestions: QuestionContent[] = [
     "꽃 (bunga): ㄲ di atas, ㅗ di bawahnya, ㅊ sebagai batchim. Saat berdiri sendiri dibaca [꼳].",
   ),
   choice(
-    "m9-exam-build-position",
-    "Dalam blok dengan vokal ㅜ, di mana konsonan awal ditulis?",
-    "di atas vokal",
-    ["di kiri vokal", "di kanan vokal", "di bawah vokal"],
-    "ㅜ adalah vokal datar, jadi konsonan ditulis di atasnya, seperti 구. Vokal tegak seperti ㅏ menaruh konsonan di kiri.",
-  ),
-  choice(
-    "m9-exam-build-jwi",
-    "Blok mana yang tersusun dari ㅈ + ㅟ?",
-    "쥐",
-    ["지", "죄", "줘"],
-    "ㅈ + ㅟ = 쥐 (tikus). 죄 memakai ㅚ, 줘 memakai ㅝ.",
-  ),
-  choice(
     "m9-exam-build-mul",
     "Blok mana yang tersusun dari ㅁ + ㅜ + ㄹ?",
     "물",
@@ -302,7 +209,7 @@ const buildingQuestions: QuestionContent[] = [
   ),
 ];
 
-// Part 5: batchim and sound changes (8).
+// Part 5: batchim and sound changes (7).
 const batchimQuestions: QuestionContent[] = [
   choice(
     "m9-exam-batchim-t-sound",
@@ -347,13 +254,6 @@ const batchimQuestions: QuestionContent[] = [
     "Batchim ㄱ bertemu ㅁ, jadi berubah menjadi ㅇ: [한궁말].",
   ),
   choice(
-    "m9-exam-batchim-gwaenchanayo",
-    "Bagaimana 괜찮아요 (tidak apa-apa) dibaca?",
-    "[괜차나요]",
-    ["[괜찬아요]", "[괜차하요]", "[괜찬하요]"],
-    "Batchim ㅎ di gugus ㄶ hilang sebelum vokal, dan ㄴ pindah ke blok berikutnya: [괜차나요].",
-  ),
-  choice(
     "m9-exam-batchim-dak",
     "Bagaimana 닭 (ayam) dibaca kalau berdiri sendiri?",
     "[닥]",
@@ -372,77 +272,25 @@ export const m9FinalExam: ModuleContent = {
       type: "material",
       key: "m9-exam-intro",
       title: "Sebelum ujian akhir",
-      description:
-        "Apa yang diuji, cara kerja ujian, tips, dan apa yang terjadi setelah kamu lulus.",
-      minutes: 5,
+      description: "Apa yang diuji dan berapa nilai lulusnya.",
+      minutes: 2,
       blocks: [
-        heading("Kamu sudah sampai di sini"),
-        p(
-          "Dari sejarah Raja Sejong sampai 감사합니다 [감사함니다], kamu sudah mempelajari semua huruf Hangeul, batchim, dan perubahan bunyi yang paling penting. Ujian akhir ini memastikan semuanya sudah melekat.",
-        ),
-        heading("Apa yang diuji", 3),
-        table([
-          ["Bagian", "Soal", "Isi"],
-          [
-            "Pengenalan huruf",
-            "10",
-            "bunyi dan bentuk huruf, keluarga polos, aspirasi, dan tegang, vokal gabungan",
-          ],
-          [
-            "Dengar dan bedakan",
-            "8",
-            "tiga serangkai, ㅓ dan ㅗ, batchim sengau, vokal W",
-          ],
-          ["Baca kata", "8", "arti kata dari kosakata kursus"],
-          ["Susun blok", "6", "huruf mana yang membentuk sebuah blok"],
-          [
-            "Batchim dan perubahan bunyi",
-            "8",
-            "tujuh bunyi akhir, 연음, batchim ganda, 합니다, 한국말, ㅎ",
-          ],
-        ]),
-        heading("Cara kerja ujian", 3),
-        bullet(
-          b("40 soal pilihan ganda"),
-          ", masing-masing dengan satu jawaban benar.",
-        ),
-        bullet("Urutan soal dan pilihan jawaban diacak."),
-        bullet(
-          b("Lulus dengan nilai 80"),
-          ", artinya minimal 32 jawaban benar.",
-        ),
-        bullet(
-          "Tidak ada batas waktu. Perkirakan sekitar 30 menit, tetapi kerjakan dengan tenang dan putar audionya sesering yang kamu perlukan.",
-        ),
-        bullet(
-          "Tidak ada romanisasi. Pilihan dalam tanda kurung siku, misalnya [으막], menunjukkan cara membaca.",
-        ),
-        bullet("Kalau belum lulus, kamu bisa mencoba lagi."),
-        heading("Tips", 3),
-        numbered(
-          "Pakai earphone dan cari tempat yang tenang untuk soal dengar.",
-        ),
-        numbered(
-          "Baca setiap kata per blok: lihat vokal dulu, lalu konsonan, lalu batchim.",
-        ),
-        numbered(
-          "Untuk soal batchim, tanyakan dua hal: apakah blok berikutnya diawali ㅇ? Apakah batchim bertemu ㄴ atau ㅁ?",
-        ),
-        numbered(
-          "Kalau belum lulus, baca pembahasan setiap soal yang salah, ulangi modul yang terkait, lalu coba lagi.",
-        ),
         callout(
           "info",
-          "Begitu kamu lulus, semua item kursus selesai dan kamu mendapatkan lencana ",
-          b("Hangeul Mastery"),
-          ". Kursus ini dan bagian permainan Hangeul akan disembunyikan supaya tampilanmu rapi. Kosakatanya tetap muncul di latihan harian. Kamu bisa menampilkannya lagi kapan saja di Pengaturan dengan sakelar ",
-          b("Tampilkan Hangeul Mastery"),
-          ".",
+          b("30 soal"),
+          " tentang huruf, dengar dan bedakan, baca kata, susun blok, dan batchim. Lulus dengan ",
+          b("nilai 80"),
+          " (24 benar). Tidak ada batas waktu, dan kalau belum lulus kamu bisa mencoba lagi.",
         ),
         assessmentRef("m9-mastery-exam"),
         callout(
           "success",
-          "Kamu sudah membaca menu, papan, kartu nama, dan frasa pertamamu dalam bahasa Korea. Kamu pasti bisa. 화이팅!",
+          b("Kamu pasti bisa. "),
+          "Lulus, dan kamu dapat lencana ",
+          b("Hangeul Mastery"),
+          ". Kursus ini lalu disembunyikan, dan bisa kamu tampilkan lagi di Pengaturan lewat ",
+          b("Tampilkan Hangeul Mastery"),
+          ". 화이팅!",
         ),
       ],
     },
@@ -451,9 +299,9 @@ export const m9FinalExam: ModuleContent = {
       key: "m9-mastery-exam",
       title: "Ujian akhir Hangeul Mastery",
       description:
-        "40 soal: pengenalan huruf, dengar dan bedakan, baca kata, susun blok, serta batchim dan perubahan bunyi. Lulus dengan nilai 80.",
+        "30 soal: pengenalan huruf, dengar dan bedakan, baca kata, susun blok, serta batchim dan perubahan bunyi. Lulus dengan nilai 80.",
       instructions:
-        "Pilih satu jawaban untuk setiap soal. Putar audio sesering yang kamu perlukan. Pilihan dalam tanda kurung siku menunjukkan cara membaca, bukan ejaan. Kamu lulus dengan nilai 80 (32 dari 40 benar).",
+        "Pilih satu jawaban untuk setiap soal. Putar audio sesering yang kamu perlukan. Pilihan dalam tanda kurung siku menunjukkan cara membaca, bukan ejaan. Kamu lulus dengan nilai 80 (24 dari 30 benar).",
       passingScore: 80,
       shuffleQuestions: true,
       shuffleOptions: true,

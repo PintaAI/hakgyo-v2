@@ -1,6 +1,6 @@
 # Hangeul Mastery
 
-Hangeul Mastery (`hakgyo-foundation-hangeul-mastery`, in the Hakgyo system organization) is the free foundation course every learner is enrolled in at sign-up. It takes an Indonesian speaker with no Korean from the history of Hangeul to reading and writing it, batchim included. Finishing every item earns the `HANGEUL_MASTERY` achievement and hides the course and the Hangeul game section until the learner shows them again in settings.
+Hangeul Mastery (`hakgyo-foundation-hangeul-mastery`, in the Hakgyo system organization) is the free foundation course every learner is enrolled in at sign-up. It takes an Indonesian speaker with no Korean to reading and writing Hangeul, batchim included, in about 25 short lessons (5–8 minutes each). It teaches only what helps a learner read: no history, romanization theory or letter names. Finishing every item earns the `HANGEUL_MASTERY` achievement and hides the course and the Hangeul game section until the learner shows them again in settings.
 
 The pedagogy research behind the outline (letter order, Indonesian sound comparisons, romanization, assessment design, vocabulary by stage) is summarised below; the sources are in the PR that introduced the course.
 
@@ -86,27 +86,27 @@ Stages narrow a game to the letters taught so far. Ids are stored in content, so
 
 | # | Module key | Title | Teaches | Items |
 |---|---|---|---|---|
-| 0 | `m0-welcome` | Selamat datang di Hangeul | Why learn Hangeul; King Sejong and Hunminjeongeum; why it is called scientific; listen-first phrases | 3 materials, history quiz |
+| 0 | `m0-welcome` | Mulai di sini | How Hangeul works (letters build blocks, one block is one syllable); listen-first phrases | 1 material |
 | 1 | `m1-basic-vowels` | Vokal dasar dan blok suku kata | Syllable blocks, silent ㅇ, ㅏㅣㅗㅜㅡㅓ, ㅓ/ㅗ and ㅡ/ㅜ | 3 materials, vocabulary A, quiz |
 | 2 | `m2-core-consonants` | Konsonan inti | ㄴㅁ, ㅅㅂ, ㄱㄷㅈ, ㅎㄹ | 4 materials, vocabulary B–E, quiz |
 | 3 | `m3-y-vowels` | Vokal Y dan ㅐ ㅔ | ㅑㅕㅛㅠ, ㅐㅔㅒㅖ as spelling | 3 materials, vocabulary F, quiz |
-| 4 | `m4-aspirated-tense` | Konsonan aspirasi dan tegang | ㅋㅌㅍㅊ, ㄲㄸㅃㅆㅉ, the three-way lab | 3 materials, vocabulary G–H, quiz (75%) |
+| 4 | `m4-aspirated-tense` | Konsonan berhembus dan tegang | ㅋㅌㅍㅊ, ㄲㄸㅃㅆㅉ, the three-way lab | 3 materials, vocabulary G–H, quiz (75%) |
 | 5 | `m5-w-vowels` | Vokal W | ㅘㅝㅙㅞ, ㅚㅟㅢ | 2 materials, vocabulary I, quiz |
-| 6 | `m6-reading-writing` | Membaca dan menulis | Reading by blocks, stroke order, typing, romanization in the real world, letter names | 4–5 materials, quiz |
-| 7 | `m7-batchim-basics` | Batchim | The 7 final sounds; ㄴㅁㅇ, ㄹ, ㄱㅂㄷ; many letters one sound | 4 materials, vocabulary, quiz |
-| 8 | `m8-batchim-rules` | Batchim ganda dan perubahan bunyi | Double batchim, 연음, ㅂ→ㅁ before ㄴ (합니다), ㄱ→ㅇ (한국말), tensing and weak ㅎ | 3 materials, quiz |
-| 9 | `m9-final-exam` | Ujian Hangeul Mastery | Everything | Intro material, final exam (40 questions, 80%) |
+| 6 | `m6-reading-writing` | Membaca dan menulis | Reading real words block by block; stroke order and typing on a phone | 2 materials, quiz |
+| 7 | `m7-batchim-basics` | Batchim | The 7 final sounds; ㄴㅁㅇ, ㄹ, ㄱㅂㄷ and the letters that share their sound | 3 materials, vocabulary, quiz |
+| 8 | `m8-batchim-rules` | Batchim ganda dan perubahan bunyi | 연음, double batchim (rule of thumb), ㅂ→ㅁ (합니다) and ㄱ→ㅇ (한국말) before ㄴ/ㅁ; other changes are left to listening | 3 materials, quiz |
+| 9 | `m9-final-exam` | Ujian Hangeul Mastery | Everything | Intro material, final exam (30 questions, 80%) |
 
 The course is `SEQUENTIAL`: a module opens when every item of the earlier ones is done. Materials complete when the learner presses "Lanjutkan" (after any requirements), vocabulary sets when every entry has been practised, assessments when an attempt passes.
 
 ## Writing the content
 
 - **Language.** Plain Indonesian, addressed to the learner as "kamu". Short sentences. Korean terms in Hangeul with the Indonesian gloss, not English.
-- **Sounds against Indonesian, never English.** Compare with Indonesian words: ㅏ like *apa*, ㅗ like the closed *o* in *toko*, ㅔ/ㅐ like the *e* in *enak*/*sate* (e taling, not e pepet), ㅊ like *c* in *cari* with a puff of air, ㄲㄸㅃㅉ like Indonesian *k t p c* (already unaspirated) with tense muscles. ㅓ and ㅡ have no Indonesian match: describe the mouth (ㅓ: jaw open like *o* but lips not rounded; ㅡ: say *u* with flat lips). ㄹ is a light single tap between vowels (not a rolled Indonesian *r*) and *l* as in *mobil* at the end.
-- **Romanization is scaffolding.** Show it in modules 0–2, keep it off by default (`showRomanization: false`) from module 3, never use it in quiz answers after module 2. Teach Revised Romanization once, in module 6, as a tool for reading signs and names, with its traps for Indonesians (`eo` is one vowel, `e` is e taling not pepet, `ae` is not "a-e", `ch` is not "kh").
-- **Design logic is a memory aid.** Consonant shapes follow the speech organs and extra strokes add breath; vowels come from heaven-earth-human (ㆍ ㅡ ㅣ). Present it as a mnemonic and say that scholars still debate the details.
-- **History facts.** Hangeul was announced at the end of 1443 (12th lunar month) and promulgated in the 9th lunar month of 1446 in *Hunminjeongeum*; 28 letters (17 consonants, 11 vowels), 24 in use today. The *Haerye* copy was found in Andong in 1940, became a National Treasure in 1962 and UNESCO Memory of the World in 1997. 한글날 is 9 October, a date estimated from "the first ten days of the 9th month"; do not write that Hangeul was created on 9 October 1446.
-- **Each lesson** introduces 3–4 letters: a short explanation, `hangeulLetters` cards with audio, a `hangeulSyllableGrid` of what can now be read, real words, a `hangeulContrast` where sounds are easy to confuse, a `hangeulGame` card for practice, and a closing `callout` with the key takeaway. Aim for 12–20 minutes.
+- **Sounds against Indonesian, never English.** Compare with Indonesian words: ㅏ like *apa*, ㅗ like the closed *o* in *toko*, ㅔ/ㅐ like the *e* in *sate*/*bebek* (e taling; not *enak*, whose *e* is pepet), ㅊ like *c* in *cari* with a puff of air, ㄲㄸㅃㅉ like Indonesian *k t p c* (already unaspirated) with tense muscles. ㅓ and ㅡ have no Indonesian match: describe the mouth (ㅓ: jaw open like *o* but lips not rounded; ㅡ: say *u* with flat lips). ㄹ is a light single tap between vowels (not a rolled Indonesian *r*) and *l* as in *mobil* at the end.
+- **Romanization is scaffolding.** Show it in modules 0–2, keep it off by default (`showRomanization: false`) from module 3, never use it in quiz answers after module 2. The course does not teach romanization rules.
+- **Only what helps reading.** No history, trivia, romanization theory or letter names (기역, 니은). Shape logic ("one more stroke = y" or "= more breath") is welcome when it is the rule being taught; otherwise one short line in a letter card's note.
+- **Each lesson is built from custom blocks**, 5–8 minutes, in this order: an `info` callout of one or two sentences saying what the lesson is about; `hangeulLetters` cards (the cue is one comparison with an Indonesian word, the note at most one short sentence, no stroke-by-stroke instructions); a rule card from `rules()` only where there is a real pattern (vowel position, the 7 final sounds, 연음, ㅂ→ㅁ); a `hangeulContrast` where sounds are easy to confuse; a `hangeulSyllableGrid` "Sekarang kamu bisa baca"; the module's `vocabularyRef`, `hangeulGame` and `assessmentRef` cards; and a `success` callout "Ingat: …" with one takeaway. Avoid headings, bullet and numbered lists, plain tables, quotes and dividers; keep plain paragraphs to one or two sentences per lesson, and use standalone `audioClip`s only for whole phrases (at most three). Module 1 (`content/m1-basic-vowels.ts`) is the reference.
+- **Rule cards** are the `grammar` block. `rules()` sets every prop (BlockNote would otherwise fill in the block's Korean sample) and leaves the Korean fields empty, which the web and mobile renderers hide. A row is `when` (shown small), `result` (shown bold) and `example`; keep `result` very short so it fits beside `when` on a phone.
 - **Vocabulary** sets only use letters taught by then and, before module 7, no batchim. Each entry has the Hangeul `term`, the Indonesian `definition`, `romanization`, and optionally a short example. Prefer words Indonesians recognise (loanwords such as 바나나, 커피, 버스), K-pop and drama words, and EPS-TOPIK basics. Each set is embedded with `vocabularyRef` in a material of the same module.
 - **Quizzes** are auto-graded `SINGLE_CHOICE` questions (no written answers: they would need a teacher). Mix: letter → sound cue, sound (an `audioClip` in the prompt) → letter or word, read a word → meaning, which syllable block is built from these letters, spot the minimal-pair item. Distractors are the letters learners confuse (ㅓ/ㅗ, ㅡ/ㅜ, ㄱ/ㅋ/ㄲ). About 30% of each module quiz reviews earlier modules. Passing scores: 80%, the three-way lab quiz in module 4 at 75%. Add an explanation in Indonesian to every question.
 - **Audio** comes from VoxCPM2. Reference clips with `audio("<Korean text>")`; the builders do this for letter cards, contrasts and grid cells. Speak letters as syllables (아, 가), never as isolated jamo.
