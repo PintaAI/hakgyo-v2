@@ -438,6 +438,13 @@ function HangeulContrast({ block }: BlockRendererProps) {
 
 const GRID_HEADER_WIDTH = 48;
 const GRID_CELL_WIDTH = 56;
+// Vowel columns share the card's width when they fit and keep their width
+// (and scroll) when they do not, so a two-vowel grid has no empty strip.
+const GRID_CELL_STYLE = {
+  flexGrow: 1,
+  flexBasis: GRID_CELL_WIDTH,
+  minWidth: GRID_CELL_WIDTH,
+} as const;
 
 function HangeulSyllableGrid({ block }: BlockRendererProps) {
   const player = useClipPlayer();
@@ -491,10 +498,11 @@ function HangeulSyllableGrid({ block }: BlockRendererProps) {
         </View>
         <ScrollView
           className="flex-1"
+          contentContainerStyle={{ flexGrow: 1 }}
           horizontal
           showsHorizontalScrollIndicator={false}
         >
-          <View>
+          <View className="flex-1">
             <View
               className="flex-row border-b border-border bg-muted"
               style={{ height: 44 }}
@@ -503,7 +511,7 @@ function HangeulSyllableGrid({ block }: BlockRendererProps) {
                 <View
                   className="items-center justify-center"
                   key={`${vowel}:${index}`}
-                  style={{ width: GRID_CELL_WIDTH }}
+                  style={GRID_CELL_STYLE}
                 >
                   <Text className="text-lg font-black text-foreground">
                     {vowel}
@@ -537,7 +545,7 @@ function HangeulSyllableGrid({ block }: BlockRendererProps) {
                       disabled={!playable}
                       key={index}
                       onPress={() => player.toggle(clip, assetId)}
-                      style={{ width: GRID_CELL_WIDTH }}
+                      style={GRID_CELL_STYLE}
                     >
                       {player.loading === clip ? (
                         <ActivityIndicator size="small" />

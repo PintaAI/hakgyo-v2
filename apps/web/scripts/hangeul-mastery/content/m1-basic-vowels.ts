@@ -150,7 +150,7 @@ export const m1BasicVowels: ModuleContent = {
               note: "Satu garis tegak.",
               example: {
                 word: "이",
-                meaning: "dua; gigi; ini",
+                meaning: "dua; gigi",
                 romanization: "i",
               },
             },
