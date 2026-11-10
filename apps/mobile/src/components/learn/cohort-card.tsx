@@ -57,7 +57,7 @@ import {
   ProgressBar,
   QueryState,
 } from "../learning-ui";
-import { StudyGlass } from "../study-glass";
+import { HeroTile, type HeroTileContent } from "../hero-tile";
 import { CourseOutlineList } from "./course-outline-list";
 import {
   CohortMilestoneTimeline,
@@ -218,15 +218,8 @@ const SURFACE_RADIUS = 20;
 // The card answers "what should I do now?" with exactly one hero, chosen by
 // urgency: a live/starting class beats an expiring assessment, which beats
 // the next lesson. Everything else is demoted to quiet plate rows.
-export type CohortHero = {
+export type CohortHero = HeroTileContent & {
   kind: "class" | "assessment" | "learning" | "caught-up";
-  eyebrow: string;
-  live?: boolean;
-  title: string;
-  meta: string;
-  pill?: string;
-  pillIcon?: ImageSourcePropType;
-  onPress?: () => void;
 };
 
 type PlateRow = {
@@ -238,112 +231,15 @@ type PlateRow = {
   onPress?: () => void;
 };
 
-function HeroCopy({
-  hero,
-  compact = false,
-  truncateTitle = false,
-}: {
-  hero: CohortHero;
-  compact?: boolean;
-  truncateTitle?: boolean;
-}) {
+/** A class card's hero, on the shared start tile. */
+function HeroBlock({ hero }: { hero: CohortHero }) {
+  const { kind, ...content } = hero;
   return (
-    <>
-      <View className="flex-row items-center gap-1.5">
-        {hero.live ? (
-          <View className="size-2 rounded-full bg-destructive" />
-        ) : null}
-        <Eyebrow tone={hero.live ? "destructive" : "primary"}>
-          {hero.eyebrow}
-        </Eyebrow>
-      </View>
-      <Text
-        className={
-          compact
-            ? "text-lg font-black leading-6 text-foreground"
-            : "text-xl font-black leading-7 text-foreground"
-        }
-        ellipsizeMode="tail"
-        numberOfLines={truncateTitle ? 1 : 2}
-      >
-        {hero.title}
-      </Text>
-      <Text
-        className="text-xs font-semibold text-muted-foreground"
-        numberOfLines={1}
-      >
-        {hero.meta}
-      </Text>
-    </>
-  );
-}
-
-function HeroPill({ hero }: { hero: CohortHero }) {
-  if (!hero.pill || !hero.onPress) return null;
-  return (
-    <View className="flex-row items-center gap-1.5 rounded-full bg-primary px-4 py-2">
-      {hero.pillIcon ? (
-        <Image
-          accessibilityIgnoresInvertColors
-          cachePolicy="memory-disk"
-          contentFit="contain"
-          source={hero.pillIcon}
-          style={{ width: 14, height: 14 }}
-          transition={0}
-        />
-      ) : null}
-      <Text className="text-sm font-bold text-primary-foreground">
-        {hero.pill}
-      </Text>
-    </View>
-  );
-}
-
-/**
- * The glass tile that answers "what now?": copy on the left, a pill on the
- * right. Also the suggestion in Latihan's source sheet.
- */
-export function HeroBlock({ hero }: { hero: CohortHero }) {
-  // Heroes with an action stay on one row: copy left (flex-1, truncates),
-  // pill pinned right so a long title never pushes the button down.
-  const compact = hero.kind === "assessment";
-  const hasAction = !!hero.pill && !!hero.onPress;
-  return (
-    <Pressable
+    <HeroTile
+      {...content}
       accessibilityHint={hero.onPress ? hero.title : undefined}
-      accessibilityRole={hero.onPress ? "button" : undefined}
-      className={hero.onPress ? "active:opacity-80" : ""}
-      disabled={!hero.onPress}
-      onPress={hero.onPress}
-    >
-      <StudyGlass
-        isInteractive={!!hero.onPress}
-        radius={SURFACE_RADIUS}
-        bordered={false}
-        contentClassName=""
-      >
-        {hasAction ? (
-          <View
-            className={`flex-row items-center gap-3 px-5 ${compact ? "py-4" : "py-5"}`}
-          >
-            <View className="min-w-0 flex-1 gap-1">
-              <HeroCopy
-                compact={compact}
-                truncateTitle={!compact}
-                hero={hero}
-              />
-            </View>
-            <View className="shrink-0">
-              <HeroPill hero={hero} />
-            </View>
-          </View>
-        ) : (
-          <View className="gap-1.5 px-5 py-5">
-            <HeroCopy hero={hero} />
-          </View>
-        )}
-      </StudyGlass>
-    </Pressable>
+      compact={kind === "assessment"}
+    />
   );
 }
 

@@ -56,6 +56,8 @@ Jika cuplikan menulis **Materi ini belum ada di kelasmu**, materi tujuannya tida
 
 ## Materi dengan syarat
 
+Jika materi berisi kotak **Kosakata**, kotak itu menampilkan judul, jumlah kata, dan beberapa kata pertama. Tekan **Hafalkan kosakata** (di ponsel: **Hafalkan**) untuk membuka kumpulan kosakatanya, lengkap dengan semua kata, audio, dan latihannya.
+
 Beberapa materi baru bisa diselesaikan setelah kamu berlatih kosakata atau mengerjakan tugas tertentu. Kotak di bawah materi akan berubah menjadi **Sebelum melanjutkan · Tinggal satu langkah lagi**, dengan tombol untuk membuka latihan atau tugas yang dibutuhkan. Selesaikan itu dulu, lalu kembali ke materinya.
 
 ## Pertemuan online dan grup kelas

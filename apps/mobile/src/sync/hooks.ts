@@ -765,6 +765,8 @@ export function useLearnerEvent(eventId: string) {
     data: query.data,
     isPending: query.isPending,
     isRefetching: query.isRefetching,
+    /** When the shown detail was fetched (0 before any). */
+    dataUpdatedAt: query.dataUpdatedAt,
     // A failed background refresh is not an error while a copy is shown.
     error: query.data === undefined ? query.error : null,
     refetch: query.refetch,

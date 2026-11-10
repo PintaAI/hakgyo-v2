@@ -27,16 +27,21 @@ export function AssessmentResultReview({
   attempt,
   resolveAssetUrl,
   onQuestionChange,
+  initialIndex = 0,
 }: {
   assessment: Assessment;
   attempt: Attempt;
   resolveAssetUrl: AssetUrlResolver;
   onQuestionChange?: () => void;
+  /** The question to open at (from a preview of it). */
+  initialIndex?: number;
 }) {
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(() =>
+    Math.min(Math.max(0, initialIndex), assessment.questions.length - 1),
+  );
   const pager = useRef<QuizPagerHandle>(null);
   /** The pager's offset in questions, for the status dots. */
-  const pagePosition = useSharedValue(0);
+  const pagePosition = useSharedValue(index);
   /** A swipe already moved the pager; buttons and the list move it here. */
   function goToQuestion(next: number, swiped = false) {
     setIndex(next);
@@ -44,33 +49,7 @@ export function AssessmentResultReview({
     onQuestionChange?.();
   }
   const policy = assessmentResultPolicy(assessment.event?.type);
-  const available =
-    attempt.status === "GRADED" &&
-    policy.showAnswerReview &&
-    assessment.answersRevealed;
-  const statuses: QuestionStatus[] = available
-    ? assessment.questions.map((question) => {
-        const answer = attempt.answers.find(
-          (candidate) => candidate.questionId === question.id,
-        );
-        const optionIds =
-          answer?.selectedOptions.map((selection) => selection.optionId) ?? [];
-        if (
-          !isQuestionAnswered({
-            content:
-              typeof answer?.content === "string" ? answer.content : undefined,
-            optionIds,
-          })
-        )
-          return "unanswered";
-        if (question.type === "WRITTEN") return "answered";
-        const correct = question.options.filter((option) => option.isCorrect);
-        return optionIds.length === correct.length &&
-          correct.every((option) => optionIds.includes(option.id))
-          ? "correct"
-          : "incorrect";
-      })
-    : [];
+  const statuses = reviewStatuses(assessment, attempt);
   const openQuestions = useQuestionNavigator({
     title: "Pembahasan · " + assessment.title,
     current: index,
@@ -103,85 +82,15 @@ export function AssessmentResultReview({
       </Card>
     );
 
-  const ranges = groupRanges(assessment.questions);
-
   function renderPage(position: number) {
-    const question = assessment.questions[position];
-    if (!question) return null;
-    const answer = attempt.answers.find(
-      (candidate) => candidate.questionId === question.id,
-    );
-    const writtenScore =
-      answer && "manualScore" in answer
-        ? (answer.manualScore ??
-          ("autoScore" in answer ? answer.autoScore : null))
-        : null;
-    // Scores arrive as plain numbers; the payload type widens them through the "in" checks.
-    const writtenScoreValue =
-      typeof writtenScore === "number" ? writtenScore : null;
-    const feedback = answer && "feedback" in answer ? answer.feedback : null;
-    const group = question.groupId
-      ? assessment.groups.find(({ id }) => id === question.groupId)
-      : undefined;
-    const range = question.groupId ? ranges.get(question.groupId) : undefined;
     return (
-      <QuizQuestion
-        question={question}
-        index={position}
-        total={assessment.questions.length}
-        detail={
-          question.type === "WRITTEN"
-            ? writtenScoreValue !== null
-              ? `${formatScoreOutOf(writtenScoreValue, question.points, " / ")} pt`
-              : "Sudah direview"
-            : statuses[position] === "correct"
-              ? "Benar"
-              : statuses[position] === "unanswered"
-                ? "Tidak dijawab"
-                : "Salah"
-        }
-        group={
-          group && range
-            ? {
-                instructions: group.instructions,
-                stimulus: group.stimulus,
-                first: range.first,
-                last: range.last,
-              }
-            : null
-        }
-        selectedOptionIds={
-          answer?.selectedOptions.map((selection) => selection.optionId) ?? []
-        }
-        correctOptionIds={question.options
-          .filter((option) => option.isCorrect === true)
-          .map((option) => option.id)}
-        writtenAnswer={
-          typeof answer?.content === "string" ? answer.content : undefined
-        }
+      <ReviewQuestion
+        assessment={assessment}
+        attempt={attempt}
+        position={position}
+        statuses={statuses}
         resolveAssetUrl={resolveAssetUrl}
-      >
-        {feedback ? (
-          <Card className="gap-4 p-5">
-            <Eyebrow size="md" tone="primary">
-              Feedback pengajar
-            </Eyebrow>
-            <NativeContentRenderer
-              content={feedback}
-              resolveAssetUrl={resolveAssetUrl}
-            />
-          </Card>
-        ) : null}
-        {question.explanation ? (
-          <Card className="gap-4 p-5">
-            <Eyebrow size="md">Pembahasan</Eyebrow>
-            <NativeContentRenderer
-              content={question.explanation}
-              resolveAssetUrl={resolveAssetUrl}
-            />
-          </Card>
-        ) : null}
-      </QuizQuestion>
+      />
     );
   }
 
@@ -216,5 +125,148 @@ export function AssessmentResultReview({
         onOpenList={openQuestions}
       />
     </View>
+  );
+}
+
+/** Whether the answer review is open for this attempt. */
+export function reviewAvailable(assessment: Assessment, attempt: Attempt) {
+  return (
+    attempt.status === "GRADED" &&
+    assessmentResultPolicy(assessment.event?.type).showAnswerReview &&
+    assessment.answersRevealed
+  );
+}
+
+/**
+ * Each question's outcome in a graded attempt; empty while the review is
+ * closed.
+ */
+export function reviewStatuses(
+  assessment: Assessment,
+  attempt: Attempt,
+): QuestionStatus[] {
+  const available = reviewAvailable(assessment, attempt);
+  return available
+    ? assessment.questions.map((question) => {
+        const answer = attempt.answers.find(
+          (candidate) => candidate.questionId === question.id,
+        );
+        const optionIds =
+          answer?.selectedOptions.map((selection) => selection.optionId) ?? [];
+        if (
+          !isQuestionAnswered({
+            content:
+              typeof answer?.content === "string" ? answer.content : undefined,
+            optionIds,
+          })
+        )
+          return "unanswered";
+        if (question.type === "WRITTEN") return "answered";
+        const correct = question.options.filter((option) => option.isCorrect);
+        return optionIds.length === correct.length &&
+          correct.every((option) => optionIds.includes(option.id))
+          ? "correct"
+          : "incorrect";
+      })
+    : [];
+}
+
+/**
+ * One question of a graded attempt as the learner answered it, marked right
+ * or wrong, with the teacher's feedback and the explanation unless `brief`.
+ */
+export function ReviewQuestion({
+  assessment,
+  attempt,
+  position,
+  statuses,
+  resolveAssetUrl,
+  brief = false,
+}: {
+  assessment: Assessment;
+  attempt: Attempt;
+  position: number;
+  statuses: QuestionStatus[];
+  resolveAssetUrl: AssetUrlResolver;
+  /** Only the question and the answers (a preview). */
+  brief?: boolean;
+}) {
+  const ranges = groupRanges(assessment.questions);
+  const question = assessment.questions[position];
+  if (!question) return null;
+  const answer = attempt.answers.find(
+    (candidate) => candidate.questionId === question.id,
+  );
+  const writtenScore =
+    answer && "manualScore" in answer
+      ? (answer.manualScore ??
+        ("autoScore" in answer ? answer.autoScore : null))
+      : null;
+  // Scores arrive as plain numbers; the payload type widens them through the "in" checks.
+  const writtenScoreValue =
+    typeof writtenScore === "number" ? writtenScore : null;
+  const feedback = answer && "feedback" in answer ? answer.feedback : null;
+  const group = question.groupId
+    ? assessment.groups.find(({ id }) => id === question.groupId)
+    : undefined;
+  const range = question.groupId ? ranges.get(question.groupId) : undefined;
+  return (
+    <QuizQuestion
+      question={question}
+      index={position}
+      total={assessment.questions.length}
+      detail={
+        question.type === "WRITTEN"
+          ? writtenScoreValue !== null
+            ? `${formatScoreOutOf(writtenScoreValue, question.points, " / ")} pt`
+            : "Sudah direview"
+          : statuses[position] === "correct"
+            ? "Benar"
+            : statuses[position] === "unanswered"
+              ? "Tidak dijawab"
+              : "Salah"
+      }
+      group={
+        group && range
+          ? {
+              instructions: group.instructions,
+              stimulus: group.stimulus,
+              first: range.first,
+              last: range.last,
+            }
+          : null
+      }
+      selectedOptionIds={
+        answer?.selectedOptions.map((selection) => selection.optionId) ?? []
+      }
+      correctOptionIds={question.options
+        .filter((option) => option.isCorrect === true)
+        .map((option) => option.id)}
+      writtenAnswer={
+        typeof answer?.content === "string" ? answer.content : undefined
+      }
+      resolveAssetUrl={resolveAssetUrl}
+    >
+      {!brief && feedback ? (
+        <Card className="gap-4 p-5">
+          <Eyebrow size="md" tone="primary">
+            Feedback pengajar
+          </Eyebrow>
+          <NativeContentRenderer
+            content={feedback}
+            resolveAssetUrl={resolveAssetUrl}
+          />
+        </Card>
+      ) : null}
+      {!brief && question.explanation ? (
+        <Card className="gap-4 p-5">
+          <Eyebrow size="md">Pembahasan</Eyebrow>
+          <NativeContentRenderer
+            content={question.explanation}
+            resolveAssetUrl={resolveAssetUrl}
+          />
+        </Card>
+      ) : null}
+    </QuizQuestion>
   );
 }
