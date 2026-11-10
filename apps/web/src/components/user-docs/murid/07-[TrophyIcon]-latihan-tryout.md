@@ -28,7 +28,7 @@ Setiap kartu menampilkan status:
 
 1. Buka latihan yang berstatus **Dibuka**. Halaman ini menampilkan jumlah soal, durasi, nilai lulus, dan jadwal tutup.
 2. Tunggu sampai **Menyiapkan gambar & audio soal** selesai. Langkah ini mengunduh gambar dan suara lebih dulu supaya soal tidak tersendat. Jika ada yang gagal, klik ulangi.
-3. Klik **Mulai tugas berwaktu**. Memulai membutuhkan internet. Di aplikasi ponsel, soal pertama (atau petunjuk bagian pertama) langsung tampil dengan tulisan **Memulai…**, dan bisa dijawab begitu server mencatat waktu mulaimu. Setelah itu kamu bisa lanjut mengerjakan tanpa internet.
+3. Klik **Mulai tugas berwaktu**. Memulai membutuhkan internet. Di aplikasi ponsel, tekan **Mulai** pada kotak **Mulai tugas berwaktu**. Soal pertama (atau petunjuk bagian pertama) langsung tampil dengan tulisan **Memulai…**, dan bisa dijawab begitu server mencatat waktu mulaimu. Setelah itu kamu bisa lanjut mengerjakan tanpa internet.
 4. Kerjakan seperti tugas biasa, lalu kirim. Di aplikasi ponsel, tekan **Selesaikan latihan** atau **Selesaikan tryout** di kanan atas, lalu **Selesaikan** di konfirmasinya. Tombolnya menampilkan **Mengirim…** selama jawaban dikirim, lalu kamu kembali ke halaman latihan. Di sana tulisan **Memperbarui status dan hasil…** muncul sebentar sampai nilaimu tampil. Lihat [Mengerjakan Tugas](/docs/murid/mengerjakan-tugas).
 
 Waktumu berakhir pada yang lebih dulu tercapai: durasi habis, atau jadwal tutup tiba. Jika mulai 10 menit sebelum tutup, kamu hanya punya 10 menit.
@@ -45,6 +45,8 @@ Setelah mengirim, buka lagi halaman latihan untuk melihat nilai dan papan pering
 - Papan peringkat menampilkan 50 teratas dan posisimu sendiri.
 - Nama peserta terlihat oleh semua peserta latihan tersebut.
 - Jawaban tertulis harus dinilai pengajar dulu sebelum masuk peringkat.
+- Di aplikasi ponsel, nilaimu tampil paling atas, lalu **Peringkat sementara** selama latihan masih dibuka (menjadi **Peringkat akhir** setelah ditutup). Yang tampil 5 teratas dan barismu sendiri. Tekan **Lihat semua peringkat** untuk melihat semuanya. Peringkat diperbarui saat kamu membuka lagi aplikasi atau halaman latihan, atau saat kamu menarik layar ke bawah. Tulisan **Diperbarui … lalu** menunjukkan kapan terakhir diperbarui.
+- Di bawah peringkat, **Latihan** yang sudah dibuka pembahasannya menampilkan soal pertama yang jawabannya salah. Tekan **Review semua jawaban** untuk membuka semuanya. Pada **Tryout**, atau sebelum pembahasan dibuka, tekan **Lihat rincian nilai**.
 
 Pada **Latihan**, jawaban benar dan pembahasan baru muncul setelah latihan ditutup. Pada **Tryout**, kunci jawaban dan pembahasan tidak ditampilkan.
 

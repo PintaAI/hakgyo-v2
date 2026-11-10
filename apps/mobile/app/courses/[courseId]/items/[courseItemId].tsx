@@ -56,8 +56,12 @@ import { requirementActionsFor } from "../../../../src/components/learn/requirem
 import {
   AssessmentFacts,
   AssessmentOverview,
+  hasPassed,
   QuestionPreview,
 } from "../../../../src/components/learn/assessment-overview";
+import { AssessmentResult } from "../../../../src/components/learn/assessment-result";
+import { HeroTile } from "../../../../src/components/hero-tile";
+import { useCelebration } from "../../../../src/lib/tugas-celebrations";
 import { authClient } from "../../../../src/lib/auth-client";
 import { userErrorMessage } from "../../../../src/lib/error-message";
 import { api } from "../../../../src/lib/trpc";
@@ -85,7 +89,6 @@ import {
 import { toolbarIcons } from "../../../../src/theme/toolbar-icons";
 import { SidebarToolbarButton } from "../../../../src/components/sidebar/SidebarToolbarButton";
 import {
-  Action,
   Eyebrow,
   FullScreenState,
   StudyScreen,
@@ -301,6 +304,17 @@ function CourseItemContent({
     maxAttempts: assessment?.maxAttempts ?? null,
     available: true,
   });
+  // A pass gets its confetti once, when the learner first sees it.
+  const celebrate = useCelebration({
+    userId,
+    key: courseItemId,
+    attemptId: latestAttempt?.id,
+    passed: Boolean(
+      assessment &&
+      latestAttempt?.status === "GRADED" &&
+      hasPassed(latestAttempt, assessment.passingScore),
+    ),
+  });
   useEffect(() => {
     if (currentModuleId) markEntitySeen("MODULE", currentModuleId);
   }, [currentModuleId, markEntitySeen]);
@@ -483,6 +497,57 @@ function CourseItemContent({
               shuffleSeed={startingSeed}
             />
           </StudyScreen>
+        ) : assessment && latestAttempt?.status === "GRADED" ? (
+          <StudyScreen title="" bleedTop contentClassName="gap-4">
+            <AssessmentResult
+              attemptId={latestAttempt.id}
+              courseItemId={courseItemId}
+              title={assessment.title}
+              attempt={latestAttempt}
+              passingScore={assessment.passingScore}
+              itemCompleted={itemCompleted}
+              canReattempt={assessmentEntry.canReattempt}
+              learning={assessment.event ? undefined : learning}
+              celebrate={celebrate}
+              onReview={(question) =>
+                router.push({
+                  pathname: "/courses/[courseId]/items/[courseItemId]/result",
+                  params: {
+                    courseId,
+                    courseItemId,
+                    attemptId: latestAttempt.id,
+                    ...(question !== undefined
+                      ? { question: String(question) }
+                      : null),
+                  },
+                })
+              }
+              onRetry={() => void beginAssessment()}
+              retryDisabled={
+                assessment.questions.length === 0 ||
+                (assessment.eligibleCohorts.length > 1 && !selectedCohortId)
+              }
+              retryExtras={
+                <>
+                  {assessment.eligibleCohorts.length > 1 ? (
+                    <CohortPicker
+                      cohorts={assessment.eligibleCohorts}
+                      selectedId={selectedCohortId}
+                      onSelect={setSelectedCohortId}
+                    />
+                  ) : null}
+                  {startAssessment.isError ? (
+                    <Text className="text-center text-sm text-destructive">
+                      {userErrorMessage(
+                        startAssessment.error,
+                        "Tugas tidak dapat dimulai.",
+                      )}
+                    </Text>
+                  ) : null}
+                </>
+              }
+            />
+          </StudyScreen>
         ) : assessment ? (
           <StudyScreen title="" bleedTop>
             <HakgyoHero>
@@ -524,36 +589,26 @@ function CourseItemContent({
               />
               {(assessmentEntry.canStart || assessmentEntry.canReattempt) &&
               assessment.eligibleCohorts.length > 1 ? (
-                <View className="gap-2">
-                  <Text className="text-sm font-bold text-foreground">
-                    Pilih kelas
-                  </Text>
-                  {assessment.eligibleCohorts.map((cohort) => (
-                    <Pressable
-                      className={`rounded-xl border px-4 py-3 ${selectedCohortId === cohort.id ? "border-primary bg-primary/10" : "border-border"}`}
-                      key={cohort.id}
-                      onPress={() => setSelectedCohortId(cohort.id)}
-                    >
-                      <Text className="font-bold text-foreground">
-                        {cohort.name}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
+                <CohortPicker
+                  cohorts={assessment.eligibleCohorts}
+                  selectedId={selectedCohortId}
+                  onSelect={setSelectedCohortId}
+                />
               ) : null}
               {assessmentEntry.canStart ||
               assessmentEntry.canReattempt ||
               assessmentEntry.destination === "ATTEMPT" ? (
-                <Action
-                  // Once the tugas is done, retrying is optional: the footer's
-                  // "Lanjutkan belajar" becomes the main action.
-                  variant={
-                    assessmentEntry.canReattempt &&
-                    (itemCompleted === true || Boolean(assessment.event))
-                      ? "secondary"
-                      : "primary"
-                  }
-                  trailingIcon="arrow.right"
+                <HeroTile
+                  {...startTileCopy({
+                    resuming: assessmentEntry.destination === "ATTEMPT",
+                    retrying: assessmentEntry.canReattempt,
+                    offline: canStartOnDevice(assessment),
+                    attemptsLeft:
+                      assessment.maxAttempts === null
+                        ? null
+                        : assessment.maxAttempts -
+                          assessment.standaloneAttemptCount,
+                  })}
                   disabled={
                     assessment.questions.length === 0 ||
                     ((assessmentEntry.canStart ||
@@ -562,35 +617,7 @@ function CourseItemContent({
                       !selectedCohortId)
                   }
                   onPress={() => void beginAssessment()}
-                >
-                  {assessmentEntry.destination === "ATTEMPT"
-                    ? "Lanjutkan tugas"
-                    : assessmentEntry.canReattempt
-                      ? "Kerjakan ulang tugas"
-                      : "Mulai tugas"}
-                </Action>
-              ) : null}
-              {/* The finished attempt in full, in a sheet: where the learner
-                  lands after finishing, so the attempt has no result screen
-                  of its own. */}
-              {latestAttempt?.status === "GRADED" ? (
-                <Action
-                  variant="outline"
-                  leadingIcon="list.bullet.rectangle.fill"
-                  onPress={() =>
-                    router.push({
-                      pathname:
-                        "/courses/[courseId]/items/[courseItemId]/result",
-                      params: {
-                        courseId,
-                        courseItemId,
-                        attemptId: latestAttempt.id,
-                      },
-                    })
-                  }
-                >
-                  Review jawaban kamu
-                </Action>
+                />
               ) : null}
               {startAssessment.isError ? (
                 <Text className="text-center text-sm text-destructive">
@@ -779,4 +806,71 @@ function CourseItemContent({
       )}
     </>
   );
+}
+
+/** The class to start a tugas in, when the learner is in more than one. */
+function CohortPicker({
+  cohorts,
+  selectedId,
+  onSelect,
+}: {
+  cohorts: ReadonlyArray<{ id: string; name: string }>;
+  selectedId: string | undefined;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <View className="gap-2">
+      <Text className="text-sm font-bold text-foreground">Pilih kelas</Text>
+      {cohorts.map((cohort) => (
+        <Pressable
+          className={`rounded-xl border px-4 py-3 ${selectedId === cohort.id ? "border-primary bg-primary/10" : "border-border"}`}
+          key={cohort.id}
+          onPress={() => onSelect(cohort.id)}
+        >
+          <Text className="font-bold text-foreground">{cohort.name}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+/** The start tile of a course tugas: start, continue or try again. */
+function startTileCopy({
+  resuming,
+  retrying,
+  offline,
+  attemptsLeft,
+}: {
+  resuming: boolean;
+  retrying: boolean;
+  /** Starts on the device, without a connection. */
+  offline: boolean;
+  attemptsLeft: number | null;
+}) {
+  if (resuming)
+    return {
+      eyebrow: "Belum dikirim",
+      title: "Lanjutkan tugas",
+      meta: "Jawabanmu tersimpan. Kirim jika sudah siap.",
+      pill: "Lanjutkan",
+    };
+  const connection = offline
+    ? "Bisa dikerjakan tanpa internet"
+    : "Perlu internet untuk mulai";
+  if (retrying)
+    return {
+      eyebrow: "Coba lagi",
+      title: "Kerjakan ulang tugas",
+      meta:
+        attemptsLeft === null
+          ? connection
+          : `Sisa ${attemptsLeft} percobaan · ${connection}`,
+      pill: "Mulai",
+    };
+  return {
+    eyebrow: "Siap mulai?",
+    title: "Mulai tugas",
+    meta: connection,
+    pill: "Mulai",
+  };
 }

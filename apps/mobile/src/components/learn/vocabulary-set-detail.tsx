@@ -8,7 +8,8 @@ import { FlatList, Platform, Pressable, Text, View } from "react-native";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useApiAssetResolver } from "../content-renderer";
 import { withOpacity } from "../../theme/colors";
-import { Action, Eyebrow, ProgressBar } from "../learning-ui";
+import { HeroTile } from "../hero-tile";
+import { Eyebrow, ProgressBar } from "../learning-ui";
 import { api } from "../../lib/trpc";
 import {
   sortByWordStatus,
@@ -449,8 +450,31 @@ export function VocabularySetDetail({
                 </Text>
               </View>
             ) : null}
-            <Action
-              trailingIcon="arrow.right"
+            <HeroTile
+              eyebrow="Latihan kosakata"
+              title={
+                !courseItemId
+                  ? "Pilih permainan di Latihan"
+                  : setProgress && setProgress.total > 0
+                    ? setProgress.complete
+                      ? `Ulangi ${setProgress.total} kata`
+                      : `${setProgress.total - setProgress.learned} kata perlu dihafal`
+                    : `${total} kata`
+              }
+              meta={
+                courseItemId
+                  ? "Satu sesi singkat dari beberapa permainan"
+                  : "Pilih sendiri permainannya"
+              }
+              pill={
+                !courseItemId
+                  ? "Buka"
+                  : setProgress &&
+                      setProgress.learned > 0 &&
+                      !setProgress.complete
+                    ? "Lanjutkan"
+                    : "Mulai"
+              }
               onPress={() => {
                 // One tap into a short lesson that mixes the games; picking
                 // a game is left to the Latihan tab.
@@ -467,9 +491,7 @@ export function VocabularySetDetail({
                 }
                 router.push("/(home)/(tabs)/assessments");
               }}
-            >
-              Mulai latihan
-            </Action>
+            />
           </HakgyoHero>
 
           {total > 0 ? (

@@ -19,8 +19,11 @@ import { TagResults } from "./tag-results";
 export function AttemptResultDetails({
   attemptId,
   courseItemId,
+  initialQuestion,
 }: {
   attemptId: string;
+  /** The review opens at this question (from the preview on the tugas). */
+  initialQuestion?: number;
   /** Null for attempts of library events (read through the attempt). */
   courseItemId: string | null;
 }) {
@@ -81,6 +84,7 @@ export function AttemptResultDetails({
         assessment={detail}
         attempt={graded}
         resolveAssetUrl={resolveAssetUrl}
+        initialIndex={initialQuestion}
       />
     </>
   );

@@ -9,12 +9,19 @@ import {
   useAssessmentMediaPrefetch,
 } from "../../src/components/assessment-media";
 import { AttemptStartingPreview } from "../../src/components/attempt-starting-preview";
+import { HeroTile } from "../../src/components/hero-tile";
+import { AssessmentResult } from "../../src/components/learn/assessment-result";
+import { EventLeaderboard } from "../../src/components/learn/event-leaderboard";
+import { authClient } from "../../src/lib/auth-client";
+import { useCelebration } from "../../src/lib/tugas-celebrations";
+import { useRefetchWhenBack } from "../../src/lib/use-refetch-when-back";
 import { randomUuid } from "../../src/lib/random-uuid";
 import { AttemptResultDetails } from "../../src/components/attempt-result-details";
 import { useApiAssetResolver } from "../../src/components/content-renderer";
 import {
   AssessmentFacts,
   AssessmentOverview,
+  hasPassed,
   QuestionPreview,
 } from "../../src/components/learn/assessment-overview";
 import {
@@ -23,7 +30,6 @@ import {
   HERO_TITLE,
 } from "../../src/components/learn/hakgyo-hero";
 import {
-  Action,
   Eyebrow,
   FullScreenState,
   Row,
@@ -73,6 +79,21 @@ export default function AssessmentEventScreen() {
   const attempt = event?.attempts[0];
   const invalidated = !!event?.participants[0]?.invalidatedAt;
   const assessment = event ? eventAssessment(event) : null;
+  const { data: session } = authClient.useSession();
+  const userId = session?.user.id;
+  // The ranking moves as classmates finish: refresh when the learner comes
+  // back to the screen (the app reopened, the result sheet closed).
+  useRefetchWhenBack(query.refetch);
+  const graded =
+    attempt?.status === "GRADED" && !invalidated ? attempt : undefined;
+  const celebrate = useCelebration({
+    userId,
+    key: `event:${eventId}`,
+    attemptId: graded?.id,
+    passed: Boolean(
+      graded && hasPassed(graded, assessment?.passingScore ?? null),
+    ),
+  });
   // The questions without answers, already on the device in the course bundle.
   // An event that runs an assessment from the organization's library (no
   // course item) has none on the device: its questions arrive with the start.
@@ -236,6 +257,59 @@ export default function AssessmentEventScreen() {
         )
       ) : event.entry.destination === "ATTEMPT" ? (
         <FullScreenState kind="loading" message="Melanjutkan tugas kamu…" />
+      ) : graded ? (
+        <StudyScreen
+          title=""
+          bleedTop
+          contentClassName="gap-4"
+          refreshing={pulling}
+          onRefresh={() => void pullToRefresh()}
+        >
+          <AssessmentResult
+            attemptId={graded.id}
+            courseItemId={courseItemId}
+            eyebrow={`${event.type === "TRYOUT" ? "Tryout" : "Latihan"} selesai`}
+            title={assessment?.title ?? event.title}
+            attempt={graded}
+            passingScore={assessment?.passingScore ?? null}
+            canReattempt={event.entry.canReattempt}
+            celebrate={celebrate}
+            onReview={(question) =>
+              router.push({
+                pathname: "/events/[eventId]/result",
+                params: {
+                  eventId: event.id,
+                  attemptId: graded.id,
+                  ...(courseItemId ? { courseItemId } : null),
+                  ...(question !== undefined
+                    ? { question: String(question) }
+                    : null),
+                },
+              })
+            }
+            onRetry={() => void begin()}
+            retryExtras={
+              start.error ? (
+                <Text
+                  accessibilityRole="alert"
+                  className="text-center text-sm text-destructive"
+                >
+                  {userErrorMessage(start.error, "Tidak dapat dimulai.")}
+                </Text>
+              ) : null
+            }
+          >
+            {event.leaderboard ? (
+              <EventLeaderboard
+                entries={event.leaderboard}
+                userId={userId}
+                final={event.status === "CLOSED"}
+                updatedAt={query.dataUpdatedAt}
+                eventLabel={event.type === "TRYOUT" ? "tryout" : "latihan"}
+              />
+            ) : null}
+          </AssessmentResult>
+        </StudyScreen>
       ) : (
         <StudyScreen
           title=""
@@ -300,20 +374,13 @@ export default function AssessmentEventScreen() {
               onRetry={media.retry}
             />
             {primaryAction ? (
-              <View className="gap-2">
-                <Action
-                  // Like a course tugas: retrying after a result is optional.
-                  variant={attempt ? "secondary" : "primary"}
-                  trailingIcon="arrow.right"
-                  onPress={() => void begin()}
-                >
-                  {primaryAction}
-                </Action>
-                <Text className="text-center text-xs leading-5 text-muted-foreground">
-                  Perlu internet untuk mulai. Setelah itu kamu bisa lanjut
-                  mengerjakan tanpa internet.
-                </Text>
-              </View>
+              <HeroTile
+                eyebrow={attempt ? "Coba lagi" : "Siap mulai?"}
+                title={primaryAction}
+                meta={`${event.durationMinutes} menit · Perlu internet untuk mulai`}
+                pill="Mulai"
+                onPress={() => void begin()}
+              />
             ) : null}
             {statusNote ? (
               <Text

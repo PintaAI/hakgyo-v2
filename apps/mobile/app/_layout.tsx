@@ -341,6 +341,16 @@ function RootNavigator() {
                       fullScreenGestureEnabled: false,
                     }}
                   />
+                  <Stack.Screen
+                    name="events/[eventId]/result"
+                    options={{
+                      headerShown: false,
+                      ...formSheetOptions({
+                        detents: [0.6, 0.95],
+                        expandsWhenScrolledToEdge: true,
+                      }),
+                    }}
+                  />
                   <Stack.Screen name="vocabulary/[vocabularySetId]" />
                   <Stack.Screen
                     name="vocabulary/[vocabularySetId]/items/[entryId]"

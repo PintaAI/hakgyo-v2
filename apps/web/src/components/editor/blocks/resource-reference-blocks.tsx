@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
 import { createReactBlockSpec } from "@blocknote/react";
 import {
   ArrowRightIcon,
@@ -11,8 +10,6 @@ import {
   InfoIcon,
   LoaderCircleIcon,
   PlusIcon,
-  SearchIcon,
-  Volume2Icon,
 } from "lucide-react";
 
 import {
@@ -21,8 +18,6 @@ import {
 } from "~/components/resource-picker";
 import { Badge } from "~/components/ui/badge";
 import { buttonVariants } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { VocabularyMeanings } from "~/components/vocabulary-meanings";
 import {
   assessmentReferenceBlockType,
   vocabularyReferenceBlockType,
@@ -33,25 +28,16 @@ import {
   useResourceReferences,
   useVocabularyReference,
 } from "../resource-reference-context";
-import { AssetUrl } from "./asset-media-block";
 import { CustomBlockToolbar } from "./custom-block-toolbar";
 
 const callbackMessageType = "hakgyo:resource-created";
-const searchableEntryThreshold = 8;
 
 type ResourceType = "assessment" | "vocabulary";
 
-function firstExample(value: unknown) {
-  if (typeof value === "string") return value;
-  if (Array.isArray(value)) {
-    const example = value.find((item) => typeof item === "string");
-    return typeof example === "string" ? example : null;
-  }
-  if (value && typeof value === "object" && "example" in value) {
-    const example = (value as { example?: unknown }).example;
-    return typeof example === "string" ? example : null;
-  }
-  return null;
+/** The first few words of a set, as a one-line taste of it ("아이 · 오이 · …"). */
+function vocabularyPreview(terms: readonly string[], shown = 6) {
+  const head = terms.slice(0, shown).join(" · ");
+  return terms.length > shown ? `${head} · …` : head;
 }
 
 /**
@@ -204,19 +190,9 @@ export const vocabularyReferenceBlock = createReactBlockSpec(
     render: function VocabularyReferenceRender({ block, editor }) {
       const references = useResourceReferences();
       const [changing, setChanging] = useState(false);
-      const [query, setQuery] = useState("");
       const { resource, isLoading: isResourceLoading } = useVocabularyReference(
         block.props.vocabularySetId,
       );
-      const entries = useMemo(() => {
-        const normalizedQuery = query.trim().toLowerCase();
-        if (!normalizedQuery) return resource?.entries ?? [];
-        return (resource?.entries ?? []).filter((entry) =>
-          `${entry.term} ${entry.meanings.join(" ")}`
-            .toLowerCase()
-            .includes(normalizedQuery),
-        );
-      }, [query, resource]);
       const practiceHref = references?.learner
         ? `/learn/vocabulary/${encodeURIComponent(block.props.vocabularySetId)}?source=${encodeURIComponent(references.learner.sourceCourseItemId)}`
         : undefined;
@@ -253,118 +229,39 @@ export const vocabularyReferenceBlock = createReactBlockSpec(
               }}
             />
           ) : resource ? (
-            <section className="bg-card overflow-hidden rounded-2xl border shadow-sm">
-              <header className="bg-primary/5 flex flex-col gap-4 border-b p-5 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-primary flex items-center gap-2 text-xs font-bold tracking-wider uppercase">
-                    <BookOpenCheckIcon className="size-4" /> Kosakata
-                  </p>
-                  <h3 className="font-heading mt-2 text-2xl font-semibold">
-                    {resource.title}
-                  </h3>
-                  {resource.description ? (
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      {resource.description}
-                    </p>
-                  ) : null}
-                </div>
-                <Badge variant="secondary">
+            // A shortcut to the set's page (its words, audio and practice),
+            // not the word list itself, which took a screen on a phone.
+            <section className="bg-card flex flex-col gap-4 rounded-2xl border p-5 shadow-sm sm:flex-row sm:items-center">
+              <span className="bg-primary/10 text-primary flex size-12 shrink-0 items-center justify-center rounded-xl">
+                <BookOpenCheckIcon className="size-6" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+                  Kosakata · {resource.entries.length} kata
+                </p>
+                <h3 className="font-heading mt-1 text-xl font-semibold">
+                  {resource.title}
+                </h3>
+                <p className="text-muted-foreground mt-1 truncate text-sm">
+                  {resource.entries.length
+                    ? vocabularyPreview(
+                        resource.entries.map((entry) => entry.term),
+                      )
+                    : "Set ini belum memiliki kata."}
+                </p>
+              </div>
+              {practiceHref ? (
+                <a
+                  className={cn(buttonVariants(), "shrink-0")}
+                  href={practiceHref}
+                >
+                  Hafalkan kosakata <ArrowRightIcon />
+                </a>
+              ) : (
+                <Badge variant="outline" className="shrink-0">
                   {resource.entries.length} kata
                 </Badge>
-              </header>
-              <div className="space-y-4 p-5">
-                {resource.entries.length > searchableEntryThreshold ? (
-                  <div className="relative max-w-sm">
-                    <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-                    <Input
-                      aria-label="Cari kosakata dalam block"
-                      className="pl-9"
-                      onChange={(event) => setQuery(event.target.value)}
-                      placeholder="Cari istilah atau arti..."
-                      value={query}
-                    />
-                  </div>
-                ) : null}
-                {entries.length ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {entries.map((entry) => {
-                      const example = firstExample(entry.examples);
-                      return (
-                        <article
-                          className="grid min-w-0 gap-3 rounded-xl border p-4"
-                          key={entry.id}
-                        >
-                          {entry.imageAsset ? (
-                            <AssetUrl assetId={entry.imageAsset.id}>
-                              {(url, loading) =>
-                                loading ? (
-                                  <div className="bg-muted h-32 animate-pulse rounded-lg" />
-                                ) : url ? (
-                                  <Image
-                                    alt={entry.term}
-                                    className="h-32 w-full rounded-lg object-cover"
-                                    height={128}
-                                    src={url}
-                                    unoptimized
-                                    width={320}
-                                  />
-                                ) : null
-                              }
-                            </AssetUrl>
-                          ) : null}
-                          <div className="min-w-0">
-                            <div className="flex items-start justify-between gap-3">
-                              <h4 className="text-lg font-bold">
-                                {entry.term}
-                              </h4>
-                              {entry.audioAsset ? (
-                                <AssetUrl assetId={entry.audioAsset.id}>
-                                  {(url) =>
-                                    url ? (
-                                      <audio
-                                        src={url}
-                                        preload="none"
-                                        controls
-                                        className="h-8 max-w-36"
-                                      />
-                                    ) : (
-                                      <Volume2Icon className="text-muted-foreground size-4" />
-                                    )
-                                  }
-                                </AssetUrl>
-                              ) : null}
-                            </div>
-                            <VocabularyMeanings
-                              className="text-muted-foreground mt-1 text-sm"
-                              meanings={entry.meanings}
-                            />
-                            {example ? (
-                              <p className="mt-2 text-sm italic">“{example}”</p>
-                            ) : null}
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
-                    {resource.entries.length
-                      ? "Tidak ada kosakata yang cocok."
-                      : "Set ini belum memiliki kosakata."}
-                  </p>
-                )}
-                {practiceHref ? (
-                  <a
-                    className={cn(buttonVariants(), "w-full sm:w-auto")}
-                    href={practiceHref}
-                  >
-                    Hafalkan kosakata <ArrowRightIcon />
-                  </a>
-                ) : null}
-                {editor.isEditable && references?.editable ? (
-                  <EmbedReadinessHint resourceType="vocabulary" />
-                ) : null}
-              </div>
+              )}
             </section>
           ) : isResourceLoading ? (
             <p className="text-muted-foreground flex items-center gap-2 rounded-xl border p-5 text-sm">
@@ -377,6 +274,12 @@ export const vocabularyReferenceBlock = createReactBlockSpec(
               block ini.
             </p>
           )}
+          {resource &&
+          !changing &&
+          editor.isEditable &&
+          references?.editable ? (
+            <EmbedReadinessHint resourceType="vocabulary" />
+          ) : null}
         </div>
       );
     },

@@ -3,7 +3,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
-import { closesLabel, HeroBlock } from "../src/components/learn/cohort-card";
+import { closesLabel } from "../src/components/learn/cohort-card";
+import { HeroTile } from "../src/components/hero-tile";
 import { HakgyoHero, HERO_TITLE } from "../src/components/learn/hakgyo-hero";
 import { LearningItemRow } from "../src/components/learn/learning-item-row";
 import { AppSegmentedControl } from "../src/components/app-segmented-control";
@@ -212,17 +213,17 @@ function HeroPick({ pick }: { pick: Pick }) {
   const telling = !PLAIN_LABELS.has(pick.label);
   return (
     <View className="w-full">
-      <HeroBlock
-        hero={{
-          kind: "learning",
-          eyebrow: "Untukmu",
-          title: pick.title,
-          meta: telling
+      <HeroTile
+        eyebrow="Untukmu"
+        title={pick.title}
+        meta={
+          telling
             ? `${pick.reason} · ${pick.context}`
-            : `${pick.context}${words}`,
-          pill: pick.action,
-          onPress: pick.open,
-        }}
+            : `${pick.context}${words}`
+        }
+        pill={pick.action}
+        onPress={pick.open}
+        accessibilityHint={pick.title}
       />
     </View>
   );

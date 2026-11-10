@@ -16,7 +16,7 @@ import { QuizQuestion, type QuizQuestionData } from "../quiz/quiz-question";
 import { SymbolIcon } from "../ui/symbol-icon";
 import type { SymbolName } from "../ui/symbol-names";
 
-type LatestAttempt = {
+export type LatestAttempt = {
   status: LearnerAttemptStatus;
   score: number | null;
   maxScore: number | null;
@@ -209,21 +209,12 @@ export function AssessmentOverview({
 }) {
   const showGate = gatesProgress && itemCompleted === false;
 
-  // Before a first attempt the hero says it all (facts and caption).
+  // Before a first attempt the hero says it all (facts and caption), and an
+  // unsent one has its "Lanjutkan tugas" tile there.
   if (!latestAttempt) return null;
   return (
     <>
-      {latestAttempt.status === "IN_PROGRESS" ? (
-        <View className="gap-1 rounded-2xl border border-border bg-card p-4">
-          <Eyebrow size="xs">Percobaan terakhir</Eyebrow>
-          <Text className="text-base font-bold text-foreground">
-            Belum dikirim
-          </Text>
-          <Text className="text-sm leading-5 text-muted-foreground">
-            Jawabanmu tersimpan. Lanjutkan dan kirim jika sudah siap.
-          </Text>
-        </View>
-      ) : (
+      {latestAttempt.status === "IN_PROGRESS" ? null : (
         <View className="gap-3 rounded-2xl border border-border bg-card p-4">
           <Eyebrow size="xs">Hasil terakhir</Eyebrow>
           {latestAttempt.status === "GRADED" ? (
@@ -255,7 +246,7 @@ export function AssessmentOverview({
   );
 }
 
-function scorePercent(attempt: LatestAttempt) {
+export function scorePercent(attempt: LatestAttempt) {
   return attempt.score !== null &&
     attempt.maxScore !== null &&
     attempt.maxScore > 0
@@ -263,13 +254,13 @@ function scorePercent(attempt: LatestAttempt) {
     : null;
 }
 
-function hasPassed(attempt: LatestAttempt, passingScore: number | null) {
+export function hasPassed(attempt: LatestAttempt, passingScore: number | null) {
   if (passingScore === null) return true;
   // Compare the exact ratio, like the server, not the rounded percentage.
   return reachesPercent(attempt.score, attempt.maxScore, passingScore);
 }
 
-function gradedNote({
+export function gradedNote({
   attempt,
   passingScore,
   itemCompleted,
@@ -342,7 +333,7 @@ function GradedResult({
 }
 
 /** The score as a bar, with a tick where the passing score sits. */
-function ScoreBar({
+export function ScoreBar({
   percent,
   passingScore,
 }: {

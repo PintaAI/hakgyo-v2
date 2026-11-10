@@ -124,7 +124,7 @@ Untuk mengubah soalnya, sembunyikan tugas dulu, atau buat salinan dengan tombol 
 
 Setelah tersimpan pertama kali, perubahan berikutnya tersimpan otomatis. Perhatikan tulisan **Disimpan otomatis** di bagian atas.
 
-Jika Anda menyisipkan kumpulan kosakata atau tugas ke dalam materi, tambahkan juga kosakata atau tugas itu sebagai item yang tampil di bab yang sama. Jika tidak, materi akan berstatus **Belum siap**.
+Jika Anda menyisipkan kumpulan kosakata atau tugas ke dalam materi, tambahkan juga kosakata atau tugas itu sebagai item yang tampil di bab yang sama. Jika tidak, materi akan berstatus **Belum siap**. Murid melihat kosakata yang disisipkan sebagai kotak pintasan berisi judul, jumlah kata, dan beberapa kata pertama, bukan daftar lengkapnya. Dari kotak itu murid membuka kumpulan kosakatanya untuk melihat semua kata, mendengar audio, dan berlatih.
 
 ### Blok Hangeul
 

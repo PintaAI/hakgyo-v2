@@ -20,6 +20,7 @@ import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { CourseMedal, GOLD } from "../hangeul-mastery-medal";
 import { Action } from "../learning-ui";
+import { ConfettiPiece, confettiPieces } from "./confetti";
 
 const claimSound = require("../../../assets/sounds/badge-claim.wav");
 
@@ -28,88 +29,19 @@ const MEDAL_SIZE = 84;
 const CELEBRATION_MS = 2600;
 const RAY_COUNT = 12;
 
-type Piece = {
-  angle: number;
-  distance: number;
-  size: number;
-  color: string;
-  spin: number;
-  delay: number;
-  shape: "dot" | "strip" | "square";
-};
-
 /** A fixed, varied burst: the same on every claim, so nothing jitters. */
-function confettiPieces(primary: string): Piece[] {
-  const colors = [
+function medalConfetti(primary: string) {
+  return confettiPieces([
     GOLD.face,
     GOLD.rim,
     primary,
     "#F472B6",
     "#34D399",
     "#60A5FA",
-  ];
-  const shapes: Piece["shape"][] = ["strip", "dot", "square"];
-  return Array.from({ length: 32 }, (_, index) => {
-    const turn = index / 32;
-    const wobble = ((index * 37) % 11) / 11;
-    return {
-      angle: turn * Math.PI * 2 + wobble * 0.35,
-      distance: 70 + ((index * 53) % 7) * 14,
-      size: 5 + (index % 3) * 2,
-      color: colors[index % colors.length]!,
-      spin: (index % 2 ? 1 : -1) * (240 + (index % 5) * 90),
-      delay: (index % 4) * 0.04,
-      shape: shapes[index % shapes.length]!,
-    };
-  });
+  ]);
 }
 
-function ConfettiPiece({
-  burst,
-  piece,
-}: {
-  burst: SharedValue<number>;
-  piece: Piece;
-}) {
-  const style = useAnimatedStyle(() => {
-    const t = Math.min(
-      1,
-      Math.max(0, (burst.value - piece.delay) / (1 - piece.delay)),
-    );
-    const out = 1 - Math.pow(1 - t, 3);
-    return {
-      opacity: t === 0 ? 0 : t < 0.65 ? 1 : 1 - (t - 0.65) / 0.35,
-      transform: [
-        { translateX: Math.cos(piece.angle) * piece.distance * out },
-        // Out on the burst, then falls.
-        {
-          translateY:
-            Math.sin(piece.angle) * piece.distance * out + 120 * t * t,
-        },
-        { rotate: `${piece.spin * t}deg` },
-        { scale: Math.min(1, t * 8) },
-      ],
-    };
-  });
-  const height = piece.shape === "strip" ? piece.size * 2.4 : piece.size;
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        {
-          position: "absolute",
-          left: MEDAL_SIZE / 2 - piece.size / 2,
-          top: MEDAL_SIZE / 2 - height / 2,
-          width: piece.size,
-          height,
-          borderRadius: piece.shape === "dot" ? piece.size / 2 : 1.5,
-          backgroundColor: piece.color,
-        },
-        style,
-      ]}
-    />
-  );
-}
+const MEDAL_ORIGIN = { width: MEDAL_SIZE, height: MEDAL_SIZE };
 
 function Rays({ rays }: { rays: SharedValue<number> }) {
   const style = useAnimatedStyle(() => ({
@@ -171,7 +103,7 @@ function ClaimMedal({
 }) {
   const { colors } = useAppTheme();
   const reduceMotion = useReducedMotion();
-  const pieces = useRef(confettiPieces(colors.primary)).current;
+  const pieces = useRef(medalConfetti(colors.primary)).current;
   const breathe = useSharedValue(1);
   const shine = useSharedValue(0);
   const pop = useSharedValue(1);
@@ -315,7 +247,12 @@ function ClaimMedal({
         </Animated.View>
       </Animated.View>
       {pieces.map((piece, index) => (
-        <ConfettiPiece key={index} burst={burst} piece={piece} />
+        <ConfettiPiece
+          key={index}
+          burst={burst}
+          piece={piece}
+          origin={MEDAL_ORIGIN}
+        />
       ))}
     </View>
   );

@@ -1,11 +1,8 @@
-import { entryMeanings, getReadableForeground } from "@hakgyo/shared";
-import { router } from "expo-router";
-import { useMemo, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { getReadableForeground } from "@hakgyo/shared";
+import { Text, View } from "react-native";
 
-import { Action, EmptyState, Eyebrow } from "../learning-ui";
-import { VocabularyAudioButton } from "../vocabulary-audio-button";
-import { VocabularyMeanings } from "../vocabulary-meanings";
+import { HeroTile } from "../hero-tile";
+import { EmptyState, Eyebrow } from "../learning-ui";
 import { InlineContent } from "./inline-content";
 import { assetSource, ContentAudio, ContentImage } from "./media";
 import { booleanProp, isRecord, parseJsonArray, stringProp } from "./normalize";
@@ -72,36 +69,22 @@ function CustomAssetImage({ block }: BlockRendererProps) {
   );
 }
 
-function firstExample(value: unknown) {
-  if (typeof value === "string") return value;
-  if (Array.isArray(value)) {
-    const example = value.find((item) => typeof item === "string");
-    return typeof example === "string" ? example : null;
-  }
-  if (value && typeof value === "object" && "example" in value) {
-    const example = (value as { example?: unknown }).example;
-    return typeof example === "string" ? example : null;
-  }
-  return null;
+/** The first few words of a set, as a one-line taste of it ("아이 · 오이 · …"). */
+function vocabularyPreview(terms: readonly string[], shown = 4) {
+  const head = terms.slice(0, shown).join(" · ");
+  return terms.length > shown ? `${head} · …` : head;
 }
 
+/**
+ * A vocabulary set placed in a material: a shortcut to the set's page (its
+ * words, audio and practice), not the word list itself.
+ */
 function VocabularyReference({ block }: BlockRendererProps) {
-  const { colors, onOpenResource, resourceReferences } = useContentRenderer();
-  const [query, setQuery] = useState("");
-  const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const { onOpenResource, resourceReferences } = useContentRenderer();
   const vocabularySetId = stringProp(block.props, "vocabularySetId");
   const resource = resourceReferences?.vocabularySets.find(
     (set) => set.id === vocabularySetId,
   );
-  const entries = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) return resource?.entries ?? [];
-    return (resource?.entries ?? []).filter((entry) =>
-      `${entry.term} ${entryMeanings(entry).join(" ")}`
-        .toLowerCase()
-        .includes(normalizedQuery),
-    );
-  }, [query, resource]);
 
   if (!resource) {
     return (
@@ -109,115 +92,19 @@ function VocabularyReference({ block }: BlockRendererProps) {
     );
   }
 
+  const terms = resource.entries.map((entry) => entry.term);
   return (
-    <View className="overflow-hidden rounded-xl border border-border bg-card">
-      <View className="gap-2 border-b border-border bg-muted/40 p-5">
-        <Eyebrow size="md" tone="primary">
-          Kosakata
-        </Eyebrow>
-        <Text className="text-2xl font-black text-foreground">
-          {resource.title}
-        </Text>
-        {resource.description ? (
-          <Text className="text-sm leading-5 text-muted-foreground">
-            {resource.description}
-          </Text>
-        ) : null}
-        <Text className="text-xs font-bold text-muted-foreground">
-          {resource.entries.length} kata
-        </Text>
-      </View>
-      <View className="gap-3 p-4">
-        {resource.entries.length > 8 ? (
-          <TextInput
-            accessibilityLabel="Cari kosakata"
-            className="rounded-xl border border-border bg-background px-4 py-3 text-foreground"
-            onChangeText={setQuery}
-            placeholder="Cari kata atau arti…"
-            placeholderTextColor={colors.mutedForeground}
-            value={query}
-          />
-        ) : null}
-        {entries.map((entry) => (
-          <View
-            className="gap-3 rounded-xl border border-border p-4"
-            key={entry.id}
-          >
-            <Pressable
-              accessibilityLabel={`Lihat detail ${entry.term}`}
-              accessibilityRole="button"
-              className="gap-3 active:opacity-60"
-              onPress={() => {
-                const sourceCourseItemId =
-                  resourceReferences?.sourceCourseItemId ??
-                  resource.courseItemId;
-                if (!sourceCourseItemId) {
-                  onOpenResource?.(
-                    "vocabulary",
-                    resource.id,
-                    resource.courseItemId,
-                  );
-                  return;
-                }
-                setSpeakingId(null);
-                router.push({
-                  pathname: "/vocabulary/[vocabularySetId]/items/[entryId]",
-                  params: {
-                    vocabularySetId: resource.id,
-                    entryId: entry.id,
-                    sourceCourseItemId,
-                  },
-                });
-              }}
-            >
-              {entry.imageAsset ? (
-                <ContentImage
-                  accessibilityLabel={entry.term}
-                  source={assetSource(entry.imageAsset.id)}
-                />
-              ) : null}
-              <View className="gap-1">
-                <Text className="text-lg font-black text-foreground">
-                  {entry.term}
-                </Text>
-                <VocabularyMeanings
-                  className="text-sm leading-5 text-muted-foreground"
-                  meanings={entryMeanings(entry)}
-                />
-                {firstExample(entry.examples) ? (
-                  <Text className="mt-1 text-sm italic leading-5 text-foreground">
-                    “{firstExample(entry.examples)}”
-                  </Text>
-                ) : null}
-              </View>
-            </Pressable>
-            {entry.audioAsset ? (
-              <VocabularyAudioButton
-                assetId={entry.audioAsset.id}
-                entryId={entry.id}
-                onSpeak={setSpeakingId}
-                speakingId={speakingId}
-              />
-            ) : null}
-          </View>
-        ))}
-        {!entries.length ? (
-          <Text className="py-5 text-center text-sm text-muted-foreground">
-            {resource.entries.length
-              ? "Tidak ada kosakata yang cocok."
-              : "Set ini belum memiliki kosakata."}
-          </Text>
-        ) : null}
-        <Action
-          onPress={() =>
-            onOpenResource?.("vocabulary", resource.id, resource.courseItemId)
-          }
-          trailingIcon="arrow.right"
-        >
-          Hafalkan kosakata
-        </Action>
-      </View>
-    </View>
+    <HeroTile
+      eyebrow={`Kosakata · ${resource.entries.length} kata`}
+      title={resource.title}
+      meta={
+        terms.length ? vocabularyPreview(terms) : "Set ini belum memiliki kata"
+      }
+      pill="Hafalkan"
+      onPress={() =>
+        onOpenResource?.("vocabulary", resource.id, resource.courseItemId)
+      }
+    />
   );
 }
 
@@ -233,44 +120,22 @@ function AssessmentReference({ block }: BlockRendererProps) {
   }
 
   return (
-    <View className="gap-4 rounded-xl border border-border bg-card p-5">
-      <View className="size-12 items-center justify-center rounded-xl bg-primary/10">
-        <Text className="text-xl font-black text-primary">A</Text>
-      </View>
-      <View className="gap-1">
-        <Eyebrow size="md">
-          Assessment · {resource.questionCount} questions
-        </Eyebrow>
-        <Text className="text-xl font-black text-foreground">
-          {resource.title}
-        </Text>
-        {resource.description ? (
-          <Text className="text-sm leading-5 text-muted-foreground">
-            {resource.description}
-          </Text>
-        ) : null}
-      </View>
-      {resource.courseItemId ? (
-        <Action
-          onPress={() =>
-            onOpenResource?.("assessment", resource.id, resource.courseItemId)
-          }
-          trailingIcon="arrow.right"
-        >
-          Mulai tugas
-        </Action>
-      ) : (
-        <View
-          accessibilityRole="button"
-          accessibilityState={{ disabled: true }}
-          className="min-h-12 items-center justify-center rounded-2xl bg-muted px-5 py-3"
-        >
-          <Text className="text-base font-semibold text-muted-foreground">
-            Tidak tersedia
-          </Text>
-        </View>
-      )}
-    </View>
+    <HeroTile
+      eyebrow={`Tugas · ${resource.questionCount} soal`}
+      title={resource.title}
+      meta={
+        resource.courseItemId
+          ? (resource.description ?? "Buka untuk melihat aturan dan mulai")
+          : "Tugas ini tidak ada di kurikulum kelasmu"
+      }
+      pill={resource.courseItemId ? "Buka" : undefined}
+      onPress={
+        resource.courseItemId
+          ? () =>
+              onOpenResource?.("assessment", resource.id, resource.courseItemId)
+          : undefined
+      }
+    />
   );
 }
 
