@@ -287,7 +287,7 @@ export const m8BatchimRules: ModuleContent = {
         ),
         p(
           b("Momen yang kamu tunggu: "),
-          "tiga frasa dari Modul 0. Baca sendiri dulu, lalu putar audionya.",
+          "tiga frasa dari Perkenalan. Baca sendiri dulu, lalu putar audionya.",
         ),
         audioClip(
           "안녕하세요",

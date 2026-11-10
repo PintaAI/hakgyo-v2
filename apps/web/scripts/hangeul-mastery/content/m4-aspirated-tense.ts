@@ -199,9 +199,7 @@ export const m4AspiratedTense: ModuleContent = {
           term: "차",
           definition: "teh; mobil",
           romanization: "cha",
-          examples: [
-            "Dua kata berbeda yang ditulis sama. Konteks yang menentukan.",
-          ],
+          examples: ["차 주세요. = Minta teh."],
         },
         { term: "고추", definition: "cabai", romanization: "gochu" },
         { term: "키", definition: "tinggi badan; kunci", romanization: "ki" },
@@ -376,9 +374,7 @@ export const m4AspiratedTense: ModuleContent = {
           term: "오빠",
           definition: "kakak laki-laki (dipakai adik perempuan)",
           romanization: "oppa",
-          examples: [
-            "Di drama juga dipakai perempuan untuk memanggil pacar atau pria yang lebih tua.",
-          ],
+          examples: ["오빠, 어디 가요? = Kak, mau ke mana?"],
         },
         { term: "토끼", definition: "kelinci", romanization: "tokki" },
         {
@@ -400,7 +396,7 @@ export const m4AspiratedTense: ModuleContent = {
           term: "싸다",
           definition: "murah",
           romanization: "ssada",
-          examples: ["Bandingkan dengan 사다 (membeli)."],
+          examples: ["이거 싸요. = Ini murah."],
         },
         {
           term: "비싸다",

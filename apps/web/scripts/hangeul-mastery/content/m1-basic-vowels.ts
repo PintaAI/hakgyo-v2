@@ -37,10 +37,67 @@ const VOWELS = ["ㅏ", "ㅓ", "ㅗ", "ㅜ", "ㅡ", "ㅣ"];
 
 export const m1BasicVowels: ModuleContent = {
   key: "m1-basic-vowels",
-  title: "Vokal dasar dan blok suku kata",
+  title: "Perkenalan dan vokal dasar",
   description:
-    "Blok suku kata, ㅇ yang diam, dan enam vokal dasar: ㅏ ㅣ ㅗ ㅜ ㅡ ㅓ.",
+    "Cara kerja Hangeul, lalu blok suku kata, ㅇ yang diam, dan enam vokal dasar: ㅏ ㅣ ㅗ ㅜ ㅡ ㅓ.",
   items: [
+    // Was the only lesson of the module "Mulai di sini" (m0-welcome); its key
+    // stays so learners keep their progress on it.
+    {
+      type: "material",
+      key: "m0-why-hangeul",
+      title: "Perkenalan",
+      description: "Cara kerja Hangeul dan cara kursus ini berjalan.",
+      minutes: 3,
+      blocks: [
+        callout(
+          "info",
+          b("Hangeul hanya punya 24 huruf dasar."),
+          " Banyak orang sudah bisa membacanya dalam beberapa hari.",
+        ),
+        rules({
+          title: "Cara kerja Hangeul",
+          intro:
+            "Huruf tidak ditulis berjajar, tapi disusun jadi blok. Satu blok = satu suku kata.",
+          columns: ["Aturan", "Jadi", "Contoh"],
+          rows: [
+            {
+              when: "Huruf disusun jadi",
+              result: "1 blok",
+              example: "ㅇ + ㅏ = 아",
+            },
+            { when: "1 blok", result: "1 suku kata", example: '아 = "a"' },
+            {
+              when: "Di dalam blok",
+              result: "kiri → kanan, atas → bawah",
+              example: "오 = ㅇ di atas, ㅗ di bawah",
+            },
+            {
+              when: "Blok demi blok",
+              result: "kiri → kanan",
+              example: '아이 = 아 + 이 = "a-i"',
+            },
+          ],
+          tip: {
+            title: "ㅇ di depan itu diam",
+            text: 'Itu sebabnya 아 dibaca "a". Kamu belajar ini di pelajaran berikutnya.',
+          },
+        }),
+        p(
+          "Setiap pelajaran isinya sama: ",
+          b("dengar, lihat, main, lalu kuis"),
+          ". Dengarkan tiga frasa ini dulu, nanti kamu bisa membacanya sendiri.",
+        ),
+        audioClip("안녕하세요", "Halo (sopan)"),
+        audioClip("감사합니다", "Terima kasih"),
+        audioClip("사랑해요", "Aku sayang kamu"),
+        callout(
+          "success",
+          b("Ingat: "),
+          "satu blok = satu suku kata, dibaca kiri ke kanan, atas ke bawah.",
+        ),
+      ],
+    },
     {
       type: "material",
       key: "m1-blocks-a-i",
@@ -75,11 +132,7 @@ export const m1BasicVowels: ModuleContent = {
               character: "ㅇ",
               cue: "Diam di depan blok. Hanya pengisi tempat.",
               romanization: "-",
-              example: {
-                word: "아",
-                meaning: "ah! (seruan)",
-                romanization: "a",
-              },
+              example: { word: "오이", meaning: "timun", romanization: "oi" },
             },
             {
               character: "ㅏ",
@@ -97,7 +150,7 @@ export const m1BasicVowels: ModuleContent = {
               note: "Satu garis tegak.",
               example: {
                 word: "이",
-                meaning: "dua; gigi; ini",
+                meaning: "dua; gigi",
                 romanization: "i",
               },
             },
@@ -248,7 +301,6 @@ export const m1BasicVowels: ModuleContent = {
               romanization: "eo",
               say: "어",
               note: "Kalau bibirmu membulat, bunyinya jadi ㅗ. Garis pendek menunjuk ke kiri.",
-              example: { word: "어", meaning: "eh?; oh!", romanization: "eo" },
             },
           ],
           { showRomanization: true },
@@ -333,41 +385,13 @@ export const m1BasicVowels: ModuleContent = {
       key: "m1-vocab-a",
       title: "Kosakata A: kata dari vokal",
       description:
-        "Kata-kata pertama yang hanya memakai ㅇ dan vokal dasar. Jumlahnya sedikit karena kamu belum belajar konsonan.",
+        "Kata pertama yang bisa kamu baca hanya dengan ㅇ dan vokal dasar. Jumlahnya sedikit karena kamu belum belajar konsonan.",
       entries: [
-        {
-          term: "아이",
-          definition: "anak; anak kecil",
-          romanization: "ai",
-          examples: ["Dua blok: 아 + 이."],
-        },
+        { term: "아이", definition: "anak", romanization: "ai" },
         { term: "오이", definition: "timun", romanization: "oi" },
-        {
-          term: "이",
-          definition: "dua (angka); gigi; ini",
-          romanization: "i",
-          examples: [
-            "Satu kata bisa punya beberapa arti. Konteks yang menentukan.",
-          ],
-        },
-        { term: "오", definition: "lima (angka); oh!", romanization: "o" },
-        {
-          term: "아우",
-          definition: "adik (kata lama, antarsaudara laki-laki)",
-          romanization: "au",
-        },
-        { term: "우아", definition: "anggun; keanggunan", romanization: "ua" },
-        {
-          term: "아",
-          definition: "ah! (seruan saat sadar atau terkejut)",
-          romanization: "a",
-        },
-        {
-          term: "어",
-          definition: "eh?; oh! (seruan); iya (santai)",
-          romanization: "eo",
-          examples: ["Bandingkan dengan 오: ㅓ bibir santai, ㅗ bibir bulat."],
-        },
+        { term: "이", definition: "dua; gigi", romanization: "i" },
+        { term: "오", definition: "lima", romanization: "o" },
+        { term: "우아", definition: "anggun", romanization: "ua" },
       ],
     },
     {
@@ -438,11 +462,11 @@ export const m1BasicVowels: ModuleContent = {
           "ㅜ adalah vokal datar, jadi ditulis di bawah konsonan (우). ㅏ, ㅓ, dan ㅣ adalah vokal tegak yang ditulis di kanan.",
         ),
         single(
-          "position-a",
-          "Di blok 아, di mana vokal ㅏ ditulis?",
-          ["Di bawah ㅇ", "Di kanan ㅇ", "Di atas ㅇ", "Di kiri ㅇ"],
+          "syllable-count",
+          "Kata 아이 dibaca dengan berapa suku kata?",
+          ["Satu", "Dua", "Tiga", "Empat"],
           1,
-          "Vokal tegak (ㅏ ㅓ ㅣ) selalu ditulis di kanan konsonan.",
+          'Satu blok = satu suku kata. 아이 punya dua blok, 아 dan 이, jadi dibaca dua suku kata: "a-i", bukan "ai" seperti di "pantai".',
         ),
         single(
           "read-oi",
