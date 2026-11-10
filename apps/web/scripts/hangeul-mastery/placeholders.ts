@@ -1,12 +1,24 @@
-// Placeholders in the authored content: `hangeul-audio:<korean text>` for a clip and `hangeul-item:<key>` for
-// another item of the same module. A placeholder is always a whole string value, anywhere in the block tree,
+// Placeholders in the authored content: `hangeul-audio:<korean text>` for a clip, `hangeul-image:<key>` for a
+// picture (`content/images.ts`) and `hangeul-item:<key>` for another item of the same module. A placeholder is always a whole string value, anywhere in the block tree,
 // including inside props that hold JSON as a string (`letters`, `rows`, `audio`).
-import { AUDIO_PLACEHOLDER_PREFIX, ITEM_REFERENCE_PREFIX } from "./blocks";
+import {
+  AUDIO_PLACEHOLDER_PREFIX,
+  IMAGE_PLACEHOLDER_PREFIX,
+  ITEM_REFERENCE_PREFIX,
+} from "./blocks";
 
 export type Placeholder =
-  { kind: "audio"; value: string } | { kind: "item"; value: string };
+  | { kind: "audio"; value: string }
+  | { kind: "image"; value: string }
+  | { kind: "item"; value: string };
 
 export function parsePlaceholder(text: string): Placeholder | null {
+  if (text.startsWith(IMAGE_PLACEHOLDER_PREFIX)) {
+    return {
+      kind: "image",
+      value: text.slice(IMAGE_PLACEHOLDER_PREFIX.length),
+    };
+  }
   if (text.startsWith(AUDIO_PLACEHOLDER_PREFIX)) {
     return {
       kind: "audio",
@@ -78,12 +90,14 @@ export function replacePlaceholders<T>(
 /** Every placeholder in `values`, in first-seen order, de-duplicated per kind. */
 export function collectPlaceholders(...values: unknown[]) {
   const audio = new Set<string>();
+  const images = new Set<string>();
   const items = new Set<string>();
+  const sets = { audio, image: images, item: items };
   for (const value of values) {
     replacePlaceholders(value, (placeholder) => {
-      (placeholder.kind === "audio" ? audio : items).add(placeholder.value);
+      sets[placeholder.kind].add(placeholder.value);
       return "";
     });
   }
-  return { audio: [...audio], items: [...items] };
+  return { audio: [...audio], images: [...images], items: [...items] };
 }

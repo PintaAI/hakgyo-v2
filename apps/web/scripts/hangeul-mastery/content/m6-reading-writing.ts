@@ -5,6 +5,7 @@ import {
   callout,
   contrast,
   game,
+  lessonPage,
   p,
   rules,
 } from "../blocks";
@@ -49,6 +50,37 @@ export const m6ReadingWriting: ModuleContent = {
         "Tiga langkah membaca, lalu kata serapan dan kalimat di kafe.",
       minutes: 7,
       blocks: [
+        lessonPage({
+          theme: "ocean",
+          imageKey: "chapter-6",
+          imageAlt: "Menulis di buku dan mengetik di ponsel",
+          chapter: 6,
+          title: "읽기 · 쓰기",
+          subtitle: "Membaca dan menulis",
+          question: "아이스 아메리카노 하나 주세요.",
+          answer: "네, 여기요.",
+          cards: [
+            {
+              label: "Membaca",
+              title: "Blok demi blok",
+              description: "Kiri ke kanan, atas ke bawah",
+            },
+            {
+              label: "Menulis",
+              title: "Urutan goresan",
+              description: "Dan keyboard Korea di ponsel",
+            },
+            {
+              label: "Latihan",
+              title: "Kata serapan",
+              description: "커피 · 버스 · 피자",
+            },
+          ],
+          goals: [
+            "Membaca kata nyata dengan lancar.",
+            "Menulis dan mengetik Hangeul di ponsel.",
+          ],
+        }),
         callout(
           "info",
           "Kamu sudah kenal semua huruf untuk blok tanpa huruf di bawah. Sekarang kita baca ",

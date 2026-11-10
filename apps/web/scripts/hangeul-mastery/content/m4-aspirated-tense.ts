@@ -5,6 +5,7 @@ import {
   callout,
   contrast,
   game,
+  lessonPage,
   letters,
   p,
   rules,
@@ -52,6 +53,37 @@ export const m4AspiratedTense: ModuleContent = {
       description: "Empat konsonan yang diucapkan dengan hembusan napas kuat.",
       minutes: 7,
       blocks: [
+        lessonPage({
+          theme: "forest",
+          imageKey: "chapter-4",
+          imageAlt: "Teman berlatih dengan tisu di depan mulut",
+          chapter: 4,
+          title: "ㅋ ㅌ ㅍ ㅊ · ㄲ ㄸ ㅃ ㅆ ㅉ",
+          subtitle: "Konsonan berhembus dan tegang",
+          question: "커피 주세요.",
+          answer: "너무 비싸요!",
+          cards: [
+            {
+              label: "Huruf baru",
+              title: "9 konsonan",
+              description: "Berhembus atau tertahan",
+            },
+            {
+              label: "Kosakata",
+              title: "커피 · 토끼 · 오빠",
+              description: "Kata sehari-hari",
+            },
+            {
+              label: "Latihan",
+              title: "Lab tiga serangkai",
+              description: "가 · 카 · 까",
+            },
+          ],
+          goals: [
+            "Membedakan bunyi polos, berhembus, dan tegang.",
+            "Membaca kata serapan seperti 커피 dan 카메라.",
+          ],
+        }),
         callout(
           "info",
           '"k", "t", "p", dan "c" Indonesia diucapkan tanpa hembusan napas. Bahasa Korea juga punya versi yang ',

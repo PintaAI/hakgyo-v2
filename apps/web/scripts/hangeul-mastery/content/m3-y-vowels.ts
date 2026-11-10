@@ -4,7 +4,9 @@ import {
   b,
   callout,
   contrast,
+  conversation,
   game,
+  lessonPage,
   letters,
   p,
   rules,
@@ -52,6 +54,37 @@ export const m3YVowels: ModuleContent = {
       description: "Satu garis tambahan memberi vokal bunyi y di depannya.",
       minutes: 6,
       blocks: [
+        lessonPage({
+          theme: "sunset",
+          imageKey: "chapter-3",
+          imageAlt: "Pembeli memesan di konter kafe",
+          chapter: 3,
+          title: "ㅑ ㅕ ㅛ ㅠ ㅐ ㅔ",
+          subtitle: "Vokal Y dan ㅐ ㅔ",
+          question: "우유 주세요.",
+          answer: "네, 여기요.",
+          cards: [
+            {
+              label: "Huruf baru",
+              title: "Vokal Y, ㅐ, ㅔ",
+              description: "Tambah satu garis, tambah y",
+            },
+            {
+              label: "Ungkapan",
+              title: "주세요 · 여기요",
+              description: "Kalimat sopan pertamamu",
+            },
+            {
+              label: "Latihan",
+              title: "Dialog di kafe",
+              description: "Permainan dan kuis bab",
+            },
+          ],
+          goals: [
+            "Membaca vokal Y dan membedakan ㅕ dari ㅛ.",
+            "Memesan dengan sopan di kafe.",
+          ],
+        }),
         callout(
           "info",
           "Empat vokal baru ini dibuat dari vokal dasar yang sudah kamu kenal. Mulai modul ini ",
@@ -326,7 +359,35 @@ export const m3YVowels: ModuleContent = {
             text: '아니요 = "tidak". 아니에요 = "bukan", juga dipakai untuk membalas terima kasih.',
           },
         }),
-        p("Di kafe: baca tiap kalimat dulu, lalu putar untuk cek."),
+        conversation({
+          imageKey: "dialogue-cafe",
+          imageAlt: "Pelayan kafe menyapa pembeli yang menunjuk kue",
+          eyebrow: "Dialog · di kafe",
+          number: "03",
+          lines: [
+            {
+              speaker: "Pelayan",
+              korean: "어서 오세요!",
+              translation: "Selamat datang!",
+            },
+            {
+              speaker: "Rina",
+              korean: "여기요, 메뉴 주세요.",
+              translation: "Permisi, minta menunya.",
+            },
+            {
+              speaker: "Pelayan",
+              korean: "네, 여기요.",
+              translation: "Ya, ini.",
+            },
+            {
+              speaker: "Rina",
+              korean: "이거 주세요.",
+              translation: "Minta yang ini.",
+            },
+          ],
+        }),
+        p("Baca dialognya dulu, lalu putar tiap kalimat untuk cek."),
         audioClip("어서 오세요", "Pelayan: 어서 오세요. = Selamat datang."),
         audioClip(
           "여기요, 메뉴 주세요",

@@ -4,7 +4,9 @@ import {
   b,
   callout,
   contrast,
+  conversation,
   game,
+  lessonPage,
   p,
   rules,
 } from "../blocks";
@@ -50,6 +52,37 @@ export const m8BatchimRules: ModuleContent = {
         "Batchim pindah ke blok berikutnya kalau blok itu dimulai ㅇ.",
       minutes: 6,
       blocks: [
+        lessonPage({
+          theme: "forest",
+          imageKey: "chapter-8",
+          imageAlt: "Murid mendengarkan dengan headphone di taman",
+          chapter: 8,
+          title: "연음 · 합니다",
+          subtitle: "Batchim ganda dan perubahan bunyi",
+          question: "한국어 공부해요?",
+          answer: "네, 감사합니다!",
+          cards: [
+            {
+              label: "Bunyi",
+              title: "Batchim pindah",
+              description: "음악 dibaca [으막]",
+            },
+            {
+              label: "Perubahan",
+              title: "ㅂ → ㅁ, ㄱ → ㅇ",
+              description: "합니다 · 한국말",
+            },
+            {
+              label: "Latihan",
+              title: "Dialog penutup",
+              description: "Permainan dan kuis bab",
+            },
+          ],
+          goals: [
+            "Membaca batchim yang pindah ke blok berikutnya.",
+            "Mengucapkan 감사합니다 dengan benar.",
+          ],
+        }),
         callout(
           "info",
           "Ejaannya tetap, tapi bunyinya ",
@@ -285,6 +318,30 @@ export const m8BatchimRules: ModuleContent = {
           "tip",
           "Ada perubahan bunyi lain juga, misalnya 학교 terdengar [학꾜]. Tidak perlu dihafal: dengarkan saja, nanti kamu terbiasa.",
         ),
+        conversation({
+          imageKey: "dialogue-thanks",
+          imageAlt: "Dua teman bertemu dan memberi hadiah di Seoul",
+          eyebrow: "Dialog · bertemu teman",
+          number: "08",
+          lines: [
+            { speaker: "Jisu", korean: "안녕하세요!", translation: "Halo!" },
+            {
+              speaker: "Rina",
+              korean: "안녕하세요, 지수 씨!",
+              translation: "Halo, Jisu!",
+            },
+            {
+              speaker: "Jisu",
+              korean: "이거 선물이에요.",
+              translation: "Ini hadiah untukmu.",
+            },
+            {
+              speaker: "Rina",
+              korean: "와, 감사합니다!",
+              translation: "Wah, terima kasih!",
+            },
+          ],
+        }),
         p(
           b("Momen yang kamu tunggu: "),
           "tiga frasa dari Perkenalan. Baca sendiri dulu, lalu putar audionya.",

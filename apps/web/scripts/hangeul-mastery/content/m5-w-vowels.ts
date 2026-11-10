@@ -5,6 +5,7 @@ import {
   callout,
   contrast,
   game,
+  lessonPage,
   letters,
   p,
   rules,
@@ -50,6 +51,37 @@ export const m5WVowels: ModuleContent = {
       description: "ㅗ atau ㅜ yang disambung vokal lain jadi bunyi w.",
       minutes: 6,
       blocks: [
+        lessonPage({
+          theme: "rose",
+          imageKey: "chapter-5",
+          imageAlt: "Teman kagum melihat apel di pasar buah",
+          chapter: 5,
+          title: "ㅘ ㅝ ㅙ ㅞ ㅚ ㅟ ㅢ",
+          subtitle: "Vokal W",
+          question: "사과 주세요.",
+          answer: "최고예요!",
+          cards: [
+            {
+              label: "Huruf baru",
+              title: "7 vokal gabungan",
+              description: "Dua vokal dibaca jadi satu",
+            },
+            {
+              label: "Kosakata",
+              title: "사과 · 회사 · 의사",
+              description: "Kata dengan vokal W",
+            },
+            {
+              label: "Latihan",
+              title: "Susun blok",
+              description: "Permainan dan kuis bab",
+            },
+          ],
+          goals: [
+            "Membaca semua vokal Hangeul.",
+            "Membaca ㅢ sesuai posisinya.",
+          ],
+        }),
         callout(
           "info",
           "Vokal W adalah ",

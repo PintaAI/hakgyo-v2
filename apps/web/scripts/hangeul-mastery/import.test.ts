@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
-import { audio, letters, syllableGrid, vocabularyRef } from "./blocks";
+import {
+  audio,
+  conversation,
+  lessonPage,
+  letters,
+  syllableGrid,
+  vocabularyRef,
+} from "./blocks";
 import { collectCourseAudioTexts, voiceVersion } from "./audio-manifest";
 import type { CourseContent } from "./content-types";
 import { buildDesiredCourse, type DesiredCourse } from "./desired";
@@ -203,6 +210,45 @@ describe("placeholders", () => {
     expect(block.props!.letters).toContain(audio("아"));
   });
 
+  test("find pictures of chapter openers and dialogues", () => {
+    const opener = lessonPage({
+      theme: "rose",
+      imageKey: "chapter-1",
+      imageAlt: "Murid",
+      chapter: 1,
+      title: "ㅏ ㅓ",
+      subtitle: "Vokal",
+      question: "아이?",
+      answer: "오, 아이!",
+      cards: [
+        { label: "a", title: "b", description: "c" },
+        { label: "d", title: "e", description: "f" },
+        { label: "g", title: "h", description: "i" },
+      ],
+      goals: ["satu", "dua"],
+    });
+    const dialogue = conversation({
+      imageKey: "dialogue-cafe",
+      imageAlt: "Kafe",
+      eyebrow: "Dialog",
+      number: "03",
+      lines: [{ speaker: "Rina", korean: "이거 주세요.", translation: "Ini." }],
+    });
+    expect(collectPlaceholders(opener, dialogue).images).toEqual([
+      "chapter-1",
+      "dialogue-cafe",
+    ]);
+    // Every prop is set, so BlockNote never fills in the EPS sample text.
+    expect(opener.props!.title).toBe("ㅏ ㅓ");
+    expect(opener.props!.objectivesLabel).toBe("Tujuan belajar");
+    expect(dialogue.props!.tipBody).toBe("");
+    expect(dialogue.props!.practiceDialogue).toBe("[]");
+    const replaced = replacePlaceholders(opener, (placeholder) =>
+      placeholder.kind === "image" ? `image-${placeholder.value}` : "",
+    );
+    expect(replaced.props!.assetId).toBe("image-chapter-1");
+  });
+
   test("leave untouched values identical", () => {
     const block = syllableGrid("Baca", ["ㅇ"], ["ㅏ"], { syllables: [] });
     expect(replacePlaceholders(block, () => "x")).toBe(block);
@@ -213,6 +259,7 @@ describe("placeholders", () => {
   test("item references are collected separately", () => {
     expect(collectPlaceholders([vocabularyRef("m1-vocab")])).toEqual({
       audio: [],
+      images: [],
       items: ["m1-vocab"],
     });
   });

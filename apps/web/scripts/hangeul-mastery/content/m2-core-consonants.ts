@@ -5,6 +5,7 @@ import {
   callout,
   contrast,
   game,
+  lessonPage,
   letters,
   p,
   rules,
@@ -52,6 +53,37 @@ export const m2CoreConsonants: ModuleContent = {
         "Dua konsonan pertama, bunyinya sama seperti bahasa Indonesia.",
       minutes: 6,
       blocks: [
+        lessonPage({
+          theme: "ocean",
+          imageKey: "chapter-2",
+          imageAlt: "Dua teman menyusun balok kayu bersama",
+          chapter: 2,
+          title: "ㄴ ㅁ ㅅ ㅂ ㄱ ㄷ ㅈ ㅎ ㄹ",
+          subtitle: "Konsonan inti",
+          question: "어디 가?",
+          answer: "바다!",
+          cards: [
+            {
+              label: "Huruf baru",
+              title: "10 konsonan",
+              description: "Bunyi lembut seperti bahasa Indonesia",
+            },
+            {
+              label: "Kosakata",
+              title: "나무 · 고기 · 바나나",
+              description: "Kata dari konsonan inti",
+            },
+            {
+              label: "Latihan",
+              title: "Susun kata",
+              description: "Permainan dan kuis bab",
+            },
+          ],
+          goals: [
+            "Membaca suku kata dari konsonan dan vokal dasar.",
+            "Mengucapkan ㄹ sebagai satu tepukan ringan.",
+          ],
+        }),
         callout(
           "info",
           "Sekarang ㅇ yang diam diganti konsonan yang berbunyi. ㄴ dan ㅁ ",
