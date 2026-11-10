@@ -63,6 +63,18 @@ export const syncOperation = z.discriminatedUnion("kind", [
     entries: z.array(attemptLogEntrySchema).max(1000).optional(),
   }),
   operationBase.extend({
+    // A standalone attempt the app started on its own (`startsOnDevice`), queued before its
+    // progress and completion so the server records it first. One per attempt
+    // (`assessment-start:<attemptId>`); the attempt id and shuffle seed are the device's.
+    kind: z.literal("ASSESSMENT_STARTED"),
+    attemptId: z.uuid(),
+    courseItemId: z.string().min(1),
+    cohortId: z.string().min(1).optional(),
+    shuffleSeed: z.string().min(8).max(100),
+    startedAt: z.iso.datetime({ offset: true }),
+    runtimeVersion: z.number().int().positive().optional(),
+  }),
+  operationBase.extend({
     // Progress of an attempt still being taken, queued as the learner answers so the server has
     // the answers before the event closes. One per attempt (`assessment-progress:<attemptId>`).
     kind: z.literal("ASSESSMENT_PROGRESS"),
@@ -83,6 +95,7 @@ const syncOperationEnvelope = z.looseObject({
     "VOCABULARY_SESSION_COMPLETED",
     "ASSESSMENT_COMPLETED",
     "ASSESSMENT_PROGRESS",
+    "ASSESSMENT_STARTED",
   ] satisfies SyncOperationKind[]),
 });
 

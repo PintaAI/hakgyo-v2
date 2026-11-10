@@ -22,6 +22,7 @@ import type { organizationBrandSelect } from "~/server/brand/context";
 import { getLocalDateKey } from "~/server/gamification/logic";
 import { getCourseOutlineViewsForUser } from "~/server/learning/course-outline";
 import { enrolledCourseWhere } from "~/server/learning/enrolled-courses";
+import { attemptAssessment } from "~/server/mobile/apply-operations";
 import { buildLearnerState } from "~/server/mobile/learner-state";
 import { buildSidebarIndicatorCandidates } from "~/server/mobile/sidebar-indicators";
 import {
@@ -201,9 +202,14 @@ export function computeValidUntil(input: {
  */
 export async function buildLearnerIndex(
   ctx: LearnerContext,
-  input: { organizationId?: string; includeScheduledEvents?: boolean },
+  input: {
+    organizationId?: string;
+    includeScheduledEvents?: boolean;
+    includeLibraryEvents?: boolean;
+  },
 ) {
   const actorUserId = ctx.actorUserId;
+  const libraryEvents = input.includeLibraryEvents ?? false;
   const scope = input.organizationId
     ? { organizationId: input.organizationId }
     : undefined;
@@ -295,7 +301,14 @@ export async function buildLearnerIndex(
       now,
     );
   });
-  const attemptsPromise = assessment.listMyAttempts(scope);
+  // Builds before library events get none of their attempts (they have no course item).
+  const attemptsPromise = assessment
+    .listMyAttempts(scope)
+    .then((attempts) =>
+      libraryEvents
+        ? attempts
+        : attempts.filter((attempt) => attempt.courseItemId !== null),
+    );
   const resumableAttemptsPromise = attemptsPromise.then((attempts) =>
     Promise.all(
       attempts
@@ -303,10 +316,7 @@ export async function buildLearnerIndex(
         .map(async (attempt) => {
           const [attemptDetail, assessmentDetail] = await Promise.all([
             assessment.getMyAttempt({ attemptId: attempt.id }),
-            assessment.getForCourseItem({
-              courseItemId: attempt.courseItemId,
-              attemptId: attempt.id,
-            }),
+            attemptAssessment(assessment, attempt.courseItemId, attempt.id),
           ]);
           return [
             attempt.id,
@@ -333,10 +343,16 @@ export async function buildLearnerIndex(
   ] = await Promise.all([
     coursesPromise,
     cohortsPromise,
-    assessmentEvent.listForLearner({
-      ...scope,
-      includeScheduled: input.includeScheduledEvents ?? false,
-    }),
+    assessmentEvent
+      .listForLearner({
+        ...scope,
+        includeScheduled: input.includeScheduledEvents ?? false,
+      })
+      .then((events) =>
+        libraryEvents
+          ? events
+          : events.filter((event) => event.courseItem !== null),
+      ),
     learning.listMyCohortMilestones(cohortScope),
     attemptsPromise,
     gamification.getMySummary(),

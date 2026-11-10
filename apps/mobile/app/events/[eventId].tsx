@@ -9,6 +9,7 @@ import {
   useAssessmentMediaPrefetch,
 } from "../../src/components/assessment-media";
 import { AttemptStartingPreview } from "../../src/components/attempt-starting-preview";
+import { randomUuid } from "../../src/lib/random-uuid";
 import { AttemptResultDetails } from "../../src/components/attempt-result-details";
 import { useApiAssetResolver } from "../../src/components/content-renderer";
 import {
@@ -37,6 +38,11 @@ import { usePushNotifications } from "../../src/providers/PushNotificationsProvi
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
 import { useTransitionOverride } from "../../src/navigation/screen-transition";
 import { useItemAssessment, useLearnerEvent } from "../../src/sync/hooks";
+import { assessmentAttemptHref } from "../../src/lib/navigation";
+import {
+  eventAssessment,
+  eventQuestionCount,
+} from "../../src/lib/event-assessment";
 
 export default function AssessmentEventScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -58,6 +64,7 @@ export default function AssessmentEventScreen() {
   // screen already shows the attempt's first screen from the course bundle
   // (optimistic); answering waits for the server to register the start.
   const [starting, setStarting] = useState(false);
+  const [startingSeed, setStartingSeed] = useState<string>();
   // Only a pull shows the refresh spinner. The refresh every open makes runs
   // quietly: a spinner set from code as the screen appears can stay stuck on
   // iOS, with nothing saying what it waits for.
@@ -65,15 +72,14 @@ export default function AssessmentEventScreen() {
   const event = query.data;
   const attempt = event?.attempts[0];
   const invalidated = !!event?.participants[0]?.invalidatedAt;
-  const assessment = event?.courseItem.assessment;
+  const assessment = event ? eventAssessment(event) : null;
   // The questions without answers, already on the device in the course bundle.
-  const bundled = useItemAssessment(
-    event?.course.id,
-    event?.courseItem.id ?? "",
-    {
-      enabled: Boolean(event),
-    },
-  );
+  // An event that runs an assessment from the organization's library (no
+  // course item) has none on the device: its questions arrive with the start.
+  const courseItemId = event?.courseItem?.id ?? null;
+  const bundled = useItemAssessment(event?.course.id, courseItemId ?? "", {
+    enabled: Boolean(courseItemId),
+  });
   // The server lists the media once the event is open; download it while the connection is good.
   const media = useAssessmentMediaPrefetch(
     event?.media?.map((asset) => asset.assetId) ?? [],
@@ -89,15 +95,12 @@ export default function AssessmentEventScreen() {
 
   function openAttempt(attemptId: string, replace = false) {
     if (!event) return;
-    const target = {
-      pathname:
-        "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]" as const,
-      params: {
-        courseId: event.course.id,
-        courseItemId: event.courseItem.id,
-        attemptId,
-      },
-    };
+    const target = assessmentAttemptHref({
+      attemptId,
+      courseId: event.course.id,
+      courseItemId: event.courseItem?.id ?? null,
+      eventId: event.id,
+    });
     if (replace) router.replace(target);
     else router.push(target);
   }
@@ -112,10 +115,14 @@ export default function AssessmentEventScreen() {
 
   async function begin() {
     if (!event || invalidated || starting) return;
+    // Made here so the preview shows the attempt's own order at once.
+    const shuffleSeed = randomUuid();
+    setStartingSeed(shuffleSeed);
     setStarting(true);
     try {
       const result = await start.mutateAsync({
         eventId,
+        shuffleSeed,
         protocol: SYNC_PROTOCOL,
         runtimeVersion: RUNTIME_VERSION,
       });
@@ -167,6 +174,8 @@ export default function AssessmentEventScreen() {
         ? "Kerjakan ulang tugas"
         : null;
 
+  const questionCount =
+    eventQuestionCount(assessment) ?? bundled.data?.questions.length ?? 0;
   const firstQuestion = bundled.data?.questions
     .slice()
     .sort((first, second) => first.position - second.position)[0];
@@ -208,6 +217,7 @@ export default function AssessmentEventScreen() {
           <AttemptStartingPreview
             assessment={bundled.data}
             shuffleQuestions={bundled.data?.shuffleQuestions ?? true}
+            shuffleSeed={startingSeed}
           />
         </StudyScreen>
       ) : !event ? (
@@ -238,7 +248,7 @@ export default function AssessmentEventScreen() {
               faces={[
                 <View className="items-center" key="count">
                   <Text className="text-4xl font-black tabular-nums tracking-tight text-foreground">
-                    {assessment?._count.questions ?? 0}
+                    {questionCount}
                   </Text>
                   <Eyebrow>soal</Eyebrow>
                 </View>,
@@ -325,7 +335,7 @@ export default function AssessmentEventScreen() {
           {!attempt && primaryAction && firstQuestion ? (
             <QuestionPreview
               question={firstQuestion}
-              total={assessment?._count.questions ?? 0}
+              total={questionCount}
               resolveAssetUrl={resolveAssetUrl}
             />
           ) : null}
@@ -379,7 +389,7 @@ export default function AssessmentEventScreen() {
             <AttemptResultDetails
               key={attempt.id}
               attemptId={attempt.id}
-              courseItemId={event.courseItem.id}
+              courseItemId={event.courseItem?.id ?? null}
             />
           ) : null}
         </StudyScreen>

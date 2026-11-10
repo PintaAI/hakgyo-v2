@@ -248,7 +248,13 @@ export async function notifyAttemptGraded(attemptId: string) {
       courseItem: { select: { module: { select: { courseId: true } } } },
     },
   });
-  if (attempt?.status !== "GRADED" || attempt.assessmentEventId) return;
+  if (
+    attempt?.status !== "GRADED" ||
+    attempt.assessmentEventId ||
+    !attempt.courseItem
+  ) {
+    return;
+  }
   const courseId = attempt.courseItem.module.courseId;
   const attemptPath = `/${courseId}/items/${attempt.courseItemId}/attempts/${attempt.id}`;
   return notifyUsers([attempt.userId], {

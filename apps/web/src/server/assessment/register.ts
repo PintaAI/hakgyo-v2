@@ -42,6 +42,12 @@ export function reviewScope(member: {
                 module: { course: { ownerMembershipId: member.id } },
               },
             },
+            // Library event attempts have no item; the event names the course.
+            {
+              assessmentEvent: {
+                course: { ownerMembershipId: member.id },
+              },
+            },
           ]),
       {
         cohort: {
@@ -68,9 +74,19 @@ export function registerWhere(
         : {}),
     ...(input.eventId ? { assessmentEventId: input.eventId } : {}),
     cohortId: input.cohortId,
-    courseItem: input.courseId
-      ? { module: { courseId: input.courseId } }
-      : undefined,
+    ...(input.courseId
+      ? {
+          AND: [
+            {
+              OR: [
+                { courseItem: { module: { courseId: input.courseId } } },
+                // Library event attempts have no item; the event names the course.
+                { assessmentEvent: { courseId: input.courseId } },
+              ],
+            },
+          ],
+        }
+      : {}),
     ...(input.search
       ? {
           OR: [
@@ -121,20 +137,28 @@ export const attemptSummarySelect = {
   },
   cohort: { select: { id: true, name: true } },
   assessmentEvent: {
-    select: { id: true, title: true, type: true, status: true },
+    select: {
+      id: true,
+      title: true,
+      type: true,
+      status: true,
+      course: { select: { id: true, title: true } },
+    },
   },
 } satisfies Prisma.AssessmentAttemptSelect;
 
 export function assessmentContext(attempt: {
   assessment: { title: string };
+  /** Null for an attempt of a library assessment event: the event names the course. */
   courseItem: {
     module: { title: string; course: { id: string; title: string } };
-  };
+  } | null;
   cohort: { id: string; name: string } | null;
   assessmentEvent: {
     id: string;
     title: string;
     type: "QUICK_ASSESSMENT" | "TRYOUT";
+    course: { id: string; title: string };
   } | null;
 }) {
   const event = attempt.assessmentEvent;
@@ -148,8 +172,9 @@ export function assessmentContext(attempt: {
           ? "Tryout"
           : "Latihan",
     title: event?.title ?? attempt.assessment.title,
-    course: attempt.courseItem.module.course,
-    moduleTitle: attempt.courseItem.module.title,
+    course: attempt.courseItem?.module.course ??
+      attempt.assessmentEvent?.course ?? { id: "", title: "" },
+    moduleTitle: attempt.courseItem?.module.title ?? "",
     cohort: attempt.cohort,
     // Events always target classes; kept for app versions that read it.
     scope: event ? ("COHORT" as const) : ("CHAPTER" as const),

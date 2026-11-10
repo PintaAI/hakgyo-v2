@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   BookOpenIcon,
   CheckIcon,
@@ -116,6 +116,7 @@ export function ResourcePicker({
   groupLabel = "Bab",
   disabled,
   loading,
+  onSearchChange,
   className,
 }: {
   kind: ResourcePickerKind;
@@ -132,9 +133,20 @@ export function ResourcePicker({
   groupLabel?: string;
   disabled?: boolean;
   loading?: boolean;
+  /**
+   * Called with the trimmed search text when it changes (and with "" when the list opens), for
+   * lists the server searches because they hold only the newest entries. The list still filters
+   * the loaded options itself.
+   */
+  onSearchChange?: (search: string) => void;
   className?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
+  // A closed list drops its search, so a search with no results cannot leave it empty.
+  const setOpen = (next: boolean) => {
+    setOpenState(next);
+    if (!next) onSearchChange?.("");
+  };
   const isMobile = useIsMobile();
   const selected = options.find((option) => option.id === value);
   const isEmpty = !loading && options.length === 0;
@@ -189,6 +201,7 @@ export function ResourcePicker({
               description={description}
               defaultSortLabel={defaultSortLabel}
               groupLabel={groupLabel}
+              onSearchChange={onSearchChange}
               onSelect={(nextValue) => {
                 onValueChange(nextValue);
                 setOpen(false);
@@ -209,6 +222,7 @@ function ResourcePickerPanel({
   description,
   defaultSortLabel,
   groupLabel,
+  onSearchChange,
   onSelect,
 }: {
   kind: ResourcePickerKind;
@@ -218,6 +232,7 @@ function ResourcePickerPanel({
   description: string;
   defaultSortLabel: string;
   groupLabel: string;
+  onSearchChange?: (search: string) => void;
   onSelect: (value: string) => void;
 }) {
   const [search, setSearch] = useState("");
@@ -226,6 +241,10 @@ function ResourcePickerPanel({
   const [countFilter, setCountFilter] = useState<CountFilter>("ALL");
   const { noun, icon: Icon, count: countLabels } = resourceKinds[kind];
   const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase());
+  const trimmedSearch = search.trim();
+  useEffect(() => {
+    onSearchChange?.(trimmedSearch);
+  }, [onSearchChange, trimmedSearch]);
 
   const groups = useMemo(
     () => [

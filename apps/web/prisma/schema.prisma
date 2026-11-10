@@ -1121,6 +1121,7 @@ model Assessment {
   questionGroups        AssessmentQuestionGroup[]
   courseItems           CourseItem[]
   attempts              AssessmentAttempt[]
+  events                AssessmentEvent[]
   materialRequirements  MaterialRequirement[]
   assets                AssessmentAsset[]
   publicQuiz            PublicQuiz?
@@ -1520,7 +1521,7 @@ model UserAchievement {
 model AssessmentAttempt {
   id                String                      @id @default(cuid())
   assessmentId      String
-  courseItemId      String
+  courseItemId      String?
   organizationId    String
   cohortId          String?
   userId            String
@@ -1541,7 +1542,7 @@ model AssessmentAttempt {
   offlineSyncedAt   DateTime?
   assessmentEventId String?
   assessment        Assessment                  @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  courseItem        CourseItem                  @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  courseItem        CourseItem?                 @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
   cohort            Cohort?                     @relation(fields: [cohortId], references: [id], onDelete: SetNull)
   user              User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
   answers           AssessmentAnswer[]
@@ -1568,7 +1569,11 @@ model AssessmentEvent {
   id                     String                       @id @default(cuid())
   organizationId         String
   courseId               String
-  courseItemId           String
+  /// The assessment the event runs: one placed in the course (`courseItemId`) or one from the
+  /// organization's library that learners never see in the curriculum.
+  assessmentId           String
+  /// The course placement the assessment was picked from; null for a library assessment.
+  courseItemId           String?
   createdByMembershipId  String
   type                   AssessmentEventType
   title                  String
@@ -1596,7 +1601,8 @@ model AssessmentEvent {
   updatedAt              DateTime                     @updatedAt
   organization           Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   course                 Course                       @relation(fields: [courseId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  courseItem             CourseItem                   @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  assessment             Assessment                   @relation(fields: [assessmentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  courseItem             CourseItem?                  @relation(fields: [courseItemId, organizationId], references: [id, organizationId], onDelete: Restrict)
   createdBy              OrganizationMember           @relation("AssessmentEventCreator", fields: [createdByMembershipId, organizationId], references: [id, organizationId], onDelete: Restrict)
   cohorts                AssessmentEventCohort[]
   participants           AssessmentEventParticipant[]
@@ -1609,6 +1615,7 @@ model AssessmentEvent {
   @@index([status, closesAt])
   @@index([status, attemptsFinalizedAt])
   @@index([courseItemId])
+  @@index([assessmentId])
   @@index([createdByMembershipId])
 }
 

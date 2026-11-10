@@ -44,9 +44,11 @@ import {
   questionFields,
   reviewAttemptInput,
   saveAnswersInput,
+  shuffleSeedInput,
 } from "~/server/assessment/inputs";
 import {
   getLearnerAssessment,
+  getLearnerAttemptAssessment,
   getMyAttempt,
   listMyAttempts,
   saveAnswers,
@@ -321,8 +323,21 @@ export const assessmentRouter = createTRPCRouter({
     .query(({ ctx, input }) =>
       getLearnerAssessment(ctx.db, input, ctx.actorUserId),
     ),
+  /** An event attempt's assessment, also for library events whose attempts have no course item. */
+  getForAttempt: protectedProcedure
+    .input(z.object({ attemptId: id }))
+    .query(({ ctx, input }) =>
+      getLearnerAttemptAssessment(ctx.db, input, ctx.actorUserId),
+    ),
   startAttempt: protectedProcedure
-    .input(z.object({ courseItemId: id, cohortId: id.optional() }))
+    .input(
+      z.object({
+        courseItemId: id,
+        cohortId: id.optional(),
+        /** Made by the device so it can order the questions itself. */
+        shuffleSeed: shuffleSeedInput.optional(),
+      }),
+    )
     .mutation(({ ctx, input }) => startAttempt(ctx.db, input, ctx.actorUserId)),
   saveAnswers: protectedProcedure
     .input(saveAnswersInput)

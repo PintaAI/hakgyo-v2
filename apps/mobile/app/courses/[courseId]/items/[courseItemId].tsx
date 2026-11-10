@@ -1,4 +1,9 @@
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import {
+  router,
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+} from "expo-router";
 import { HeaderHeightContext } from "expo-router/react-navigation";
 import { resolveAssessmentEntry, RUNTIME_VERSION } from "@hakgyo/shared";
 import type { MaterialLinkTarget } from "@hakgyo/shared/material-links";
@@ -11,7 +16,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import Animated from "react-native-reanimated";
 
@@ -57,6 +69,11 @@ import { useSidebarIndicators } from "../../../../src/lib/sidebar-indicators";
 import { markContentSeen } from "../../../../src/lib/use-content-changes";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../../../src/providers/MobileSyncProvider";
+import {
+  canStartOnDevice,
+  startAttemptOnDevice,
+} from "../../../../src/lib/device-attempt";
+import { randomUuid } from "../../../../src/lib/random-uuid";
 import {
   type CourseItemDetail,
   useCourseItem,
@@ -209,14 +226,15 @@ function CourseItemContent({
   }, []);
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
-  const { colors } = useAppTheme();
+  const { activeOrganizationId, colors } = useAppTheme();
   const { markEntitySeen } = useSidebarIndicators();
   const userId = session?.user.id;
   // Opening an activity clears its "Baru"/"Diperbarui" mark in the outline.
   useEffect(() => {
     if (userId) markContentSeen(userId, courseItemId);
   }, [courseItemId, userId]);
-  const { prefetchLesson, saveStartedAttempt } = useMobileSyncActions();
+  const { prefetchLesson, queueAssessmentStart, saveStartedAttempt } =
+    useMobileSyncActions();
   // Everything below composes from the local course bundle + learner index;
   // the online procedures only run when the bundle is not on the device yet.
   // Keep the progress sheet's outline warm while the learner reads.
@@ -237,6 +255,11 @@ function CourseItemContent({
   // From the tap until the attempt opens: the attempt's first screen from the
   // bundle, like an event's start (optimistic; answering waits for the server).
   const [startingAssessment, setStartingAssessment] = useState(false);
+  // The seed the device made for the start in flight, so the preview shows
+  // the questions and options in the attempt's own order.
+  const [startingSeed, setStartingSeed] = useState<string>();
+  // Guards a second tap while an attempt starts on the device (no preview).
+  const startingOnDevice = useRef(false);
   const { fadeNextTransition } = useTransitionOverride();
   const [selectedCohortId, setSelectedCohortId] = useState<string>();
   const item = itemQuery.data;
@@ -301,6 +324,14 @@ function CourseItemContent({
       initialOutline.current = outline.data;
   }, [outline.data]);
 
+  // Back from the attempt shows the tugas again, not the preview.
+  useFocusEffect(
+    useCallback(() => {
+      setStartingAssessment(false);
+      startingOnDevice.current = false;
+    }, []),
+  );
+
   async function beginAssessment() {
     if (!assessment || startingAssessment) return;
     if (latestAttempt?.status === "IN_PROGRESS") {
@@ -311,8 +342,15 @@ function CourseItemContent({
       });
       return;
     }
+    const resolvedCourseId = courseId || itemQuery.courseId;
+    if (resolvedCourseId && canStartOnDevice(assessment)) {
+      await beginAssessmentOnDevice(resolvedCourseId);
+      return;
+    }
     const cohorts = assessment.eligibleCohorts;
     const cohortId = cohorts.length === 1 ? cohorts[0]?.id : selectedCohortId;
+    const shuffleSeed = randomUuid();
+    setStartingSeed(shuffleSeed);
     setStartingAssessment(true);
     try {
       const result = await startAssessment.mutateAsync({
@@ -320,6 +358,7 @@ function CourseItemContent({
         runtimeVersion: RUNTIME_VERSION,
         courseItemId,
         cohortId,
+        shuffleSeed,
       });
       // Persisted locally so the attempt resumes offline.
       await saveStartedAttempt(result);
@@ -331,13 +370,60 @@ function CourseItemContent({
             "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
           params: { courseId, courseItemId, attemptId: result.attempt.id },
         });
-        // Back from the attempt shows the tugas again, not the preview.
-        setStartingAssessment(false);
+        // The preview stays while the attempt fades in over it: switching
+        // back to the tugas here flashed it under the fade. It goes when
+        // this screen is focused again (above).
       });
     } catch {
       // The mutation error is shown next to the action.
       setStartingAssessment(false);
     }
+  }
+
+  /**
+   * Opens a tugas the server has nothing to decide about (`canStartOnDevice`)
+   * at once: the attempt is made here, from the course bundle, and the server
+   * records it from the outbox, in the background or once back online.
+   */
+  async function beginAssessmentOnDevice(resolvedCourseId: string) {
+    if (!assessment || startingOnDevice.current) return;
+    startingOnDevice.current = true;
+    const attemptId = randomUuid();
+    const shuffleSeed = randomUuid();
+    const startedAt = new Date();
+    const started = startAttemptOnDevice(assessment, {
+      attemptId,
+      shuffleSeed,
+      courseId: resolvedCourseId,
+      courseItemId,
+      startedAt,
+    });
+    try {
+      await saveStartedAttempt({
+        attempt: started.attempt,
+        assessmentDetail: started.assessmentDetail,
+      });
+      await queueAssessmentStart({
+        attemptId,
+        courseItemId,
+        cohortId: started.attempt.cohort?.id,
+        shuffleSeed,
+        startedAt,
+        standalone: started.standalone,
+        organizationId: activeOrganizationId ?? undefined,
+      });
+    } catch (cause) {
+      startingOnDevice.current = false;
+      Alert.alert(
+        "Tugas tidak bisa dimulai",
+        cause instanceof Error ? cause.message : "Coba lagi sebentar lagi.",
+      );
+      return;
+    }
+    router.push({
+      pathname: "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
+      params: { courseId: resolvedCourseId, courseItemId, attemptId },
+    });
   }
 
   const loading =
@@ -392,6 +478,7 @@ function CourseItemContent({
             <AttemptStartingPreview
               assessment={assessment}
               shuffleQuestions={assessment.shuffleQuestions}
+              shuffleSeed={startingSeed}
             />
           </StudyScreen>
         ) : assessment ? (

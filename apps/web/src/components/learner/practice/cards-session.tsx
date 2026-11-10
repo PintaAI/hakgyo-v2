@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { joinMeanings, matchesMeaning } from "@hakgyo/shared";
+import { displayMeanings, matchesMeaning } from "@hakgyo/shared";
 import { ArrowLeftIcon } from "lucide-react";
 
 import Link from "~/components/link";
@@ -122,7 +122,7 @@ export function CardsSession({
   const cards = useMemo<FlipCardItem[]>(
     () =>
       queue.map((word) => {
-        const meanings = joinMeanings(word.meanings);
+        const meanings = displayMeanings(word.meanings);
         const prompt = mode === "KR" ? meanings : word.term;
         const answer = mode === "KR" ? word.term : meanings;
         return {

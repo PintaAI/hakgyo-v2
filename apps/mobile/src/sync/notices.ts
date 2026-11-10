@@ -74,7 +74,10 @@ export type SyncNotice = SyncNoticeBase &
     | {
         kind: "ATTEMPT_GRADED";
         courseId: string;
-        courseItemId: string;
+        /** Null for attempts of events that run an assessment from the library. */
+        courseItemId: string | null;
+        /** The event the attempt belongs to; absent in notices saved by older builds. */
+        eventId?: string | null;
         attemptId: string;
         assessmentTitle: string;
         score: number | null;
@@ -331,7 +334,12 @@ export function diffIndexNotices(
       AWAITING_GRADE.has(known[0]) ||
       (known[0] === "GRADED" && known[1] !== score);
     if (!graded) continue;
-    const courseId = attempt.courseItem.module.courseId;
+    const eventId = attempt.assessmentEvent?.id ?? null;
+    // Library event attempts have no course item: the course is the event's.
+    const courseId =
+      attempt.courseItem?.module.courseId ??
+      index.events.find((event) => event.id === eventId)?.course.id;
+    if (!courseId) continue;
     notices.push(
       notice(
         {
@@ -341,6 +349,7 @@ export function diffIndexNotices(
           organizationId: organizationFor(courseId),
           courseId,
           courseItemId: attempt.courseItemId,
+          eventId,
           attemptId: attempt.id,
           assessmentTitle: attempt.assessment.title,
           score,

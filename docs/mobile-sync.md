@@ -21,7 +21,7 @@ Schema 3 bundles are rejected by clients built for schema 2 (`BundleSchemaError`
 
 ## Operation versions
 
-Outbox operations (`CONTENT_COMPLETED`, `VOCABULARY_SESSION_COMPLETED`, `ASSESSMENT_COMPLETED`, `ASSESSMENT_PROGRESS`) can sit on a device for a long time and are replayed by whatever JavaScript the app runs later, against the newest server. Each operation therefore carries a version `v`; an operation without `v` is version 1, which is what every client built before versioning sends. The current version is `OPERATION_VERSION` in `@hakgyo/shared/mobile-sync` (`packages/shared/src/mobile-sync/operations.ts`).
+Outbox operations (`CONTENT_COMPLETED`, `VOCABULARY_SESSION_COMPLETED`, `ASSESSMENT_STARTED`, `ASSESSMENT_COMPLETED`, `ASSESSMENT_PROGRESS`) can sit on a device for a long time and are replayed by whatever JavaScript the app runs later, against the newest server. Each operation therefore carries a version `v`; an operation without `v` is version 1, which is what every client built before versioning sends. The current version is `OPERATION_VERSION` in `@hakgyo/shared/mobile-sync` (`packages/shared/src/mobile-sync/operations.ts`).
 
 - The client stamps `v: OPERATION_VERSION` into the stored payload JSON when it queues an operation (`engine.putOperation` and `recordVocabularyAttempt` in `apps/mobile/src/sync/engine.ts`). Older rows simply lack `v`; there is no SQLite column for it.
 - When the engine reads the outbox (to send, to append vocabulary attempts, to split oversized sessions, or to check whether an operation changed while in flight) it runs `upcastOperation`, which applies the registered upcasters one version at a time and sets `v`. An operation newer than the running JavaScript (an OTA update was rolled back) is sent unchanged and never edited locally, because the server is always at least as new as the newest client.
@@ -39,6 +39,17 @@ Outbox operations (`CONTENT_COMPLETED`, `VOCABULARY_SESSION_COMPLETED`, `ASSESSM
 4. Deploy the server before shipping the client that sends the new version (see the order in `docs/mobile-releases.md`). A client ahead of the server only delays syncing; it does not lose progress.
 
 `sync-operation-schema.test.ts` checks that there is one fixture file per version up to `OPERATION_VERSION`, that every fixture of every version upcasts and validates against the current schema, and that the newest file covers every kind in the `syncOperation` union, so adding a kind without a fixture fails the test.
+
+## Attempts started on the device
+
+The app makes an attempt's shuffle seed itself (`randomUuid`, `apps/mobile/src/lib/random-uuid.ts`) and sends it with `startAssessment` / `startEventAssessment` (`shuffleSeed`, optional for older apps). The question order is `orderAssessmentQuestions` in `@hakgyo/shared`, so the start preview shows the attempt's own questions and options in their final order, with no grey placeholders.
+
+A standalone tugas the server has nothing to decide about at its start (`startsOnDevice` in `packages/shared/src/assessment-device-start.ts`: no time limit, no attempt limit, no sections; on the device also no event and at most one eligible class, `canStartOnDevice`) does not call the server at all when the learner taps "Mulai tugas":
+
+- The app makes the attempt id (a UUID) and the seed, builds the attempt and its assessment from the course bundle exactly as `getMyAttempt` / `getForCourseItem` would return them (`startAttemptOnDevice`, `apps/mobile/src/lib/device-attempt.ts`), saves them like a server start, and opens the attempt at once, offline too.
+- It queues `ASSESSMENT_STARTED` (id `assessment-start:<attemptId>`, with the course item, class, seed, start time and runtime version) and patches the local learner state (`standaloneAttempts`), so the tugas offers to resume it. The outbox keeps creation order, so the start reaches the server before the attempt's progress and completion.
+- The server records it with the device's id, seed and start time (`recordDeviceStartedAttempt` in `src/server/assessment/learner-attempts.ts`; a start time in the future becomes now). A replay returns the recorded attempt. An assessment that gained a time limit, an attempt limit or sections since the bundle fails with `PRECONDITION_FAILED` (terminal), and so does the attempt's later progress (`NOT_FOUND`); the operations land in the dead letters like other rejected ones. An attempt left in progress on another device stays; the new one comes after it.
+- A new operation `kind` needs no version bump, but servers before it reject a commit that contains one: deploy the server before shipping the app.
 
 ## Assessment progress log
 

@@ -106,7 +106,8 @@ export function recordAssessmentSubmitted(
     id: string;
     userId: string;
     organizationId: string;
-    courseItemId: string;
+    /** Null for an attempt of a library assessment event. */
+    courseItemId: string | null;
     assessmentEventId: string | null;
   },
   submittedAt: Date,
@@ -116,7 +117,7 @@ export function recordAssessmentSubmitted(
     idempotencyKey: assessmentSubmittedActivityKey(attempt.id),
     metadata: {
       attemptId: attempt.id,
-      courseItemId: attempt.courseItemId,
+      ...(attempt.courseItemId ? { courseItemId: attempt.courseItemId } : {}),
       ...(attempt.assessmentEventId
         ? { assessmentEventId: attempt.assessmentEventId }
         : {}),
@@ -152,6 +153,20 @@ export function recordAssessmentPassed(
     occurredAt: passedAt,
     userId: attempt.userId,
   });
+}
+
+/**
+ * The course item of a chapter (standalone) attempt. Only attempts of a library assessment event
+ * have none, so a chapter attempt without one is a broken row.
+ */
+export function chapterAttemptItemId(attempt: { courseItemId: string | null }) {
+  if (!attempt.courseItemId) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Chapter attempt without a course item.",
+    });
+  }
+  return attempt.courseItemId;
 }
 
 export const gradableAttemptSelect = {

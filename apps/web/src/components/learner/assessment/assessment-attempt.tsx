@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon, LoaderCircleIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -98,7 +104,8 @@ export function AssessmentAttempt({
   serverTime,
 }: {
   courseId: string;
-  courseItemId: string;
+  /** The course item of the attempt; null for attempts of library events. */
+  courseItemId: string | null;
   assessment: Assessment;
   attempt: Attempt;
   serverTime: Date;
@@ -119,22 +126,45 @@ export function AssessmentAttempt({
   const attempt = attemptQuery.data;
   // Poll only while the result can still change: pending review, or a graded quick assessment
   // whose answers are revealed once its event closes.
-  const assessmentQuery = api.assessment.getForCourseItem.useQuery(
-    { courseItemId, attemptId: attempt.id },
-    {
-      initialData: initialAssessment,
-      refetchInterval: (query) =>
-        attempt.status === "IN_REVIEW" ||
-        attempt.status === "SUBMITTED" ||
-        (attempt.status === "GRADED" &&
-          query.state.data?.event?.type === "QUICK_ASSESSMENT" &&
-          query.state.data.event.status === "OPEN")
-          ? AWAITING_REVIEW_POLL_MS
-          : false,
-    },
+  const assessmentQueryOptions = {
+    initialData: initialAssessment,
+    refetchInterval: (query: { state: { data?: Assessment } }) =>
+      attempt.status === "IN_REVIEW" ||
+      attempt.status === "SUBMITTED" ||
+      (attempt.status === "GRADED" &&
+        query.state.data?.event?.type === "QUICK_ASSESSMENT" &&
+        query.state.data.event.status === "OPEN")
+        ? AWAITING_REVIEW_POLL_MS
+        : false,
+  };
+  // Attempts of library events have no course item and load through the attempt alone.
+  const itemAssessmentQuery = api.assessment.getForCourseItem.useQuery(
+    { courseItemId: courseItemId ?? "", attemptId: attempt.id },
+    { ...assessmentQueryOptions, enabled: courseItemId !== null },
   );
-  const assessment = assessmentQuery.data;
-  // Grading changes what getForCourseItem reveals; refresh it once when a review completes
+  const attemptAssessmentQuery = api.assessment.getForAttempt.useQuery(
+    { attemptId: attempt.id },
+    { ...assessmentQueryOptions, enabled: courseItemId === null },
+  );
+  const assessment = courseItemId
+    ? itemAssessmentQuery.data
+    : attemptAssessmentQuery.data;
+  const leaveHref = assessment.event
+    ? `/learn/assessments/${assessment.event.id}`
+    : courseItemId
+      ? `/learn/${courseId}/items/${courseItemId}`
+      : `/learn/${courseId}`;
+  const invalidateAssessment = useCallback(
+    () =>
+      courseItemId
+        ? utils.assessment.getForCourseItem.invalidate({
+            courseItemId,
+            attemptId: attempt.id,
+          })
+        : utils.assessment.getForAttempt.invalidate({ attemptId: attempt.id }),
+    [attempt.id, courseItemId, utils],
+  );
+  // Grading changes what the assessment query reveals; refresh it once when a review completes
   // instead of polling it after the attempt is graded.
   const previousStatus = useRef(attempt.status);
   useEffect(() => {
@@ -143,12 +173,9 @@ export function AssessmentAttempt({
       previousStatus.current === "SUBMITTED";
     previousStatus.current = attempt.status;
     if (wasPendingReview && attempt.status === "GRADED") {
-      void utils.assessment.getForCourseItem.invalidate({
-        courseItemId,
-        attemptId: attempt.id,
-      });
+      void invalidateAssessment();
     }
-  }, [attempt.id, attempt.status, courseItemId, utils]);
+  }, [attempt.status, invalidateAssessment]);
 
   // Questions show one at a time: fetch every question's media up front so later questions do
   // not depend on the connection.
@@ -503,10 +530,7 @@ export function AssessmentAttempt({
       const result = await submit.mutateAsync({ attemptId: attempt.id });
       await Promise.all([
         utils.assessment.getMyAttempt.invalidate({ attemptId: attempt.id }),
-        utils.assessment.getForCourseItem.invalidate({
-          courseItemId,
-          attemptId: attempt.id,
-        }),
+        invalidateAssessment(),
         utils.assessment.listMyAttemptHistory.invalidate(),
         utils.assessmentEvent.invalidate(),
         utils.gamification.getMySummary.invalidate(),
@@ -520,11 +544,7 @@ export function AssessmentAttempt({
             : "Tugas berhasil dinilai.",
       );
       // Like the app, land on the event (score and leaderboard) or the item.
-      router.replace(
-        assessment.event
-          ? `/learn/assessments/${assessment.event.id}`
-          : `/learn/${courseId}/items/${courseItemId}`,
-      );
+      router.replace(leaveHref);
       router.refresh();
     } catch (error) {
       toast.error(
@@ -737,10 +757,6 @@ export function AssessmentAttempt({
     question?.type === "SINGLE_CHOICE" &&
     answerHasContent(answers[question.id] ?? {}),
   );
-
-  const leaveHref = assessment.event
-    ? `/learn/assessments/${assessment.event.id}`
-    : `/learn/${courseId}/items/${courseItemId}`;
 
   if (isFinished) {
     const result = assessmentTerminalResult(attempt);

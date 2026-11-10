@@ -39,7 +39,7 @@ export async function getEventItemAnalysis(
   const [details, participants] = await Promise.all([
     db.assessmentEvent.findUniqueOrThrow({
       where: { id: event.id },
-      select: { courseItem: { select: { assessmentId: true } } },
+      select: { assessmentId: true },
     }),
     db.assessmentEventParticipant.findMany({
       where: {
@@ -56,8 +56,8 @@ export async function getEventItemAnalysis(
       },
     }),
   ]);
-  const assessmentId = details.courseItem.assessmentId;
-  if (!assessmentId || !participants.length) {
+  const assessmentId = details.assessmentId;
+  if (!participants.length) {
     return {
       attemptCount: 0,
       questions: [],

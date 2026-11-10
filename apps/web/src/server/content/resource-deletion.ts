@@ -229,12 +229,20 @@ export async function deleteCourseItemsWithProgress(
     };
   }
 
-  const events = itemIds.length
-    ? await tx.assessmentEvent.findMany({
-        where: { courseItemId: { in: itemIds } },
-        select: { id: true },
-      })
-    : [];
+  // Events of the items, and, when the assessment itself goes, events running it from the
+  // library (they have no item).
+  const events =
+    itemIds.length || assessmentId
+      ? await tx.assessmentEvent.findMany({
+          where: {
+            OR: [
+              ...(itemIds.length ? [{ courseItemId: { in: itemIds } }] : []),
+              ...(assessmentId ? [{ assessmentId }] : []),
+            ],
+          },
+          select: { id: true },
+        })
+      : [];
   const eventIds = events.map(({ id }) => id);
   const attempts = await tx.assessmentAttempt.findMany({
     where: {

@@ -21,7 +21,8 @@ export function AttemptResultDetails({
   courseItemId,
 }: {
   attemptId: string;
-  courseItemId: string;
+  /** Null for attempts of library events (read through the attempt). */
+  courseItemId: string | null;
 }) {
   const resolveAssetUrl = useApiAssetResolver();
   // Graded attempts come from the persisted result; online otherwise.

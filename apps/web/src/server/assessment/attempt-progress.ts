@@ -18,6 +18,7 @@ import {
   requireInProgressAttemptAccess,
 } from "~/server/assessment/access";
 import {
+  chapterAttemptItemId,
   gradableAttemptSelect,
   gradeInProgressAttempt,
   lockInProgressAttempt,
@@ -218,7 +219,11 @@ async function requireLearnerAttempt(
   if (attempt.assessmentEvent) {
     requireEventParticipationForSync(attempt.assessmentEvent, now);
   } else if (attempt.status === "IN_PROGRESS") {
-    await requireInProgressAttemptAccess(db, attempt.courseItemId, userId);
+    await requireInProgressAttemptAccess(
+      db,
+      chapterAttemptItemId(attempt),
+      userId,
+    );
   }
   return attempt;
 }

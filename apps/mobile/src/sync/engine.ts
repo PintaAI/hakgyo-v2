@@ -502,6 +502,10 @@ export function createMobileSyncEngine({
           ...entry.index.learner.contentProgress,
           ...(patch.contentProgress ?? {}),
         },
+        standaloneAttempts: {
+          ...entry.index.learner.standaloneAttempts,
+          ...(patch.standaloneAttempts ?? {}),
+        },
         practicedVocabularySetIds: [
           ...new Set([
             ...entry.index.learner.practicedVocabularySetIds,
@@ -1174,6 +1178,7 @@ export function createMobileSyncEngine({
           protocol: SYNC_PROTOCOL,
           organizationId,
           includeScheduledEvents: true,
+          includeLibraryEvents: true,
           knownIndexToken:
             local && !local.stale && !force ? local.token : undefined,
         });

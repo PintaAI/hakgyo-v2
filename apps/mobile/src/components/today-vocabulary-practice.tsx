@@ -1,5 +1,5 @@
 import type { RouterOutputs } from "@hakgyo/api";
-import { displayMeanings, entryMeanings, joinMeanings } from "@hakgyo/shared";
+import { displayMeanings, entryMeanings } from "@hakgyo/shared";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, Text, TextInput, View } from "react-native";
@@ -442,7 +442,7 @@ export function TodayVocabularyPractice({
                   inputRef={inputRef}
                   accessibilityLabel={
                     mode === "KR"
-                      ? `Kata Korea untuk ${joinMeanings(entryMeanings(card))}`
+                      ? `Kata Korea untuk ${displayMeanings(entryMeanings(card))}`
                       : `Arti dari ${card.term}`
                   }
                   value={answer}

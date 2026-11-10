@@ -177,7 +177,12 @@ export async function listEventTargetCohorts(
 
 export type CreateAssessmentEventInput = {
   courseId: string;
-  courseItemId: string;
+  /**
+   * The assessment to run: one shown in the course (`courseItemId`) or one from the
+   * organization's library (`assessmentId`), which learners never see in the curriculum.
+   * Exactly one is given.
+   */
+  source: { courseItemId: string } | { assessmentId: string };
   type: "QUICK_ASSESSMENT" | "TRYOUT";
   target: { allCohorts: boolean; cohortIds: string[] };
   title: string;
@@ -190,6 +195,59 @@ export type CreateAssessmentEventInput = {
     | { mode: "now"; notify: boolean }
     | { mode: "schedule"; opensAt: Date; notify: boolean };
 };
+
+/**
+ * The assessment an event runs, checked: a published item of the course that places an
+ * assessment, or an assessment of the course's organization (its library).
+ */
+async function resolveEventAssessment(
+  db: PrismaClient,
+  source: CreateAssessmentEventInput["source"],
+  courseId: string,
+  organizationId: string,
+) {
+  if ("courseItemId" in source) {
+    const item = await db.courseItem.findFirst({
+      where: {
+        id: source.courseItemId,
+        type: "ASSESSMENT",
+        isPublished: true,
+        module: { courseId },
+      },
+      select: {
+        organizationId: true,
+        assessmentId: true,
+        assessment: { select: { sections: timedSectionsSelect } },
+      },
+    });
+    if (item?.organizationId !== organizationId || !item.assessmentId) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Pilih tugas yang tampil di course ini.",
+      });
+    }
+    return {
+      assessmentId: item.assessmentId,
+      courseItemId: source.courseItemId,
+      sections: item.assessment?.sections ?? [],
+    };
+  }
+  const assessment = await db.assessment.findFirst({
+    where: { id: source.assessmentId, organizationId },
+    select: { id: true, sections: timedSectionsSelect },
+  });
+  if (!assessment) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Pilih tugas dari bank tugas organisasi ini.",
+    });
+  }
+  return {
+    assessmentId: assessment.id,
+    courseItemId: null,
+    sections: assessment.sections,
+  };
+}
 
 /**
  * Creates an event for one or more classes (or every class) of the course and saves it as a
@@ -221,27 +279,14 @@ export async function createAssessmentEvent(
       message: "Waktu tutup harus di masa depan.",
     });
   }
-  const item = await db.courseItem.findFirst({
-    where: {
-      id: input.courseItemId,
-      type: "ASSESSMENT",
-      isPublished: true,
-      module: { courseId: input.courseId },
-    },
-    select: {
-      organizationId: true,
-      assessmentId: true,
-      assessment: { select: { sections: timedSectionsSelect } },
-    },
-  });
-  if (item?.organizationId !== course.organizationId || !item.assessmentId) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Pilih tugas yang tampil di course ini.",
-    });
-  }
+  const picked = await resolveEventAssessment(
+    db,
+    input.source,
+    input.courseId,
+    course.organizationId,
+  );
   // Events need a complete assessment (questions, options, answer key).
-  await assertAssessmentComplete(db, item.assessmentId);
+  await assertAssessmentComplete(db, picked.assessmentId);
   const membership = await db.organizationMember.findUnique({
     where: {
       organizationId_userId: { organizationId: course.organizationId, userId },
@@ -253,15 +298,15 @@ export async function createAssessmentEvent(
     data: {
       organizationId: course.organizationId,
       courseId: input.courseId,
-      courseItemId: input.courseItemId,
+      assessmentId: picked.assessmentId,
+      courseItemId: picked.courseItemId,
       createdByMembershipId: membership.id,
       type: input.type,
       allCohorts: input.target.allCohorts,
       title: input.title,
       // Timed sections set the duration: their total with the intro allowances.
       durationMinutes:
-        sectionedDurationMinutes(item.assessment?.sections ?? []) ??
-        input.durationMinutes,
+        sectionedDurationMinutes(picked.sections) ?? input.durationMinutes,
       shuffleQuestions: input.shuffleQuestions ?? null,
       closesAt: input.closesAt,
       cohorts: { create: cohortIds.map((cohortId) => ({ cohortId })) },

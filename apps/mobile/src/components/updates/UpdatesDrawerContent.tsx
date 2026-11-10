@@ -10,7 +10,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMemo } from "react";
 
 import { requestLearnCohortFocus } from "../../lib/learn-cohort-focus";
-import { openAssessmentEvent, openCourseItem } from "../../lib/navigation";
+import {
+  assessmentAttemptHref,
+  openAssessmentEvent,
+  openCourseItem,
+} from "../../lib/navigation";
 import { useSidebarIndicators } from "../../lib/sidebar-indicators";
 import { dateLabel } from "../../lib/study";
 import {
@@ -158,15 +162,23 @@ export function UpdatesDrawerContent({
           });
           return;
         case "ATTEMPT_GRADED":
-          router.push({
-            pathname:
-              "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-            params: {
+          // An event attempt's result shows on its event screen (a library
+          // event attempt has no course item to open it under).
+          if (notice.eventId) {
+            router.push({
+              pathname: "/events/[eventId]",
+              params: { eventId: notice.eventId },
+            });
+            return;
+          }
+          router.push(
+            assessmentAttemptHref({
+              attemptId: notice.attemptId,
               courseId: notice.courseId,
               courseItemId: notice.courseItemId,
-              attemptId: notice.attemptId,
-            },
-          });
+              eventId: notice.eventId,
+            }),
+          );
           return;
         case "COURSE_CONTENT": {
           // A single changed activity opens directly; anything more opens

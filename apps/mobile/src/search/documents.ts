@@ -5,6 +5,7 @@ import type {
 } from "@hakgyo/shared/mobile-sync";
 
 import { gameCatalog, type GameKey } from "../games/catalog";
+import { eventAssessment } from "../lib/event-assessment";
 import type { LearnerIndex } from "../sync/types";
 import { extractTextSegments, vocabularyExamples } from "./text";
 
@@ -23,7 +24,8 @@ type AssessmentEventTarget = {
   id: string;
   entry: { destination: string };
   course: { id: string };
-  courseItem: { id: string };
+  /** Null when the event runs an assessment from the organization's library. */
+  courseItem: { id: string } | null;
   attempts: { id: string }[];
 };
 
@@ -333,7 +335,7 @@ function eventDocument(
   event: IndexEvent,
   organizationId: string | null,
 ): SearchDocument {
-  const assessment = event.courseItem.assessment;
+  const assessment = eventAssessment(event);
   return {
     key: `event:${event.id}`,
     kind: "event",

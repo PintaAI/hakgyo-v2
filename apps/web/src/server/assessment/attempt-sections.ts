@@ -1,17 +1,15 @@
 import {
+  type LogPlanSection,
+  orderAssessmentQuestions,
+  type PriorLogEntry,
   roundScore,
   sectionHasQuestionRules,
   sectionTimeline,
-  type LogPlanSection,
-  type PriorLogEntry,
+  shufflesQuestions,
   type TimelineEntry,
 } from "@hakgyo/shared";
 
 import type { Prisma } from "../../../generated/prisma/client";
-import {
-  orderAssessmentQuestions,
-  shufflesQuestions,
-} from "~/server/assessment/order";
 
 /**
  * Server side of sectioned attempts (docs/eps-topik-simulation.md section 4.2): the section plan

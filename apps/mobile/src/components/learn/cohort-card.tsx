@@ -120,7 +120,8 @@ export type CohortEvent = {
   closesAt: Date | null;
   closedAt?: Date | null;
   course: { id: string; title: string };
-  courseItem: { id: string };
+  /** Null when the event runs an assessment from the organization's library. */
+  courseItem: { id: string } | null;
   entry: { destination: "DETAIL" | "ATTEMPT" };
   attempts: {
     id: string;

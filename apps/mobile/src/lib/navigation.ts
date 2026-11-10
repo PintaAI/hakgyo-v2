@@ -1,5 +1,13 @@
 import { router, type Href } from "expo-router";
 
+import {
+  assessmentAttemptHref,
+  assessmentEventHref,
+  type AssessmentEventRef,
+} from "./attempt-href";
+
+export { assessmentAttemptHref, assessmentEventHref, type AssessmentEventRef };
+
 type AttemptRef = { id: string; status: string };
 
 /**
@@ -30,33 +38,6 @@ export function courseItemHref({
       ? { courseId, courseItemId, anchor }
       : { courseId, courseItemId },
   };
-}
-
-type AssessmentEventRef = {
-  id: string;
-  entry: { destination: string };
-  course: { id: string };
-  courseItem: { id: string };
-  attempts: { id: string }[];
-};
-
-/**
- * Where an assessment event opens: the learner's attempt when the event goes
- * straight to it, the event page otherwise.
- */
-export function assessmentEventHref(event: AssessmentEventRef): Href {
-  const attempt = event.attempts[0];
-  if (event.entry.destination === "ATTEMPT" && attempt) {
-    return {
-      pathname: "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-      params: {
-        courseId: event.course.id,
-        courseItemId: event.courseItem.id,
-        attemptId: attempt.id,
-      },
-    };
-  }
-  return { pathname: "/events/[eventId]", params: { eventId: event.id } };
 }
 
 /** Opens a course item (or its in-progress attempt). `replace` swaps the current screen. */

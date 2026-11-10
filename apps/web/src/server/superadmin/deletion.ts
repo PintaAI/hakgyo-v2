@@ -139,8 +139,14 @@ async function deleteCourseChildren(
   tx: Transaction,
   input: { courseId: string; itemIds: string[]; cohortIds: string[] },
 ) {
+  // Attempts of the course's items and of its events (library event attempts have no item).
   const attempts = await tx.assessmentAttempt.findMany({
-    where: { courseItemId: { in: input.itemIds } },
+    where: {
+      OR: [
+        { courseItemId: { in: input.itemIds } },
+        { assessmentEvent: { courseId: input.courseId } },
+      ],
+    },
     select: { id: true },
   });
   const attemptIds = attempts.map(({ id }) => id);

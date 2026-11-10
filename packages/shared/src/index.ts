@@ -16,5 +16,7 @@ export * from "./assessment-section-timeline";
 export * from "./assessment-question-rules";
 export * from "./assessment-audio";
 export * from "./assessment-groups";
+export * from "./assessment-order";
+export * from "./assessment-device-start";
 export * from "./eps-blueprint";
 export * from "./material-links";

@@ -88,7 +88,7 @@ describe("sentence builder engine", () => {
     const challenges = createSentenceChallenges(words, () => 0);
     expect(
       challenges.find((challenge) => challenge.entryId === "friend")?.meaning,
-    ).toBe("teman; sahabat");
+    ).toBe("teman · sahabat");
   });
 
   test("builds challenges from examples, one entry at a time", () => {

@@ -8,7 +8,10 @@ import {
   withoutArchivedHangeulCourse,
 } from "../../lib/hangeul-visibility";
 import { requestLearnCohortFocus } from "../../lib/learn-cohort-focus";
-import { openAssessmentEvent } from "../../lib/navigation";
+import {
+  assessmentAttemptHref,
+  openAssessmentEvent,
+} from "../../lib/navigation";
 import {
   useCohortArchive,
   useHangeulArchived,
@@ -292,17 +295,26 @@ export function MainSidebarContent({
                   title={attempt.assessment.title}
                   detail={`${score} · ${dateLabel(attempt.startedAt)}`}
                   onPress={() => {
-                    onNavigate(() =>
-                      router.push({
-                        pathname:
-                          "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
-                        params: {
-                          courseId: attempt.courseItem.module.courseId,
-                          courseItemId: attempt.courseItemId,
-                          attemptId: attempt.id,
-                        },
-                      }),
-                    );
+                    onNavigate(() => {
+                      if (attempt.courseItem && attempt.courseItemId) {
+                        router.push(
+                          assessmentAttemptHref({
+                            attemptId: attempt.id,
+                            courseId: attempt.courseItem.module.courseId,
+                            courseItemId: attempt.courseItemId,
+                          }),
+                        );
+                        return;
+                      }
+                      // Library event attempts have no course item: their
+                      // event screen shows the result.
+                      if (attempt.assessmentEvent) {
+                        router.push({
+                          pathname: "/events/[eventId]",
+                          params: { eventId: attempt.assessmentEvent.id },
+                        });
+                      }
+                    });
                   }}
                 />
               );

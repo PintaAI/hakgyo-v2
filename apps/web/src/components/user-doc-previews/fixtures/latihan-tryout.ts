@@ -5,6 +5,7 @@ type EventOutputs = RouterOutputs["assessmentEvent"];
 type EventSummary = EventOutputs["listManageable"]["items"][number];
 type TargetCohorts = EventOutputs["listTargetCohorts"];
 type AssessmentItems = EventOutputs["listAssessmentItems"];
+type LibraryAssessments = EventOutputs["listLibraryAssessments"];
 type Manageable = EventOutputs["getManageable"];
 type ItemAnalysis = EventOutputs["itemAnalysis"];
 
@@ -64,6 +65,43 @@ const assessmentItems: AssessmentItems = [
   },
 ];
 
+/** The organization's bank: one tugas also placed in the course, two kept out of it. */
+const libraryAssessments: LibraryAssessments = [
+  {
+    id: "bank-tryout-eps-1",
+    title: "Simulasi EPS-TOPIK 1",
+    description: "40 soal membaca dan mendengar, seperti ujian aslinya.",
+    timeLimitMinutes: 50,
+    shuffleQuestions: true,
+    sections: [],
+    updatedAt: at(-2 * day),
+    _count: { questions: 40 },
+    placedInCourse: false,
+  },
+  {
+    id: "bank-latihan-angka",
+    title: "Latihan Angka dan Waktu",
+    description: "Membaca angka, jam, dan tanggal.",
+    timeLimitMinutes: 15,
+    shuffleQuestions: false,
+    sections: [],
+    updatedAt: at(-5 * day),
+    _count: { questions: 12 },
+    placedInCourse: false,
+  },
+  {
+    id: "tugas-perkenalan",
+    title: "Kuis Perkenalan Diri",
+    description: "Memperkenalkan diri dan bertanya nama.",
+    timeLimitMinutes: 30,
+    shuffleQuestions: false,
+    sections: [],
+    updatedAt: at(-6 * day),
+    _count: { questions: 20 },
+    placedInCourse: true,
+  },
+];
+
 const targetCohorts: TargetCohorts = {
   canTargetAll: true,
   cohorts: [
@@ -97,22 +135,37 @@ const targetCohorts: TargetCohorts = {
   ],
 };
 
-function assessmentFor(itemId: string) {
-  const item = assessmentItems.find((entry) => entry.id === itemId);
-  const assessment = item?.assessment;
+function eventAssessment(assessment: {
+  id: string;
+  title: string;
+  description: string | null;
+  _count: { questions: number };
+}) {
   return {
-    id: itemId,
-    assessment: assessment
-      ? {
-          id: assessment.id,
-          title: assessment.title,
-          description: assessment.description,
-          passingScore: 70,
-          maxAttempts: 1,
-          _count: { questions: assessment._count.questions },
-        }
-      : null,
+    id: assessment.id,
+    title: assessment.title,
+    description: assessment.description,
+    passingScore: 70,
+    maxAttempts: 1,
+    _count: { questions: assessment._count.questions },
   };
+}
+
+/** The event's assessment and course placement, from a course item or from the bank. */
+function assessmentFor(
+  source: { itemId: string } | { assessmentId: string },
+): Pick<EventSummary, "assessment" | "courseItem"> {
+  if ("itemId" in source) {
+    const item = assessmentItems.find((entry) => entry.id === source.itemId);
+    if (!item?.assessment) throw new Error("Tugas tidak ditemukan");
+    const assessment = eventAssessment(item.assessment);
+    return { assessment, courseItem: { id: item.id, assessment } };
+  }
+  const assessment = libraryAssessments.find(
+    (entry) => entry.id === source.assessmentId,
+  );
+  if (!assessment) throw new Error("Tugas tidak ditemukan");
+  return { assessment: eventAssessment(assessment), courseItem: null };
 }
 
 function targetsFor(cohortIds: string[]) {
@@ -129,14 +182,14 @@ function makeEvent(
   event: Pick<
     EventSummary,
     "id" | "title" | "type" | "status" | "durationMinutes"
-  > & {
-    itemId: string;
-    cohortIds: string[];
-    opensAt?: Date | null;
-    closesAt?: Date | null;
-    participants?: number;
-    attempts?: number;
-  },
+  > &
+    ({ itemId: string } | { assessmentId: string }) & {
+      cohortIds: string[];
+      opensAt?: Date | null;
+      closesAt?: Date | null;
+      participants?: number;
+      attempts?: number;
+    },
 ): EventSummary {
   const openedAt =
     event.status === "OPEN" || event.status === "CLOSED"
@@ -156,7 +209,7 @@ function makeEvent(
     cancelledAt: event.status === "CANCELLED" ? at(-hour) : null,
     createdAt: at(-14 * day),
     course,
-    courseItem: assessmentFor(event.itemId),
+    ...assessmentFor(event),
     _count: {
       participants: event.participants ?? 0,
       attempts: event.attempts ?? 0,
@@ -197,6 +250,16 @@ function createState(): State {
         opensAt: at(3 * day),
         closesAt: at(3 * day + 3 * hour),
         participants: 0,
+      }),
+      makeEvent({
+        id: "tryout-simulasi-eps",
+        title: "Tryout Simulasi EPS-TOPIK 1",
+        type: "TRYOUT",
+        status: "DRAFT",
+        durationMinutes: 50,
+        assessmentId: "bank-tryout-eps-1",
+        cohortIds: ["kelas-pagi", "kelas-malam"],
+        closesAt: at(10 * day),
       }),
       makeEvent({
         id: "latihan-hangeul",
@@ -422,6 +485,17 @@ export const latihanTryoutBackend: MockBackend<State> = {
     }),
     "assessmentEvent.listTargetCohorts": () => targetCohorts,
     "assessmentEvent.listAssessmentItems": () => assessmentItems,
+    "assessmentEvent.listLibraryAssessments": (
+      _state,
+      input: RouterInputs["assessmentEvent"]["listLibraryAssessments"],
+    ) => {
+      const query = input.query?.trim().toLowerCase();
+      return query
+        ? libraryAssessments.filter((entry) =>
+            entry.title.toLowerCase().includes(query),
+          )
+        : libraryAssessments;
+    },
     "assessmentEvent.getManageable": manageable,
     "assessmentEvent.itemAnalysis": () => itemAnalysis,
   },
@@ -446,7 +520,9 @@ export const latihanTryoutBackend: MockBackend<State> = {
         type: input.type,
         status,
         durationMinutes: input.durationMinutes,
-        itemId: input.courseItemId,
+        ...(input.assessmentId
+          ? { assessmentId: input.assessmentId }
+          : { itemId: input.courseItemId ?? "" }),
         cohortIds,
         opensAt:
           input.start.mode === "schedule"

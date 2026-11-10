@@ -11,6 +11,12 @@ import { pageInput } from "~/server/api/pagination";
 import { toPrismaJsonValue } from "~/server/prisma-json";
 
 export const id = z.string().min(1);
+
+/**
+ * An attempt's shuffle seed made on the device (a random UUID), so the app
+ * orders the questions itself instead of waiting for the server's order.
+ */
+export const shuffleSeedInput = z.string().min(8).max(100);
 const json = z.unknown().transform(toPrismaJsonValue);
 
 export const assessmentFields = z.object({

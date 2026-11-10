@@ -1,16 +1,14 @@
 import {
+  orderAssessmentQuestions,
   readScoreBands,
   ruleSectionsFor,
   ruleStateFrom,
+  shufflesQuestions,
   timedSectionsSeconds,
 } from "@hakgyo/shared";
 
 import type { Prisma } from "../../../generated/prisma/client";
 import { activeEnrollmentStatuses } from "~/server/authorization";
-import {
-  orderAssessmentQuestions,
-  shufflesQuestions,
-} from "~/server/assessment/order";
 import { shouldRevealAssessmentAnswers } from "~/server/assessment/result-policy";
 import { attemptDeadline } from "~/server/assessment/timing";
 import { liveClassCohortWhere } from "~/server/enrollment/cohort-access";
@@ -375,6 +373,8 @@ export async function getLearnerAssessmentsForCourseItems(
 
   const attemptsByItem = new Map<string, LatestStandaloneAttempt[]>();
   for (const { courseItemId, ...attempt } of standaloneAttempts) {
+    // Standalone attempts always have a course item (only library event attempts have none).
+    if (!courseItemId) continue;
     const list = attemptsByItem.get(courseItemId);
     if (list) list.push(attempt);
     else attemptsByItem.set(courseItemId, [attempt]);

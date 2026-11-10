@@ -1,4 +1,4 @@
-import { joinMeanings } from "@hakgyo/shared";
+import { displayMeanings } from "@hakgyo/shared";
 
 export type VocabularyMatchWord = {
   id: string;
@@ -52,7 +52,7 @@ export function createVocabularyMatchSession(
     const term = clean(word.term);
     const meanings = [...new Set(word.meanings.map(clean).filter(Boolean))];
     return term && meanings.length > 0
-      ? [{ ...word, term, meanings, meaning: joinMeanings(meanings) }]
+      ? [{ ...word, term, meanings, meaning: displayMeanings(meanings) }]
       : [];
   });
   const selected = shuffled(playable, random).slice(

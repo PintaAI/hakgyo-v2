@@ -51,7 +51,9 @@ export type LocalData<TIndex> = {
    */
   patchLearnerState(
     scope: string,
-    patch: Partial<Pick<LearnerState, "contentProgress">> & {
+    patch: Partial<
+      Pick<LearnerState, "contentProgress" | "standaloneAttempts">
+    > & {
       practicedVocabularySetIds?: string[];
     },
   ): Promise<void>;

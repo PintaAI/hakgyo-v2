@@ -633,7 +633,11 @@ export function useVocabularyPractice(
  * `index.resumableAttempts`, then the small queries persisted when the
  * attempt was started or graded on this device. Online otherwise.
  */
-export function useLearnerAttempt(attemptId: string, courseItemId: string) {
+export function useLearnerAttempt(
+  attemptId: string,
+  /** Null for attempts of library events, which are not placed in the course. */
+  courseItemId: string | null | undefined,
+) {
   const localData = useLocalData();
   const { activeOrganizationId } = useAppTheme();
   const index = useSyncIndex(activeOrganizationId);
@@ -680,14 +684,26 @@ export function useLearnerAttempt(attemptId: string, courseItemId: string) {
     { attemptId },
     { enabled: needsOnline && localAttempt === undefined, retry: false },
   );
-  const onlineAssessment = api.assessment.getForCourseItem.useQuery(
-    { courseItemId, attemptId },
+  const needsOnlineAssessment = needsOnline && localAssessment === undefined;
+  const onlineItemAssessment = api.assessment.getForCourseItem.useQuery(
+    { courseItemId: courseItemId ?? "", attemptId },
     {
-      enabled:
-        needsOnline && localAssessment === undefined && Boolean(courseItemId),
+      enabled: needsOnlineAssessment && Boolean(courseItemId),
       retry: false,
     },
   );
+  // Library event attempts have no course item: their assessment is read
+  // through the attempt itself.
+  const onlineAttemptAssessment = api.assessment.getForAttempt.useQuery(
+    { attemptId },
+    {
+      enabled: needsOnlineAssessment && !courseItemId,
+      retry: false,
+    },
+  );
+  const onlineAssessment = courseItemId
+    ? onlineItemAssessment
+    : onlineAttemptAssessment;
   const attempt = resolveLocalFirst({
     enabled,
     local: localAttempt,

@@ -1,4 +1,4 @@
-import { questionUnits } from "@hakgyo/shared";
+import { questionUnits } from "./assessment-groups";
 
 type Identifiable = { id: string };
 

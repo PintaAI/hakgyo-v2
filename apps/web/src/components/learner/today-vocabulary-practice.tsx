@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { joinMeanings, matchesMeaning } from "@hakgyo/shared";
+import { displayMeanings, matchesMeaning } from "@hakgyo/shared";
 import Image from "next/image";
 
 import { useAssetDownloadUrl } from "~/components/asset-download-url";
@@ -87,7 +87,7 @@ export function TodayVocabularyPractice({
   const cards = useMemo<FlipCardItem[]>(
     () =>
       (items ?? []).map((item) => {
-        const meanings = joinMeanings(item.meanings);
+        const meanings = displayMeanings(item.meanings);
         const prompt = mode === "KR" ? meanings : item.term;
         const answer = mode === "KR" ? item.term : meanings;
         return {
