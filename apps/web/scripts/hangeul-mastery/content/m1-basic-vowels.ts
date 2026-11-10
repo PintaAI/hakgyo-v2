@@ -462,11 +462,11 @@ export const m1BasicVowels: ModuleContent = {
           "ㅜ adalah vokal datar, jadi ditulis di bawah konsonan (우). ㅏ, ㅓ, dan ㅣ adalah vokal tegak yang ditulis di kanan.",
         ),
         single(
-          "position-a",
-          "Di blok 아, vokal ㅏ ditulis di sebelah mana konsonannya?",
-          ["Bawah", "Kanan", "Atas", "Kiri"],
+          "syllable-count",
+          "Kata 아이 dibaca dengan berapa suku kata?",
+          ["Satu", "Dua", "Tiga", "Empat"],
           1,
-          "Vokal tegak (ㅏ ㅓ ㅣ) selalu ditulis di kanan konsonan, jadi di 아 huruf ㅏ ada di kanan ㅇ.",
+          'Satu blok = satu suku kata. 아이 punya dua blok, 아 dan 이, jadi dibaca dua suku kata: "a-i", bukan "ai" seperti di "pantai".',
         ),
         single(
           "read-oi",
