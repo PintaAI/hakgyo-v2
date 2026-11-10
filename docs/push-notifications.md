@@ -43,6 +43,8 @@ Moving or deleting a meeting, and opening early, cancelling or deleting an event
 
 Pembaruan keeps 30 days of sync notices on the device (up to 200). Opening a notice, its ✓ button, or "Tandai dibaca" marks it read: it leaves the bell badge and the red count and moves, greyed out, into "Sebelumnya · 30 hari" together with already-seen updates. The server inbox keeps the same month; the notifications cron deletes older rows. The install's `deviceId` lives in SecureStore.
 
+Course-content notices (`COURSE_CONTENT`: new chapters, new activities, changed activities) also mark the course outline (`CourseOutlineList`: the Belajar cohort card, the course page and the course sidebar). A changed activity shows a red "Baru" or "Diperbarui" badge, and so does its chapter header and, in "Belum selesai", the folded "N bab selesai" row when a finished chapter changed. Locked chapters show none. Reading the notice does not clear a mark: opening the activity does. The device records when each activity was last opened (`hakgyo:content-seen:v1`, records older than the 30-day notice window are dropped on write), and a mark shows while a notice for the activity is newer than that (`src/lib/content-changes.ts`, `src/lib/use-content-changes.ts`). Like every notice, nothing is marked on a course's first download.
+
 Push needs a development or store build on a physical device; simulators and Expo Go report the feature as unavailable.
 
 ## Setup

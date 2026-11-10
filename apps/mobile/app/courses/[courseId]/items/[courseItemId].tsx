@@ -54,6 +54,7 @@ import {
   type LearningPathCourse,
 } from "../../../../src/lib/course-learning-path";
 import { useSidebarIndicators } from "../../../../src/lib/sidebar-indicators";
+import { markContentSeen } from "../../../../src/lib/use-content-changes";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../../../src/providers/MobileSyncProvider";
 import {
@@ -210,6 +211,11 @@ function CourseItemContent({
     authClient.useSession();
   const { colors } = useAppTheme();
   const { markEntitySeen } = useSidebarIndicators();
+  const userId = session?.user.id;
+  // Opening an activity clears its "Baru"/"Diperbarui" mark in the outline.
+  useEffect(() => {
+    if (userId) markContentSeen(userId, courseItemId);
+  }, [courseItemId, userId]);
   const { prefetchLesson, saveStartedAttempt } = useMobileSyncActions();
   // Everything below composes from the local course bundle + learner index;
   // the online procedures only run when the bundle is not on the device yet.
