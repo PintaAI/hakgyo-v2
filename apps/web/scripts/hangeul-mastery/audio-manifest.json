@@ -3041,6 +3041,14 @@
    "take": 1,
    "heard": "아빠"
   },
+  "아야": {
+   "objectKey": "hangeul-mastery/audio/b6d515697f5e3a6006c48af2.mp3",
+   "bytes": 9645,
+   "durationMs": 936,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 1,
+   "heard": "아야"
+  },
   "아우": {
    "objectKey": "hangeul-mastery/audio/4a5ae5a0d3f71db64399d1ef.mp3",
    "bytes": 6525,
@@ -3414,6 +3422,22 @@
    "take": 1,
    "heard": "여보세요?"
   },
+  "여우": {
+   "objectKey": "hangeul-mastery/audio/73182a763e75344f61ffb8b2.mp3",
+   "bytes": 10365,
+   "durationMs": 1008,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 1,
+   "heard": "여우"
+  },
+  "여유": {
+   "objectKey": "hangeul-mastery/audio/f436476430ce21c65876f376.mp3",
+   "bytes": 9645,
+   "durationMs": 936,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 2,
+   "heard": "여유"
+  },
   "여의도": {
    "objectKey": "hangeul-mastery/audio/7c842756a446a17a8ecd3831.mp3",
    "bytes": 9645,
@@ -3453,6 +3477,14 @@
    "voice": "874ee05a0e",
    "take": 1,
    "heard": "예쁘다."
+  },
+  "예의": {
+   "objectKey": "hangeul-mastery/audio/c633f63586250bf7bb1c6fb7.mp3",
+   "bytes": 11565,
+   "durationMs": 1128,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 1,
+   "heard": "예의"
   },
   "오": {
    "objectKey": "hangeul-mastery/audio/7c3173e88abb971e09df40c8.mp3",
@@ -3559,6 +3591,14 @@
    "take": 1,
    "heard": "와"
   },
+  "와요": {
+   "objectKey": "hangeul-mastery/audio/ecf3cd8f5178e1ab914737ed.mp3",
+   "bytes": 9165,
+   "durationMs": 888,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 1,
+   "heard": "와요"
+  },
   "왜": {
    "objectKey": "hangeul-mastery/audio/8a10d0f97d5db8035a189235.mp3",
    "bytes": 8445,
@@ -3583,6 +3623,14 @@
    "take": 1,
    "heard": "외모"
   },
+  "외워요": {
+   "objectKey": "hangeul-mastery/audio/9da6788d5adf0eb70d35ed67.mp3",
+   "bytes": 14445,
+   "durationMs": 1416,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 1,
+   "heard": "왜 워요?"
+  },
   "요": {
    "objectKey": "hangeul-mastery/audio/169133c862466b9af25147a4.mp3",
    "bytes": 7485,
@@ -3598,6 +3646,14 @@
    "voice": "874ee05a0e",
    "take": 1,
    "heard": "요리"
+  },
+  "요요": {
+   "objectKey": "hangeul-mastery/audio/70152031d68109388b51641d.mp3",
+   "bytes": 11325,
+   "durationMs": 1104,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 1,
+   "heard": "요요"
   },
   "우": {
    "objectKey": "hangeul-mastery/audio/59fb6919cf1d3901f0ad8c43.mp3",
@@ -3632,6 +3688,14 @@
    "take": 3,
    "heard": "우와",
    "review": "heard \"우와\""
+  },
+  "우와": {
+   "objectKey": "hangeul-mastery/audio/2415f0c81ad923c62604fa03.mp3",
+   "bytes": 7965,
+   "durationMs": 768,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 5,
+   "heard": "우와"
   },
   "우유": {
    "objectKey": "hangeul-mastery/audio/a0b0ae790514ed4667b7e6c2.mp3",
@@ -3723,6 +3787,14 @@
    "take": 1,
    "heard": "유"
   },
+  "유아": {
+   "objectKey": "hangeul-mastery/audio/c4a477448b0d9455674e5194.mp3",
+   "bytes": 7965,
+   "durationMs": 768,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 2,
+   "heard": "유아"
+  },
   "으": {
    "objectKey": "hangeul-mastery/audio/7a2262a5514e91211ee2304f.mp3",
    "bytes": 9645,
@@ -3764,6 +3836,14 @@
    "voice": "874ee05a0e",
    "take": 1,
    "heard": "의사"
+  },
+  "의외": {
+   "objectKey": "hangeul-mastery/audio/bf191e47d3a6f8f60757595e.mp3",
+   "bytes": 9645,
+   "durationMs": 936,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 5,
+   "heard": "의외"
   },
   "의자": {
    "objectKey": "hangeul-mastery/audio/fdfe22fdcdaaa2c164b3775a.mp3",
@@ -3844,6 +3924,14 @@
    "voice": "874ee05a0e",
    "take": 1,
    "heard": "이사"
+  },
+  "이유": {
+   "objectKey": "hangeul-mastery/audio/c446ebfc9faedc12d6e392cc.mp3",
+   "bytes": 8925,
+   "durationMs": 864,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 1,
+   "heard": "이유"
   },
   "이응": {
    "objectKey": "hangeul-mastery/audio/d4ddddf107d943c0d05c720a.mp3",

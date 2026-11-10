@@ -3,6 +3,7 @@ import {
   b,
   callout,
   contrast,
+  conversation,
   game,
   lessonPage,
   letters,
@@ -41,7 +42,8 @@ const CORE = ["ㅇ", "ㄴ", "ㅁ", "ㅅ", "ㅂ", "ㄱ", "ㄷ", "ㅈ", "ㅎ", "�
 export const m2CoreConsonants: ModuleContent = {
   key: "m2-core-consonants",
   title: "Konsonan inti",
-  description: "Sepuluh konsonan inti: ㄴ ㅁ, ㅅ ㅂ, ㄱ ㄷ ㅈ, dan ㅎ ㄹ.",
+  description:
+    "Sepuluh konsonan inti: ㄴ ㅁ, ㅅ ㅂ, ㄱ ㄷ ㅈ, dan ㅎ ㄹ, lalu sapaan sopan pertamamu.",
   items: [
     {
       type: "material",
@@ -55,7 +57,7 @@ export const m2CoreConsonants: ModuleContent = {
           theme: "ocean",
           imageKey: "chapter-2",
           imageAlt: "Dua teman menyusun balok kayu bersama",
-          chapter: 2,
+          chapter: 4,
           title: "ㄴ ㅁ ㅅ ㅂ ㄱ ㄷ ㅈ ㅎ ㄹ",
           subtitle: "Konsonan inti",
           question: "어디 가?",
@@ -78,7 +80,7 @@ export const m2CoreConsonants: ModuleContent = {
             },
           ],
           goals: [
-            "Membaca suku kata dari konsonan dan vokal dasar.",
+            "Membaca suku kata dari konsonan dan vokal.",
             "Mengucapkan ㄹ sebagai satu tepukan ringan.",
           ],
         }),
@@ -278,9 +280,8 @@ export const m2CoreConsonants: ModuleContent = {
     {
       type: "vocabulary",
       key: "m2-vocab-nm-sb",
-      title: "Kosakata B dan C: ㄴ ㅁ ㅅ ㅂ",
-      description:
-        "Kata sehari-hari yang hanya memakai vokal dasar dan konsonan ㄴ, ㅁ, ㅅ, ㅂ.",
+      title: "Kosakata D: ㄴ ㅁ ㅅ ㅂ",
+      description: "Kata sehari-hari yang memakai konsonan ㄴ, ㅁ, ㅅ, ㅂ.",
       entries: [
         { term: "나", definition: "aku (santai)", romanization: "na" },
         { term: "너", definition: "kamu (santai)", romanization: "neo" },
@@ -460,7 +461,7 @@ export const m2CoreConsonants: ModuleContent = {
       blocks: [
         callout(
           "info",
-          "Dua konsonan terakhir di modul ini. Setelah ini kamu kenal ",
+          "Dua konsonan terakhir di bab ini. Setelah ini kamu kenal ",
           b("sepuluh konsonan inti"),
           ".",
         ),
@@ -545,6 +546,10 @@ export const m2CoreConsonants: ModuleContent = {
             },
             { when: "ㅇ", result: "diam", example: "di depan blok" },
           ],
+          tip: {
+            title: "ㅢ setelah konsonan",
+            text: "Dibaca ㅣ saja: 저희 (kami) dibaca 저히.",
+          },
         }),
         syllableGrid("Sekarang kamu bisa baca", CORE, VOWELS, {
           showRomanization: true,
@@ -557,7 +562,7 @@ export const m2CoreConsonants: ModuleContent = {
           "stroke-master",
           "core-consonants",
           "Ulangi semua konsonan inti",
-          "Sepuluh konsonan inti dan enam vokal dasar. Ulangi sampai kamu bisa menjawab tanpa ragu.",
+          "Sepuluh konsonan inti, dengan beberapa vokal sebagai ulangan. Ulangi sampai kamu bisa menjawab tanpa ragu.",
         ),
         callout(
           "success",
@@ -569,7 +574,7 @@ export const m2CoreConsonants: ModuleContent = {
     {
       type: "vocabulary",
       key: "m2-vocab-gdj-hr",
-      title: "Kosakata D dan E: ㄱ ㄷ ㅈ ㅎ ㄹ",
+      title: "Kosakata E: ㄱ ㄷ ㅈ ㅎ ㄹ",
       description:
         "Kata sehari-hari, kata K-pop dan drama, dan kata dasar EPS-TOPIK yang memakai semua konsonan inti.",
       entries: [
@@ -610,30 +615,164 @@ export const m2CoreConsonants: ModuleContent = {
       ],
     },
     {
+      type: "material",
+      key: "m3-reading-phrases",
+      title: "Sapaan dan kalimat pertamamu",
+      description: "Ungkapan sopan untuk di toko, di kafe, dan di telepon.",
+      minutes: 7,
+      blocks: [
+        callout(
+          "info",
+          "Tidak ada huruf baru. Kamu pakai semua huruf yang sudah kamu kenal untuk membaca ungkapan sopan.",
+        ),
+        rules({
+          title: "Ungkapan sopan berakhiran 요",
+          intro:
+            "Banyak ungkapan sopan diakhiri 요 atau 세요. Pakai ke orang yang baru kamu kenal, atasan, dan pelanggan.",
+          columns: ["Saat", "Ucapkan", "Artinya"],
+          rows: [
+            { when: "Menjawab ya", result: "네", example: "ya" },
+            { when: "Menjawab tidak", result: "아니요", example: "tidak" },
+            {
+              when: "Minta barang",
+              result: "주세요",
+              example: "우유 주세요 = minta susu",
+            },
+            {
+              when: "Memanggil pelayan",
+              result: "여기요",
+              example: "permisi!",
+            },
+            { when: "Angkat telepon", result: "여보세요", example: "halo" },
+            {
+              when: "Penjual menyambut",
+              result: "어서 오세요",
+              example: "selamat datang",
+            },
+          ],
+          tip: {
+            title: "아니요 atau 아니에요?",
+            text: '아니요 = "tidak". 아니에요 = "bukan", juga dipakai untuk membalas terima kasih.',
+          },
+        }),
+        conversation({
+          imageKey: "dialogue-cafe",
+          imageAlt: "Pelayan kafe menyapa pembeli yang menunjuk kue",
+          eyebrow: "Dialog · di kafe",
+          number: "04",
+          lines: [
+            {
+              speaker: "Pelayan",
+              korean: "어서 오세요!",
+              translation: "Selamat datang!",
+            },
+            {
+              speaker: "Rina",
+              korean: "여기요, 메뉴 주세요.",
+              translation: "Permisi, minta menunya.",
+            },
+            {
+              speaker: "Pelayan",
+              korean: "네, 여기요.",
+              translation: "Ya, ini.",
+            },
+            {
+              speaker: "Rina",
+              korean: "이거 주세요.",
+              translation: "Minta yang ini.",
+            },
+          ],
+        }),
+        p("Baca dialognya dulu, lalu putar tiap kalimat untuk cek."),
+        audioClip("어서 오세요", "Pelayan: 어서 오세요. = Selamat datang."),
+        audioClip(
+          "여기요, 메뉴 주세요",
+          "Kamu: 여기요, 메뉴 주세요. = Permisi, minta menunya.",
+        ),
+        audioClip("이거 주세요", "Kamu: 이거 주세요. = Minta yang ini."),
+        game(
+          "word-builder",
+          "core-consonants",
+          "Susun kata",
+          "Susun kata seperti 나비, 고기, dan 어머니 dari suku katanya.",
+        ),
+        callout(
+          "success",
+          b("Ingat: "),
+          "belum tahu nama barangnya? Tunjuk saja, lalu ucapkan 이거 주세요.",
+        ),
+      ],
+    },
+    {
+      type: "vocabulary",
+      key: "m3-vocab-f",
+      title: "Kosakata F: sapaan dan kata sehari-hari",
+      description:
+        "Ungkapan sopan dan kata sehari-hari dengan konsonan inti dan vokal Y, ㅐ, ㅔ.",
+      entries: [
+        { term: "야구", definition: "bisbol", romanization: "yagu" },
+        {
+          term: "여기",
+          definition: "di sini; tempat ini",
+          romanization: "yeogi",
+        },
+        { term: "요리", definition: "masakan; memasak", romanization: "yori" },
+        { term: "여자", definition: "perempuan", romanization: "yeoja" },
+        { term: "교사", definition: "guru", romanization: "gyosa" },
+        { term: "휴지", definition: "tisu", romanization: "hyuji" },
+        {
+          term: "휴가",
+          definition: "cuti; liburan",
+          romanization: "hyuga",
+          examples: ["휴가 가요. = Saya pergi cuti."],
+        },
+        { term: "무료", definition: "gratis", romanization: "muryo" },
+        { term: "개", definition: "anjing", romanization: "gae" },
+        { term: "새", definition: "burung; baru", romanization: "sae" },
+        { term: "가게", definition: "toko", romanization: "gage" },
+        { term: "노래", definition: "lagu", romanization: "norae" },
+        { term: "배우", definition: "aktor; aktris", romanization: "baeu" },
+        { term: "어제", definition: "kemarin", romanization: "eoje" },
+        { term: "메뉴", definition: "menu", romanization: "menyu" },
+        {
+          term: "시계",
+          definition: "jam (arloji atau jam dinding)",
+          romanization: "sigye",
+          examples: ["시계 주세요. = Minta jamnya."],
+        },
+        { term: "세계", definition: "dunia", romanization: "segye" },
+        { term: "네", definition: "ya", romanization: "ne" },
+        { term: "아니요", definition: "tidak", romanization: "aniyo" },
+        { term: "저", definition: "saya (sopan)", romanization: "jeo" },
+        {
+          term: "주세요",
+          definition: "tolong berikan; minta",
+          romanization: "juseyo",
+          examples: ["우유 주세요. = Minta susu."],
+        },
+        {
+          term: "여보세요",
+          definition: "halo (di telepon)",
+          romanization: "yeoboseyo",
+        },
+        {
+          term: "어서 오세요",
+          definition: "selamat datang (di toko atau restoran)",
+          romanization: "eoseo oseyo",
+        },
+      ],
+    },
+    {
       type: "assessment",
       key: "m2-quiz",
-      title: "Kuis modul 2: konsonan inti",
+      title: "Kuis bab 4: konsonan inti",
       description:
-        "15 soal tentang sepuluh konsonan inti, kata-kata baru, dan ulangan vokal dari modul 1.",
+        "15 soal tentang sepuluh konsonan inti, ungkapan sopan, kata-kata baru, dan ulangan vokal.",
       instructions:
         "Untuk soal mendengar, putar audionya sebanyak yang kamu perlukan. Nilai lulus 80%.",
       passingScore: 80,
       shuffleOptions: true,
       questions: [
-        single(
-          "hear-na",
-          hear("나", "Dengarkan, lalu pilih suku kata yang kamu dengar."),
-          ["너", "나", "노", "누"],
-          1,
-          "Yang kamu dengar adalah 나 (aku): ㄴ dengan ㅏ yang terbuka.",
-        ),
-        single(
-          "build-na",
-          "Blok mana yang tersusun dari ㄴ + ㅏ?",
-          ["나", "너", "노", "니"],
-          0,
-          "ㄴ + ㅏ = 나. ㅏ adalah vokal tegak, jadi ditulis di kanan ㄴ.",
-        ),
         single(
           "build-bu",
           "Blok mana yang tersusun dari ㅂ + ㅜ?",
@@ -715,25 +854,39 @@ export const m2CoreConsonants: ModuleContent = {
           'ㅎ dibaca "h". Bentuknya mirip ㅇ dengan topi, jadi jangan tertukar dengan ㅇ yang diam.',
         ),
         single(
+          "juseyo",
+          "Ungkapan mana yang dipakai untuk meminta barang, misalnya di toko?",
+          ["어서 오세요", "여보세요", "아니요", "주세요"],
+          3,
+          '주세요 berarti "tolong berikan" atau "minta": 메뉴 주세요, 이거 주세요.',
+        ),
+        single(
+          "yeoboseyo",
+          "Kamu mengangkat telepon. Apa yang kamu ucapkan?",
+          ["여보세요", "어서 오세요", "주세요", "저도요"],
+          0,
+          '여보세요 adalah "halo" khusus untuk telepon. 어서 오세요 diucapkan penjual untuk menyambut pembeli.',
+        ),
+        single(
           "review-hear-eomeoni",
           hear("어머니"),
           ["오모니", "어머니", "어모니", "오머니"],
           1,
-          "Ulangan modul 1: 어머니 (ibu) memakai ㅓ di dua suku kata pertama, dengan bibir santai.",
+          "Ulangan vokal: 어머니 (ibu) memakai ㅓ di dua suku kata pertama, dengan bibir santai.",
         ),
         single(
           "review-hear-deurama",
           hear("드라마"),
           ["두라마", "도라마", "더라마", "드라마"],
           3,
-          "Ulangan modul 1: 드라마 memakai ㅡ (bibir datar), bukan ㅜ (bibir bulat).",
+          "Ulangan vokal: 드라마 memakai ㅡ (bibir datar), bukan ㅜ (bibir bulat).",
         ),
         single(
           "review-right-vowel",
           "Vokal mana yang ditulis di kanan konsonan?",
           ["ㅗ", "ㅡ", "ㅓ", "ㅜ"],
           2,
-          "Ulangan modul 1: vokal tegak (ㅏ ㅓ ㅣ) ditulis di kanan konsonan, seperti 너. Vokal datar (ㅗ ㅜ ㅡ) ditulis di bawahnya, seperti 노.",
+          "Ulangan vokal: vokal tegak (ㅏ ㅓ ㅣ) ditulis di kanan konsonan, seperti 너. Vokal datar (ㅗ ㅜ ㅡ) ditulis di bawahnya, seperti 노.",
         ),
       ],
     },

@@ -18,66 +18,100 @@ export const HANGEUL_GAME_TITLES: Record<HangeulGameKey, string> = {
 export type HangeulGameStage = {
   id: string;
   title: string;
-  /** The letters this stage practises (compatibility jamo). */
+  /** The letters this stage practises (compatibility jamo), earlier ones included. */
   letters: readonly string[];
+  /** The letters new in this stage; the rest of `letters` is review. */
+  teaches: readonly string[];
   /** Whether the stage includes syllables with batchim. */
   batchim: boolean;
 };
 
+const verticalVowels = [..."ㅏㅓㅣㅑㅕ"];
+const horizontalVowels = [..."ㅗㅜㅡㅛㅠ"];
+const compoundVowels = [..."ㅐㅔㅒㅖㅘㅝㅙㅞㅚㅟㅢ"];
+const allVowels = [...verticalVowels, ...horizontalVowels, ...compoundVowels];
 const basicVowels = [..."ㅏㅓㅗㅜㅡㅣ"];
-const coreConsonants = [..."ㅇㄴㅁㅅㅂㄱㄷㅈㅎㄹ"];
+const coreConsonants = [..."ㄴㅁㅅㅂㄱㄷㅈㅎㄹ"];
 const yVowels = [..."ㅑㅕㅛㅠㅐㅔㅒㅖ"];
 const aspiratedTense = [..."ㅋㅌㅍㅊㄲㄸㅃㅆㅉ"];
 const wVowels = [..."ㅘㅝㅙㅞㅚㅟㅢ"];
+const everyLetter = ["ㅇ", ...allVowels, ...coreConsonants, ...aspiratedTense];
 
+/**
+ * In course order: the vowels first (vertical, horizontal, compound), then
+ * the consonants. The last three stages are the order the course had before
+ * (vowels and consonants alternating); they stay for content that uses them.
+ */
 export const HANGEUL_GAME_STAGES = [
   {
-    id: "basic-vowels",
-    title: "Vokal dasar",
-    letters: ["ㅇ", ...basicVowels],
+    id: "vertical-vowels",
+    title: "Vokal tegak",
+    letters: ["ㅇ", ...verticalVowels],
+    teaches: ["ㅇ", ...verticalVowels],
+    batchim: false,
+  },
+  {
+    id: "horizontal-vowels",
+    title: "Vokal mendatar",
+    letters: ["ㅇ", ...verticalVowels, ...horizontalVowels],
+    teaches: horizontalVowels,
+    batchim: false,
+  },
+  {
+    id: "compound-vowels",
+    title: "Vokal gabungan",
+    letters: ["ㅇ", ...allVowels],
+    teaches: compoundVowels,
     batchim: false,
   },
   {
     id: "core-consonants",
     title: "Konsonan inti",
-    letters: [...basicVowels, ...coreConsonants],
-    batchim: false,
-  },
-  {
-    id: "y-vowels",
-    title: "Vokal Y dan ㅐ ㅔ",
-    letters: [...basicVowels, ...coreConsonants, ...yVowels],
+    letters: ["ㅇ", ...allVowels, ...coreConsonants],
+    teaches: coreConsonants,
     batchim: false,
   },
   {
     id: "aspirated-tense",
-    title: "Konsonan aspirasi dan tegang",
-    letters: [...basicVowels, ...coreConsonants, ...yVowels, ...aspiratedTense],
-    batchim: false,
-  },
-  {
-    id: "w-vowels",
-    title: "Vokal W",
-    letters: [
-      ...basicVowels,
-      ...coreConsonants,
-      ...yVowels,
-      ...aspiratedTense,
-      ...wVowels,
-    ],
+    title: "Konsonan berhembus dan tegang",
+    letters: everyLetter,
+    teaches: aspiratedTense,
     batchim: false,
   },
   {
     id: "batchim",
     title: "Batchim",
+    letters: everyLetter,
+    teaches: [],
+    batchim: true,
+  },
+  {
+    id: "basic-vowels",
+    title: "Vokal dasar (urutan lama)",
+    letters: ["ㅇ", ...basicVowels],
+    teaches: ["ㅇ", ...basicVowels],
+    batchim: false,
+  },
+  {
+    id: "y-vowels",
+    title: "Vokal Y dan ㅐ ㅔ (urutan lama)",
+    letters: ["ㅇ", ...basicVowels, ...coreConsonants, ...yVowels],
+    teaches: yVowels,
+    batchim: false,
+  },
+  {
+    id: "w-vowels",
+    title: "Vokal W (urutan lama)",
     letters: [
+      "ㅇ",
       ...basicVowels,
       ...coreConsonants,
       ...yVowels,
       ...aspiratedTense,
       ...wVowels,
     ],
-    batchim: true,
+    teaches: wVowels,
+    batchim: false,
   },
 ] as const satisfies readonly HangeulGameStage[];
 

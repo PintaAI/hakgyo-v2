@@ -1,7 +1,4 @@
-import {
-  HANGEUL_GAME_STAGES,
-  type HangeulGameStage,
-} from "@hakgyo/shared/hangeul";
+import type { HangeulGameStage } from "@hakgyo/shared/hangeul";
 
 import {
   HANGEUL_FAMILIES,
@@ -77,13 +74,10 @@ function interleave(newIds: string[], reviewIds: string[]) {
 /**
  * The letter game for a stage. Without a stage, and for `batchim` (which adds
  * no letters), it covers every letter. Otherwise it teaches the letters the
- * stage adds to the previous one and mixes a few earlier letters into the quiz.
+ * stage adds (`teaches`) and mixes a few earlier letters into the quiz.
  */
 export function hangeulLessonPlan(stage?: HangeulGameStage): HangeulLessonPlan {
-  const index = stage
-    ? HANGEUL_GAME_STAGES.findIndex((entry) => entry.id === stage.id)
-    : -1;
-  if (!stage || index < 0 || stage.batchim) {
+  if (!stage || stage.batchim || !stage.teaches.length) {
     return {
       stage,
       newLetters: HANGEUL_LETTERS,
@@ -95,11 +89,10 @@ export function hangeulLessonPlan(stage?: HangeulGameStage): HangeulLessonPlan {
     };
   }
 
-  const previous = HANGEUL_GAME_STAGES[index - 1];
-  const earlier = new Set<string>(previous?.letters ?? []);
+  const taught = new Set<string>(stage.teaches);
   const pool = lettersFor(stage.letters);
-  const newLetters = pool.filter((letter) => !earlier.has(letter.character));
-  const earlierLetters = pool.filter((letter) => earlier.has(letter.character));
+  const newLetters = pool.filter((letter) => taught.has(letter.character));
+  const earlierLetters = pool.filter((letter) => !taught.has(letter.character));
   const reviewLetters = spread(
     earlierLetters,
     Math.min(

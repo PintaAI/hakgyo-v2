@@ -256,9 +256,9 @@ export const m6ReadingWriting: ModuleContent = {
     {
       type: "assessment",
       key: "m6-quiz",
-      title: "Kuis Modul 6: membaca dan menulis",
+      title: "Kuis bab 6: membaca dan menulis",
       description:
-        "11 soal tentang membaca per blok, urutan goresan, dan mengetik, ditambah ulasan modul sebelumnya.",
+        "11 soal tentang membaca per blok, urutan goresan, dan mengetik, ditambah ulasan bab sebelumnya.",
       instructions:
         "Pilih satu jawaban untuk setiap soal. Untuk soal dengar, putar audionya sebanyak yang kamu perlukan. Nilai lulus 80%.",
       passingScore: 80,
@@ -317,7 +317,7 @@ export const m6ReadingWriting: ModuleContent = {
         choice(
           "m6-review-hear-tokki",
           [
-            p("Ulasan Modul 4. Dengarkan, lalu pilih kata yang kamu dengar."),
+            p("Ulasan. Dengarkan, lalu pilih kata yang kamu dengar."),
             listen("토끼"),
           ],
           "토끼",
@@ -327,7 +327,7 @@ export const m6ReadingWriting: ModuleContent = {
         choice(
           "m6-review-hear-geogi",
           [
-            p("Ulasan Modul 2. Dengarkan, lalu pilih kata yang kamu dengar."),
+            p("Ulasan. Dengarkan, lalu pilih kata yang kamu dengar."),
             listen("거기"),
           ],
           "거기",
@@ -337,7 +337,7 @@ export const m6ReadingWriting: ModuleContent = {
         choice(
           "m6-review-hear-jjada",
           [
-            p("Ulasan Modul 4. Dengarkan, lalu pilih kata yang kamu dengar."),
+            p("Ulasan. Dengarkan, lalu pilih kata yang kamu dengar."),
             listen("짜다"),
           ],
           "짜다",
@@ -346,14 +346,14 @@ export const m6ReadingWriting: ModuleContent = {
         ),
         choice(
           "m6-review-read-gage",
-          "Ulasan Modul 3. Apa arti 가게?",
+          "Ulasan. Apa arti 가게?",
           "toko",
           ["kemarin", "jam", "lagu"],
           "가게 = toko. Kemarin = 어제, jam = 시계, lagu = 노래.",
         ),
         choice(
           "m6-review-read-hoesa",
-          "Ulasan Modul 5. Apa arti 회사?",
+          "Ulasan. Apa arti 회사?",
           "perusahaan",
           ["dokter", "kursi", "gereja"],
           "회사 = perusahaan. Dokter = 의사, kursi = 의자, gereja = 교회.",

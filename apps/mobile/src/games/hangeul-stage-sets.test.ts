@@ -69,7 +69,10 @@ describe("Hangeul stage challenge sets", () => {
       const words = WORD_CHALLENGES_BY_STAGE[stageId];
 
       test("Susun 한글 only uses the stage's letters", () => {
-        expect(challenges.length).toBeGreaterThanOrEqual(6);
+        // ㅇ and the five vertical vowels make only five blocks.
+        expect(challenges.length).toBeGreaterThanOrEqual(
+          stageId === "vertical-vowels" ? 5 : 6,
+        );
         expect(
           violations(
             stageId,
@@ -82,7 +85,10 @@ describe("Hangeul stage challenge sets", () => {
       });
 
       test("Susun kata words and tiles only use the stage's letters", () => {
-        expect(words.length).toBeGreaterThanOrEqual(4);
+        // ㅇ and the vertical vowels make only two words.
+        expect(words.length).toBeGreaterThanOrEqual(
+          stageId === "vertical-vowels" ? 2 : 4,
+        );
         for (const entry of words) {
           expect(violations(stageId, entry.syllables)).toEqual([]);
           expect(violations(stageId, entry.tiles)).toEqual([]);

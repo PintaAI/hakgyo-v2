@@ -94,6 +94,139 @@ const challenge = (
 // Per-stage sets for lessons (`?stage=`). Each only uses the stage's letters
 // and, before `batchim`, has no final consonant (see syllable-forge-data.test.ts).
 export const SYLLABLE_CHALLENGES_BY_STAGE = {
+  // Only five blocks can be made from ㅇ and the five vertical vowels.
+  "vertical-vowels": [
+    challenge(
+      "아",
+      "a",
+      "Vokal tegak",
+      "Ketik ㅇ lalu ㅏ. ㅇ di depan tidak dibaca, jadi blok ini dibaca a.",
+    ),
+    challenge(
+      "이",
+      "i",
+      "Vokal tegak",
+      "Ketik ㅇ lalu ㅣ. Vokal tegak ditulis di kanan ㅇ.",
+    ),
+    challenge(
+      "어",
+      "eo",
+      "Vokal tegak",
+      "Ketik ㅇ lalu ㅓ. Garis pendeknya ke kiri; bibir santai, tidak bulat.",
+    ),
+    challenge(
+      "야",
+      "ya",
+      "Tambah garis",
+      "Ketik ㅇ lalu ㅑ. Dua garis pendek ke kanan menambah bunyi y.",
+    ),
+    challenge(
+      "여",
+      "yeo",
+      "Tambah garis",
+      "Ketik ㅇ lalu ㅕ. Ini ㅓ dengan bunyi y di depan.",
+    ),
+  ],
+  "horizontal-vowels": [
+    challenge(
+      "오",
+      "o",
+      "Vokal mendatar",
+      "Ketik ㅇ lalu ㅗ. Vokal mendatar ditulis di bawah ㅇ. Bibir bulat.",
+    ),
+    challenge(
+      "우",
+      "u",
+      "Vokal mendatar",
+      "Ketik ㅇ lalu ㅜ. Garis pendeknya ke bawah.",
+    ),
+    challenge(
+      "으",
+      "eu",
+      "Vokal mendatar",
+      "Ketik ㅇ lalu ㅡ. Satu garis datar, bibir juga datar.",
+    ),
+    challenge(
+      "어",
+      "eo",
+      "Vokal tegak",
+      "Ketik ㅇ lalu ㅓ. Bandingkan dengan 오: ㅓ bibir santai, ㅗ bibir bulat.",
+    ),
+    challenge(
+      "요",
+      "yo",
+      "Tambah garis",
+      "Ketik ㅇ lalu ㅛ. Dua garis pendek ke atas menambah bunyi y.",
+    ),
+    challenge(
+      "유",
+      "yu",
+      "Tambah garis",
+      "Ketik ㅇ lalu ㅠ. Blok ini menutup kata 우유 (susu).",
+    ),
+    challenge(
+      "여",
+      "yeo",
+      "Tambah garis",
+      "Ketik ㅇ lalu ㅕ. Blok ini membuka kata 여우 (rubah).",
+    ),
+  ],
+  "compound-vowels": [
+    challenge(
+      "애",
+      "ae",
+      "ㅐ dan ㅔ",
+      "Ketik ㅇ lalu ㅐ. Dibaca e seperti di bebek.",
+    ),
+    challenge(
+      "에",
+      "e",
+      "ㅐ dan ㅔ",
+      "Ketik ㅇ lalu ㅔ. Bunyinya sama dengan 애, ejaannya beda.",
+    ),
+    challenge(
+      "예",
+      "ye",
+      "ㅒ dan ㅖ",
+      "Pakai Shift untuk ㅖ setelah ㅇ. 예 berarti ya (sopan).",
+    ),
+    challenge(
+      "와",
+      "wa",
+      "ㅗ + vokal",
+      "Ketik ㅇ, ㅗ, lalu ㅏ. Dua vokal bergabung menjadi ㅘ. 와 berarti wah!",
+    ),
+    challenge(
+      "왜",
+      "wae",
+      "ㅗ + vokal",
+      "Ketik ㅇ, ㅗ, lalu ㅐ. 왜 berarti kenapa.",
+    ),
+    challenge(
+      "워",
+      "wo",
+      "ㅜ + vokal",
+      "Ketik ㅇ, ㅜ, lalu ㅓ. ㅜ dan ㅓ bergabung menjadi ㅝ.",
+    ),
+    challenge(
+      "외",
+      "oe",
+      "Tambah ㅣ",
+      "Ketik ㅇ, ㅗ, lalu ㅣ. ㅚ dibaca we, sama dengan 왜.",
+    ),
+    challenge(
+      "위",
+      "wi",
+      "Tambah ㅣ",
+      "Ketik ㅇ, ㅜ, lalu ㅣ. 위 berarti atas.",
+    ),
+    challenge(
+      "의",
+      "ui",
+      "Tambah ㅣ",
+      "Ketik ㅇ, ㅡ, lalu ㅣ. ㅡ meluncur cepat ke ㅣ.",
+    ),
+  ],
   "basic-vowels": [
     challenge(
       "아",
@@ -199,7 +332,7 @@ export const SYLLABLE_CHALLENGES_BY_STAGE = {
       "개",
       "gae",
       "ㅐ dan ㅔ",
-      "Ketik ㄱ lalu ㅐ. 개 berarti anjing; ㅐ dibaca e seperti enak.",
+      "Ketik ㄱ lalu ㅐ. 개 berarti anjing; ㅐ dibaca e seperti di bebek.",
     ),
     challenge(
       "게",

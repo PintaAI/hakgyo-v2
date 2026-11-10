@@ -361,7 +361,7 @@ export const m7BatchimBasics: ModuleContent = {
           ],
           tip: {
             title: "Kenapa ejaannya beda?",
-            text: "Huruf aslinya terdengar lagi kalau setelahnya ada vokal: 옷이 dibaca [오시]. Itu di Modul 8.",
+            text: "Huruf aslinya terdengar lagi kalau setelahnya ada vokal: 옷이 dibaca [오시]. Itu di bab 8.",
           },
         }),
         contrast(
@@ -520,9 +520,9 @@ export const m7BatchimBasics: ModuleContent = {
     {
       type: "assessment",
       key: "m7-quiz",
-      title: "Kuis Modul 7: batchim",
+      title: "Kuis bab 7: batchim",
       description:
-        "16 soal tentang tujuh bunyi batchim, ditambah ulasan modul sebelumnya.",
+        "16 soal tentang tujuh bunyi batchim, ditambah ulasan bab sebelumnya.",
       instructions:
         "Pilih satu jawaban untuk setiap soal. Untuk soal dengar, putar audionya sebanyak yang kamu perlukan. Nilai lulus 80%.",
       passingScore: 80,
@@ -601,7 +601,7 @@ export const m7BatchimBasics: ModuleContent = {
         ),
         choice(
           "m7-review-type-ui",
-          "Ulasan Modul 6. Bagaimana mengetik ㅢ di keyboard 2-beolsik?",
+          "Ulasan. Bagaimana mengetik ㅢ di keyboard 2-beolsik?",
           "ㅡ lalu ㅣ",
           ["ㅜ lalu ㅣ", "ㅣ lalu ㅡ", "Shift + ㅡ"],
           "Vokal gabungan diketik sebagai dua vokal sesuai urutan: ㅢ = ㅡ + ㅣ. ㅜ lalu ㅣ menghasilkan ㅟ.",
@@ -626,34 +626,28 @@ export const m7BatchimBasics: ModuleContent = {
         ),
         choice(
           "m7-review-hear-gwaja",
-          hear(
-            "과자",
-            "Ulasan Modul 5. Dengarkan, lalu pilih kata yang kamu dengar.",
-          ),
+          hear("과자", "Ulasan. Dengarkan, lalu pilih kata yang kamu dengar."),
           "과자",
           ["가자", "거자", "구자"],
           "과자 (camilan) memakai ㅘ: bibir membulat sebentar, lalu terbuka ke ㅏ.",
         ),
         choice(
           "m7-review-hear-jjada",
-          hear(
-            "짜다",
-            "Ulasan Modul 4. Dengarkan, lalu pilih kata yang kamu dengar.",
-          ),
+          hear("짜다", "Ulasan. Dengarkan, lalu pilih kata yang kamu dengar."),
           "짜다",
           ["자다", "차다", "싸다"],
           "짜다 (asin) diawali ㅉ yang tegang tanpa hembusan. 차다 diawali ㅊ dengan hembusan, 자다 dengan ㅈ polos.",
         ),
         choice(
           "m7-review-read-gomawoyo",
-          "Ulasan Modul 5. Apa arti 고마워요?",
+          "Ulasan. Apa arti 고마워요?",
           "terima kasih",
           ["maaf", "selamat datang", "sampai jumpa"],
           "고마워요 = terima kasih (sopan, akrab).",
         ),
         choice(
           "m7-review-jeohui",
-          "Ulasan Modul 5. Bagaimana 저희 (kami) dibaca?",
+          "Ulasan. Bagaimana 저희 (kami) dibaca?",
           "[저히]",
           ["[저후이]", "[저흐]", "[저헤]"],
           "ㅢ setelah konsonan dibaca ㅣ saja, jadi 저희 dibaca [저히].",

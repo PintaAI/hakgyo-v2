@@ -97,6 +97,47 @@ const word = (
 // `batchim`, have no final consonant (see word-builder-data.test.ts).
 // Distractors are the blocks learners confuse (ㅓ/ㅗ, ㅡ/ㅜ, ㄱ/ㅋ/ㄲ, ㅐ/ㅔ).
 export const WORD_CHALLENGES_BY_STAGE = {
+  // ㅇ and the vertical vowels make only these two words.
+  "vertical-vowels": [
+    word("아이", "anak", "ai", "Dua suku kata", ["이", "어", "아", "야"]),
+    word("아야", "aduh", "aya", "Dua suku kata", ["야", "여", "아", "어"]),
+  ],
+  "horizontal-vowels": [
+    word("우유", "susu", "uyu", "Dua suku kata", ["유", "요", "우", "오"]),
+    word("오이", "timun", "oi", "Dua suku kata", ["이", "어", "오", "우"]),
+    word("여우", "rubah", "yeou", "Dua suku kata", ["우", "요", "여", "오"]),
+    word("이유", "alasan", "iyu", "Dua suku kata", ["유", "요", "이", "으"]),
+    word("여유", "waktu luang", "yeoyu", "Dua suku kata", [
+      "유",
+      "요",
+      "여",
+      "어",
+    ]),
+    word("유아", "balita", "yua", "Dua suku kata", ["아", "어", "유", "요"]),
+  ],
+  "compound-vowels": [
+    word("우와", "wah", "uwa", "Vokal W", ["와", "워", "우", "오"]),
+    word("예의", "sopan santun", "yeui", "Vokal gabungan", [
+      "의",
+      "이",
+      "예",
+      "애",
+    ]),
+    word("의외", "di luar dugaan", "uioe", "Vokal gabungan", [
+      "외",
+      "왜",
+      "의",
+      "이",
+    ]),
+    word("와요", "datang", "wayo", "Vokal W", ["요", "여", "와", "워"]),
+    word("외워요", "menghafal", "oewoyo", "Tiga suku kata", [
+      "워",
+      "요",
+      "외",
+      "와",
+      "왜",
+    ]),
+  ],
   "basic-vowels": [
     word("아이", "anak", "ai", "Dua suku kata", ["이", "어", "아", "으"]),
     word("오이", "timun", "oi", "Dua suku kata", ["어", "이", "오", "우"]),
