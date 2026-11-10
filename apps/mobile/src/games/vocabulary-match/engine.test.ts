@@ -64,7 +64,7 @@ describe("vocabulary match engine", () => {
     const bae = session.rounds
       .flatMap((round) => round.terms)
       .find((term) => term.id === "bae");
-    expect(bae?.meaning).toBe("perut; kapal; pir");
+    expect(bae?.meaning).toBe("perut · kapal · pir");
   });
 
   test("matches by stable vocabulary identity", () => {

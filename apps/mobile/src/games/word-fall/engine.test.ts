@@ -129,7 +129,7 @@ describe("word fall engine", () => {
     const word = { id: "bae", term: "배", meanings: ["perut", "kapal"] };
     const options = answerOptionsForWord(word, "ID");
 
-    expect(promptTextForWord(word, "KR")).toBe("perut; kapal");
+    expect(promptTextForWord(word, "KR")).toBe("perut · kapal");
     expect(answerTextForWord(word, "ID")).toBe("perut");
     expect(answerOptionsForWord(word, "KR")).toEqual(["배"]);
     expect(bestTypingAnswer(options, "", "perut")).toBe("perut");

@@ -1,4 +1,4 @@
-import { joinMeanings, typeableAnswers } from "@hakgyo/shared";
+import { displayMeanings, typeableAnswers } from "@hakgyo/shared";
 
 export type WordFallWord = {
   id: string;
@@ -77,7 +77,7 @@ export function promptTextForWord(
   word: WordFallWord,
   mode: WordFallAnswerMode,
 ) {
-  return mode === "KR" ? joinMeanings(word.meanings) : word.term;
+  return mode === "KR" ? displayMeanings(word.meanings) : word.term;
 }
 
 const HANGUL_BASE = 0xac00;

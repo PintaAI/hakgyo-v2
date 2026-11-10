@@ -1,4 +1,4 @@
-import { entryMeanings, joinMeanings } from "@hakgyo/shared";
+import { displayMeanings, entryMeanings } from "@hakgyo/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Text, View } from "react-native";
@@ -358,7 +358,7 @@ function LessonSummary({
                     className="text-sm text-muted-foreground"
                     numberOfLines={2}
                   >
-                    {joinMeanings(word.meanings)}
+                    {displayMeanings(word.meanings)}
                   </Text>
                 </View>
                 {status ? (

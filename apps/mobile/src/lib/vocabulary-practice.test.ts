@@ -58,7 +58,7 @@ describe("daily vocabulary recall", () => {
     const stomach = { id: "stomach", term: "복부", meanings: ["Perut"] };
     const book = { id: "book", term: "책", meanings: ["buku"] };
     const options = choiceOptions(bae, [bae, stomach, book], false);
-    expect(options.sort()).toEqual(["buku", "perut; kapal"]);
+    expect(options.sort()).toEqual(["buku", "perut · kapal"]);
     expect(choiceOptions(bae, [bae, stomach, book], true).sort()).toEqual([
       "배",
       "책",

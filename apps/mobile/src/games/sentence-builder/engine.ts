@@ -1,4 +1,4 @@
-import { joinMeanings } from "@hakgyo/shared";
+import { displayMeanings } from "@hakgyo/shared";
 
 import { exampleLines, splitExample } from "../../lib/vocabulary-examples";
 
@@ -125,7 +125,7 @@ export function createSentenceChallenges(
     if (seenEntries.has(word.id)) return [];
     seenEntries.add(word.id);
     const term = clean(word.term);
-    const meaning = clean(joinMeanings(word.meanings));
+    const meaning = clean(displayMeanings(word.meanings));
     const sentences = exampleSentencePairs(word.examples).filter(
       ({ sentence }) => {
         const count = sentenceWords(sentence).length;

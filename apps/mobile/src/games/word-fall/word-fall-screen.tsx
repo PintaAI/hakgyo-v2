@@ -1,4 +1,4 @@
-import { joinMeanings } from "@hakgyo/shared";
+import { displayMeanings } from "@hakgyo/shared";
 import { Stack } from "expo-router";
 import {
   memo,
@@ -637,7 +637,7 @@ function LearningRecap({ items }: { items: readonly WordFallReviewItem[] }) {
                   { color: colors.mutedForeground },
                 ]}
               >
-                {joinMeanings(item.word.meanings)}
+                {displayMeanings(item.word.meanings)}
               </Text>
             </View>
             <Text style={[styles.recapReason, { color: colors.destructive }]}>

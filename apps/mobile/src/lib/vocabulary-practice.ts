@@ -1,4 +1,4 @@
-import { joinMeanings, matchesTerm } from "@hakgyo/shared";
+import { displayMeanings, joinMeanings, matchesTerm } from "@hakgyo/shared";
 
 export type Word = {
   id: string;
@@ -108,7 +108,7 @@ export function choiceOptions(
   random = Math.random,
 ) {
   const label = (item: Word) =>
-    reverse ? item.term : joinMeanings(item.meanings);
+    reverse ? item.term : displayMeanings(item.meanings);
   const answer = label(word);
   const meanings = new Set(
     word.meanings.map((meaning) => meaning.trim().toLocaleLowerCase()),

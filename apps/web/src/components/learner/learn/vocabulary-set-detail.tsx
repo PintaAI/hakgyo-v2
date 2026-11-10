@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { entryMeanings, joinMeanings } from "@hakgyo/shared";
+import { displayMeanings, entryMeanings } from "@hakgyo/shared";
 import { LayoutGridIcon, ListIcon } from "lucide-react";
 
 import Link from "~/components/link";
@@ -140,7 +140,7 @@ export function VocabularySetDetail({
                   {entry.term}
                 </span>
                 <span className="text-muted-foreground text-xs leading-4">
-                  {joinMeanings(entryMeanings(entry))}
+                  {displayMeanings(entryMeanings(entry))}
                 </span>
               </Link>
               {entry.audioAsset ? (
@@ -174,7 +174,7 @@ export function VocabularySetDetail({
                     {entry.term}
                   </span>
                   <span className="text-muted-foreground text-xs leading-4">
-                    {joinMeanings(entryMeanings(entry))}
+                    {displayMeanings(entryMeanings(entry))}
                   </span>
                 </span>
                 {entry.imageAsset ? (

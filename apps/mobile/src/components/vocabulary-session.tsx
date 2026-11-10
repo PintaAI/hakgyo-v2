@@ -550,7 +550,7 @@ export function VocabularySession({
             accessibilityLabel={
               isStudyMode
                 ? `Arti dari ${currentWord?.term ?? "kata ini"}`
-                : `Kata Korea untuk ${currentWord ? joinMeanings(currentWord.meanings) : "kata ini"}`
+                : `Kata Korea untuk ${currentWord ? displayMeanings(currentWord.meanings) : "kata ini"}`
             }
             autoCapitalize="none"
             autoCorrect={false}
