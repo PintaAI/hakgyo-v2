@@ -53,7 +53,7 @@ export const m6ReadingWriting: ModuleContent = {
           theme: "ocean",
           imageKey: "chapter-6",
           imageAlt: "Menulis di buku dan mengetik di ponsel",
-          chapter: 6,
+          chapter: 7,
           title: "읽기 · 쓰기",
           subtitle: "Membaca dan menulis",
           question: "아이스 아메리카노 하나 주세요.",
@@ -256,7 +256,7 @@ export const m6ReadingWriting: ModuleContent = {
     {
       type: "assessment",
       key: "m6-quiz",
-      title: "Kuis bab 6: membaca dan menulis",
+      title: "Kuis bab 7: membaca dan menulis",
       description:
         "11 soal tentang membaca per blok, urutan goresan, dan mengetik, ditambah ulasan bab sebelumnya.",
       instructions:

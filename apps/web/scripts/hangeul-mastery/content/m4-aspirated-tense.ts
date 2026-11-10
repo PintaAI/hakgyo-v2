@@ -55,7 +55,7 @@ export const m4AspiratedTense: ModuleContent = {
           theme: "forest",
           imageKey: "chapter-4",
           imageAlt: "Teman berlatih dengan tisu di depan mulut",
-          chapter: 5,
+          chapter: 6,
           title: "ㅋ ㅌ ㅍ ㅊ · ㄲ ㄸ ㅃ ㅆ ㅉ",
           subtitle: "Konsonan berhembus dan tegang",
           question: "커피 주세요.",
@@ -198,7 +198,7 @@ export const m4AspiratedTense: ModuleContent = {
     {
       type: "vocabulary",
       key: "m4-vocab-g",
-      title: "Kosakata G: ㅋ ㅌ ㅍ ㅊ",
+      title: "Kosakata H: ㅋ ㅌ ㅍ ㅊ",
       description:
         "Kata sehari-hari dan kata serapan yang memakai konsonan berhembus.",
       entries: [
@@ -389,7 +389,7 @@ export const m4AspiratedTense: ModuleContent = {
     {
       type: "vocabulary",
       key: "m4-vocab-h",
-      title: "Kosakata H: ㄲ ㄸ ㅃ ㅆ ㅉ",
+      title: "Kosakata I: ㄲ ㄸ ㅃ ㅆ ㅉ",
       description:
         "Kata sapaan, kata sifat, dan kata sehari-hari yang memakai konsonan tegang.",
       entries: [
@@ -548,7 +548,7 @@ export const m4AspiratedTense: ModuleContent = {
     {
       type: "vocabulary",
       key: "m5-vocab-i",
-      title: "Kosakata I: kata dengan vokal gabungan",
+      title: "Kosakata J: kata dengan vokal rangkap",
       description:
         "Kata sehari-hari dan kata dunia kerja dengan ㅘ ㅝ ㅙ ㅞ ㅚ ㅟ ㅢ dan semua konsonan, tanpa batchim.",
       entries: [
@@ -615,7 +615,7 @@ export const m4AspiratedTense: ModuleContent = {
     {
       type: "assessment",
       key: "m4-quiz",
-      title: "Kuis bab 5: lab tiga serangkai",
+      title: "Kuis bab 6: lab tiga serangkai",
       description:
         "16 soal, sebagian besar soal mendengar, tentang konsonan polos, berhembus, dan tegang, ditambah ulangan bab sebelumnya.",
       instructions:

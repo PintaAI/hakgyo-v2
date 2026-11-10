@@ -34,23 +34,24 @@ const hear = (text: string, question: string) => [p(question), audioClip(text)];
 
 const VERTICAL = ["ㅏ", "ㅓ", "ㅣ", "ㅑ", "ㅕ"];
 
-// Chapter 1 of the vowels-first order: the vertical vowels, written to the
-// right of ㅇ. The module key predates that order and stays for progress.
+// Chapter 1: what Hangeul Mastery covers, then the vertical vowels. Syllable
+// blocks are only introduced here (ㅇ in front is silent); chapter 4 teaches
+// them. The module key predates the vowels-first order and stays for progress.
 export const m1BasicVowels: ModuleContent = {
   key: "m1-basic-vowels",
   title: "Vokal tegak",
   description:
-    "Cara kerja Hangeul, lalu vokal yang ditulis di kanan: ㅏ ㅣ yang sudah kamu kenal, ㅓ yang baru, dan ㅑ ㅕ.",
+    "Kenalan dengan Hangeul dan isi kursus ini, lalu vokal yang garisnya tegak: ㅏ ㅓ ㅣ ㅑ ㅕ.",
   items: [
     // Was the only lesson of the module "Mulai di sini" (m0-welcome); its key
     // stays so learners keep their progress on it.
     {
       type: "material",
       key: "m0-why-hangeul",
-      title: "Perkenalan: ㅇ, ㅏ, ㅣ",
+      title: "Kenalan dengan Hangeul",
       description:
-        "Cara huruf disusun jadi blok, dan dua vokal yang bunyinya sudah kamu kenal.",
-      minutes: 5,
+        "Apa itu Hangeul, dan apa saja yang kamu pelajari di kursus ini.",
+      minutes: 3,
       blocks: [
         lessonPage({
           theme: "rose",
@@ -63,148 +64,113 @@ export const m1BasicVowels: ModuleContent = {
           answer: "",
           cards: [
             {
-              label: "Sudah kamu kenal",
-              title: "ㅏ ㅣ",
-              description: "Sama dengan a dan i",
+              label: "Huruf baru",
+              title: "ㅏ ㅓ ㅣ ㅑ ㅕ",
+              description: "Vokal yang garisnya tegak",
             },
             {
-              label: "Bunyi baru",
-              title: "ㅓ",
-              description: "Tidak ada di bahasa Indonesia",
+              label: "Kosakata",
+              title: "아이 · 아야",
+              description: "Kata pertamamu",
             },
             {
-              label: "Tambah garis",
-              title: "ㅑ ㅕ",
-              description: "Bunyi y di depan vokal",
+              label: "Latihan",
+              title: "Kenali vokal",
+              description: "Permainan dan tugas bab",
             },
           ],
           goals: [
-            "Membaca blok yang dimulai dengan ㅇ.",
-            "Membedakan ㅓ dari ㅏ.",
+            "Tahu isi kursus Hangeul Mastery.",
+            "Membaca dan membedakan lima vokal tegak.",
           ],
         }),
         callout(
           "info",
-          "Bahasa Indonesia punya 5 huruf vokal: a, i, u, e, o. Bahasa Korea punya 21, tapi ",
-          b("banyak bunyinya sudah kamu kenal"),
-          ", dan sisanya dibuat dari garis yang sama. Kita mulai dari vokal tegak.",
+          b("Hangeul adalah huruf Korea."),
+          " Hurufnya sedikit dan bentuknya berpola, jadi cepat dipelajari.",
         ),
         rules({
-          title: "Satu blok = satu suku kata",
+          title: "Yang akan kamu pelajari",
           intro:
-            "Huruf Korea disusun jadi blok. Suku kata yang mulai dengan vokal diberi ㅇ di depan, dan ㅇ di situ tidak dibaca.",
-          columns: ["Susun", "Jadi", "Dibaca"],
+            "Mulai dari vokal, lalu cara menyusun huruf jadi blok, baru konsonan.",
+          columns: ["Bab", "Topik", "Isinya"],
           rows: [
-            { when: "ㅇ + ㅏ", result: "아", example: '"a"' },
-            { when: "ㅇ + ㅣ", result: "이", example: '"i"' },
-            { when: "아 + 이", result: "아이", example: '"a-i" = anak' },
+            {
+              when: "Bab 1–3",
+              result: "Vokal",
+              example: "tegak, mendatar, rangkap",
+            },
+            {
+              when: "Bab 4",
+              result: "Blok",
+              example: "huruf disusun jadi suku kata",
+            },
+            {
+              when: "Bab 5–6",
+              result: "Konsonan",
+              example: "dari bunyi lembut sampai tegang",
+            },
+            {
+              when: "Bab 7",
+              result: "Membaca",
+              example: "kata nyata dan mengetik di ponsel",
+            },
+            {
+              when: "Bab 8–9",
+              result: "Batchim",
+              example: "huruf di bagian bawah blok",
+            },
+            {
+              when: "Bab 10",
+              result: "Ujian",
+              example: "lencana Hangeul Mastery",
+            },
           ],
           tip: {
-            title: "Vokal tegak di kanan",
-            text: "Garis ㅏ dan ㅣ berdiri tegak, jadi keduanya ditulis di kanan ㅇ.",
+            title: "Setiap bab",
+            text: "Materi, lalu kosakata, lalu tugas. Bab berikutnya terbuka setelah tugasnya lulus.",
           },
         }),
-        letters(
-          "Huruf baru",
-          [
-            {
-              character: "ㅇ",
-              cue: "Di depan blok tidak dibaca. Hanya pengisi tempat.",
-              romanization: "-",
-            },
-            {
-              character: "ㅏ",
-              cue: 'Sama dengan "a" di "apa".',
-              romanization: "a",
-              say: "아",
-              example: { word: "아이", meaning: "anak", romanization: "ai" },
-            },
-            {
-              character: "ㅣ",
-              cue: 'Sama dengan "i" di "ini".',
-              romanization: "i",
-              say: "이",
-              example: { word: "이", meaning: "dua", romanization: "i" },
-            },
-          ],
-          { showRomanization: true },
-        ),
       ],
     },
     {
       type: "material",
       key: "m1-vowel-eo-lab",
-      title: "ㅓ: bunyi baru pertama",
+      title: "Vokal tegak: ㅏ ㅓ ㅣ ㅑ ㅕ",
       description:
-        'Vokal yang tidak ada di bahasa Indonesia: seperti "o", tapi bibir santai.',
-      minutes: 5,
+        "Lima vokal yang garisnya tegak, cara membacanya, dan cara menulisnya dengan ㅇ.",
+      minutes: 7,
       blocks: [
+        callout(
+          "info",
+          "Vokal Korea tidak ditulis sendirian. Di depannya ada ",
+          b("ㅇ yang tidak dibaca"),
+          ': ㅇ + ㅏ = 아, dibaca "a". Cara kerjanya kamu pelajari lengkap di bab 4.',
+        ),
         letters(
-          "Huruf baru",
+          "Vokal tegak",
           [
+            {
+              character: "ㅏ",
+              cue: 'Seperti "a" di "apa".',
+              romanization: "a",
+              say: "아",
+              example: { word: "아이", meaning: "anak", romanization: "ai" },
+            },
             {
               character: "ㅓ",
               cue: 'Buka mulut seperti "o", tapi bibir tidak bulat.',
               romanization: "eo",
               say: "어",
-              note: "Garis pendeknya ke kiri. Di ㅏ, garis pendeknya ke kanan.",
-            },
-          ],
-          { showRomanization: true },
-        ),
-        contrast(
-          "ㅏ atau ㅓ?",
-          "Putar tiap pasangan, lalu tirukan.",
-          [
-            {
-              items: [
-                { text: "아", romanization: "a" },
-                { text: "어", romanization: "eo" },
-              ],
-              note: "ㅏ mulut terbuka lebar. ㅓ sedikit lebih tertutup, bibir santai.",
+              note: "Tidak ada di bahasa Indonesia.",
             },
             {
-              items: [
-                { text: "아이", meaning: "anak", romanization: "ai" },
-                {
-                  text: "어이",
-                  meaning: "hei! (kurang sopan)",
-                  romanization: "eoi",
-                },
-              ],
-              note: "Salah vokal, beda arti.",
+              character: "ㅣ",
+              cue: 'Seperti "i" di "ini".',
+              romanization: "i",
+              say: "이",
+              example: { word: "이", meaning: "dua", romanization: "i" },
             },
-          ],
-          { showRomanization: true },
-        ),
-        callout(
-          "success",
-          b("Ingat: "),
-          'ㅓ itu "o" dengan bibir santai. Kalau bibirmu membulat, jadinya vokal lain yang kamu pelajari di bab 2.',
-        ),
-      ],
-    },
-    {
-      type: "material",
-      key: "m1-ya-yeo",
-      title: "ㅑ ㅕ: tambah garis, tambah y",
-      description:
-        "Satu garis pendek lagi memberi bunyi y di depan vokal, lalu semua vokal tegak.",
-      minutes: 5,
-      blocks: [
-        rules({
-          title: "Tambah satu garis = tambah y",
-          intro:
-            'Kalau garis pendeknya dobel, vokal itu dapat bunyi "y" di depannya.',
-          columns: ["Vokal", "Tambah garis", "Dibaca"],
-          rows: [
-            { when: "ㅏ", result: "ㅑ", example: '아 → 야 "ya"' },
-            { when: "ㅓ", result: "ㅕ", example: '어 → 여 "y" + ㅓ' },
-          ],
-        }),
-        letters(
-          "Huruf baru",
-          [
             {
               character: "ㅑ",
               cue: 'Seperti "ya" di "saya".',
@@ -225,14 +191,50 @@ export const m1BasicVowels: ModuleContent = {
           ],
           { showRomanization: true },
         ),
-        syllableGrid("Semua vokal tegak", ["ㅇ"], VERTICAL, {
+        rules({
+          title: "Tambah satu garis = tambah y",
+          intro: 'Garis pendek yang dobel memberi bunyi "y" di depan vokal.',
+          columns: ["Vokal", "Tambah garis", "Dibaca"],
+          rows: [
+            { when: "ㅏ", result: "ㅑ", example: '아 → 야 "ya"' },
+            { when: "ㅓ", result: "ㅕ", example: '어 → 여 "y" + ㅓ' },
+          ],
+        }),
+        contrast(
+          "ㅏ atau ㅓ?",
+          "Putar tiap pasangan, lalu tirukan.",
+          [
+            {
+              items: [
+                { text: "아", romanization: "a" },
+                { text: "어", romanization: "eo" },
+              ],
+              note: "ㅏ mulut terbuka lebar. ㅓ bibir santai, tidak bulat.",
+            },
+            {
+              items: [
+                { text: "야", romanization: "ya" },
+                { text: "여", romanization: "yeo" },
+              ],
+              note: "Sama, dengan bunyi y di depannya.",
+            },
+          ],
+          { showRomanization: true },
+        ),
+        syllableGrid("Lima vokal tegak dengan ㅇ", ["ㅇ"], VERTICAL, {
           showRomanization: true,
         }),
         game(
+          "stroke-master",
+          "vertical-vowels",
+          "Kenali vokal tegak",
+          "Cocokkan bentuk vokal dengan bunyinya.",
+        ),
+        game(
           "syllable-forge",
           "vertical-vowels",
-          "Susun vokal tegak",
-          "Susun ㅇ dengan kelima vokal tegak. Semuanya ditulis di kanan ㅇ.",
+          "Coba susun 한글",
+          "Ketik ㅇ lalu vokalnya, dan lihat blok terbentuk. Lengkapnya di bab 4.",
         ),
       ],
     },
@@ -241,7 +243,7 @@ export const m1BasicVowels: ModuleContent = {
       key: "m1-vocab-a",
       title: "Kosakata A: kata pertama",
       description:
-        "Kata yang bisa kamu baca hanya dengan ㅇ dan vokal tegak. Jumlahnya sedikit, nanti bertambah di setiap bab.",
+        "Kata yang bisa kamu baca hanya dengan vokal tegak. Jumlahnya sedikit, nanti bertambah di setiap bab.",
       entries: [
         { term: "아이", definition: "anak", romanization: "ai" },
         { term: "이", definition: "dua", romanization: "i" },
@@ -253,20 +255,12 @@ export const m1BasicVowels: ModuleContent = {
       type: "assessment",
       key: "m1-quiz",
       title: "Kuis bab 1: vokal tegak",
-      description:
-        "10 soal tentang ㅇ yang diam, vokal ㅏ ㅓ ㅣ ㅑ ㅕ, dan kata pertamamu.",
+      description: "10 soal tentang vokal ㅏ ㅓ ㅣ ㅑ ㅕ dan kata pertamamu.",
       instructions:
         "Untuk soal mendengar, putar audionya sebanyak yang kamu perlukan. Nilai lulus 80%.",
       passingScore: 80,
       shuffleOptions: true,
       questions: [
-        single(
-          "silent-ieung",
-          "Bagaimana huruf ㅇ dibaca di depan blok?",
-          ['Dibaca "ng"', "Tidak dibaca", 'Dibaca "o"', 'Dibaca "a"'],
-          1,
-          'Di depan blok, ㅇ hanya pengisi tempat dan tidak dibaca. 아 dibaca "a".',
-        ),
         single(
           "hear-a",
           hear("아", "Dengarkan, lalu pilih suku kata yang kamu dengar."),
@@ -289,11 +283,18 @@ export const m1BasicVowels: ModuleContent = {
           'Yang kamu dengar adalah 여: "y" lalu ㅓ dengan bibir santai.',
         ),
         single(
+          "hear-ya",
+          hear("야", "Dengarkan, lalu pilih suku kata yang kamu dengar."),
+          ["여", "이", "아", "야"],
+          3,
+          'Yang kamu dengar adalah 야: seperti "ya" di "saya".',
+        ),
+        single(
           "new-sound",
           "Vokal mana yang bunyinya tidak ada di bahasa Indonesia?",
           ["ㅏ", "ㅣ", "ㅑ", "ㅓ"],
           3,
-          'ㅏ sama dengan "a", ㅣ sama dengan "i", dan ㅑ sama dengan "ya". ㅓ bunyi baru: seperti "o", tapi bibir tidak bulat.',
+          'ㅏ seperti "a", ㅣ seperti "i", dan ㅑ seperti "ya". ㅓ seperti "o", tapi bibir tidak bulat.',
         ),
         single(
           "y-of-a",
@@ -303,18 +304,18 @@ export const m1BasicVowels: ModuleContent = {
           'ㅏ + satu garis = ㅑ, dibaca "ya". ㅓ + satu garis = ㅕ.',
         ),
         single(
-          "build-eo",
-          "Blok mana yang tersusun dari ㅇ + ㅓ?",
-          ["아", "여", "어", "야"],
-          2,
-          "ㅓ garis pendeknya ke kiri, jadi ㅇ + ㅓ = 어. 아 garis pendeknya ke kanan.",
+          "silent-ieung",
+          "Bagaimana ㅇ di depan vokal dibaca, misalnya di 아?",
+          ['Dibaca "ng"', "Tidak dibaca", 'Dibaca "o"', 'Dibaca "a"'],
+          1,
+          'ㅇ di depan vokal tidak dibaca, jadi 아 dibaca "a".',
         ),
         single(
-          "syllable-count",
-          "Kata 아이 dibaca dengan berapa suku kata?",
-          ["Satu", "Dua", "Tiga", "Empat"],
-          1,
-          'Satu blok = satu suku kata. 아이 punya dua blok, 아 dan 이, jadi dibaca "a-i", bukan "ai" seperti di "pantai".',
+          "build-eo",
+          "Yang mana ㅇ + ㅓ?",
+          ["아", "여", "어", "야"],
+          2,
+          "ㅓ garis pendeknya ke kiri, jadi ㅇ + ㅓ = 어. Di 아, garis pendeknya ke kanan.",
         ),
         single(
           "read-ai",
@@ -328,7 +329,7 @@ export const m1BasicVowels: ModuleContent = {
           hear("아이", "Dengarkan, lalu pilih kata yang kamu dengar."),
           ["어이", "아이", "아야", "여이"],
           1,
-          "Yang kamu dengar adalah 아이 (anak), dua suku kata yang jelas: 아 lalu 이.",
+          "Yang kamu dengar adalah 아이 (anak): 아 lalu 이.",
         ),
       ],
     },

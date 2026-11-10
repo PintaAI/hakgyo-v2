@@ -10,16 +10,19 @@ import { m6ReadingWriting } from "./m6-reading-writing";
 import { m7BatchimBasics } from "./m7-batchim-basics";
 import { m8BatchimRules } from "./m8-batchim-rules";
 import { m9FinalExam } from "./m9-final-exam";
+import { syllableBlocks } from "./syllable-blocks";
 
 export const hangeulMasteryCourse: CourseContent = {
   title: "Hangeul Mastery",
   description:
     "Fondasi membaca dan menulis Hangeul sebelum memulai perjalanan belajar bahasa Korea.",
   modules: [
-    // Vowels first (vertical, horizontal, compound), then the consonants.
+    // Vowels first (vertical, horizontal, compound), then syllable blocks
+    // with ㅇ, then the consonants, which take the place of ㅇ.
     m1BasicVowels,
     horizontalVowels,
     compoundVowels,
+    syllableBlocks,
     m2CoreConsonants,
     m4AspiratedTense,
     m6ReadingWriting,

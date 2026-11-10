@@ -115,7 +115,11 @@ export const WORD_CHALLENGES_BY_STAGE = {
     ]),
     word("유아", "balita", "yua", "Dua suku kata", ["아", "어", "유", "요"]),
   ],
+  // Chapter 4 (syllable blocks) builds words of every vowel with this set.
   "compound-vowels": [
+    word("아이", "anak", "ai", "Dua suku kata", ["이", "어", "아", "야"]),
+    word("우유", "susu", "uyu", "Dua suku kata", ["유", "요", "우", "오"]),
+    word("여우", "rubah", "yeou", "Dua suku kata", ["우", "요", "여", "오"]),
     word("우와", "wah", "uwa", "Vokal W", ["와", "워", "우", "오"]),
     word("예의", "sopan santun", "yeui", "Vokal gabungan", [
       "의",

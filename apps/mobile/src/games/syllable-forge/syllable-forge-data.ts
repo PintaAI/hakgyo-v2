@@ -171,7 +171,38 @@ export const SYLLABLE_CHALLENGES_BY_STAGE = {
       "Ketik ㅇ lalu ㅕ. Blok ini membuka kata 여우 (rubah).",
     ),
   ],
+  // Chapter 4 (syllable blocks) practises blocks of every vowel with this set.
   "compound-vowels": [
+    challenge(
+      "아",
+      "a",
+      "Vokal tegak",
+      "Ketik ㅇ lalu ㅏ. Vokal tegak ditulis di kanan ㅇ.",
+    ),
+    challenge(
+      "오",
+      "o",
+      "Vokal mendatar",
+      "Ketik ㅇ lalu ㅗ. Vokal mendatar ditulis di bawah ㅇ.",
+    ),
+    challenge(
+      "으",
+      "eu",
+      "Vokal mendatar",
+      "Ketik ㅇ lalu ㅡ. Satu garis datar di bawah ㅇ.",
+    ),
+    challenge(
+      "여",
+      "yeo",
+      "Vokal tegak",
+      "Ketik ㅇ lalu ㅕ. Dua garis pendek ke kiri, di kanan ㅇ.",
+    ),
+    challenge(
+      "유",
+      "yu",
+      "Vokal mendatar",
+      "Ketik ㅇ lalu ㅠ. Dua garis pendek ke bawah, di bawah ㅇ.",
+    ),
     challenge(
       "애",
       "ae",

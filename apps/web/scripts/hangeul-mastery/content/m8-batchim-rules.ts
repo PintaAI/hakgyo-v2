@@ -55,7 +55,7 @@ export const m8BatchimRules: ModuleContent = {
           theme: "forest",
           imageKey: "chapter-8",
           imageAlt: "Murid mendengarkan dengan headphone di taman",
-          chapter: 8,
+          chapter: 9,
           title: "연음 · 합니다",
           subtitle: "Batchim ganda dan perubahan bunyi",
           question: "한국어 공부해요?",
@@ -376,7 +376,7 @@ export const m8BatchimRules: ModuleContent = {
     {
       type: "assessment",
       key: "m8-quiz",
-      title: "Kuis bab 8: batchim ganda dan perubahan bunyi",
+      title: "Kuis bab 9: batchim ganda dan perubahan bunyi",
       description:
         "14 soal tentang 연음, batchim ganda, dan perubahan bunyi, ditambah ulasan.",
       instructions:

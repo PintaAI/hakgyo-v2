@@ -6,14 +6,15 @@
 
 Bab dibuka berurutan: bab berikutnya terbuka setelah semua isi bab sebelumnya selesai. Setiap materi pendek, sekitar 5–8 menit. Setiap bab diawali halaman pembuka: gambar, huruf yang akan dipelajari, dan tujuan belajarnya. Sebagian bab juga menampilkan dialog pendek yang bisa kamu baca di akhir bab.
 
-Kurikulum ini dimulai dari vokal. Bahasa Indonesia punya 5 huruf vokal (a, i, u, e, o), sedangkan bahasa Korea punya 21. Tapi kebanyakan bunyinya sudah kamu kenal. Yang benar-benar baru hanya dua: ㅓ dan ㅡ. Setelah semua vokal, barulah kamu belajar konsonan.
+Kurikulum ini dimulai dari vokal. Bahasa Indonesia punya 5 huruf vokal (a, i, u, e, o), sedangkan bahasa Korea punya 21, dan banyak bunyinya sama dengan vokal Indonesia. Setelah semua vokal, kamu belajar cara huruf disusun menjadi blok, baru konsonan.
 
 | Bab | Yang dipelajari |
 |---|---|
-| **Vokal tegak** | Cara huruf disusun menjadi blok, ㅇ yang tidak dibaca, dan vokal yang ditulis di kanan: ㅏ ㅣ, ㅓ, ㅑ ㅕ |
-| **Vokal mendatar** | Vokal yang ditulis di bawah: ㅗ (o di *obat*), ㅜ (u di *batu*), ㅡ (mirip e di *emas*), ㅛ ㅠ |
-| **Vokal gabungan** | ㅐ ㅔ (e di *bebek*), ㅒ ㅖ, ㅘ ㅝ ㅙ ㅞ, ㅚ ㅟ ㅢ, dan peta vokal Indonesia ke Hangeul |
-| **Konsonan inti** | ㄴ ㅁ ㅅ ㅂ ㄱ ㄷ ㅈ ㅎ ㄹ, sapaan sopan, dan dialog di kafe |
+| **Vokal tegak** | Kenalan dengan Hangeul dan isi kursus, lalu vokal ㅏ ㅓ ㅣ ㅑ ㅕ |
+| **Vokal mendatar** | Pelafalan ㅗ ㅜ ㅡ ㅛ ㅠ dan kenapa ditulis di bawah ㅇ |
+| **Vokal rangkap** | Sebelas vokal rangkap (ㅐ ㅔ ㅘ ㅝ ㅚ ㅟ ㅢ dan lainnya), lalu perbedaan vokal Indonesia dan vokal Korea |
+| **Blok suku kata** | Satu blok satu suku kata, tempat vokal di dalam blok, cara membaca, dan ㅇ yang tidak dibaca |
+| **Konsonan inti** | ㄴ ㅁ ㅅ ㅂ ㄱ ㄷ ㅈ ㅎ ㄹ (menggantikan ㅇ di blok), sapaan sopan, dan dialog di kafe |
 | **Konsonan berhembus dan tegang** | Bunyi dengan hembusan napas (ㅋ ㅌ ㅍ ㅊ) dan bunyi tegang (ㄲ ㄸ ㅃ ㅆ ㅉ) |
 | **Membaca dan menulis** | Membaca kata nyata, urutan menulis, dan mengetik Hangeul di ponsel |
 | **Batchim** | Konsonan di bagian bawah blok dan tujuh bunyi akhirnya |

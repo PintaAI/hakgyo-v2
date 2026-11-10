@@ -3081,6 +3081,14 @@
    "take": 1,
    "heard": "아이스 아메리카노 하나 주세요."
   },
+  "아이유": {
+   "objectKey": "hangeul-mastery/audio/9dddb57f2acef71e316f22da.mp3",
+   "bytes": 10845,
+   "durationMs": 1056,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 1,
+   "heard": "아이유"
+  },
   "아저씨": {
    "objectKey": "hangeul-mastery/audio/a725601a062af718a313c47a.mp3",
    "bytes": 11805,
@@ -3373,6 +3381,14 @@
    "take": 1,
    "heard": "에"
   },
+  "에이": {
+   "objectKey": "hangeul-mastery/audio/81a7cb925525b4c55b664bf7.mp3",
+   "bytes": 10125,
+   "durationMs": 984,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 1,
+   "heard": "에이"
+  },
   "여": {
    "objectKey": "hangeul-mastery/audio/b0d4320577fee11138a9d2c5.mp3",
    "bytes": 7245,
@@ -3518,6 +3534,14 @@
    "take": 1,
    "heard": "오빠"
   },
+  "오예": {
+   "objectKey": "hangeul-mastery/audio/40705f1fbb17e698409048f0.mp3",
+   "bytes": 9165,
+   "durationMs": 888,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 1,
+   "heard": "오예"
+  },
   "오이": {
    "objectKey": "hangeul-mastery/audio/955b99df556acf5f26bb8557.mp3",
    "bytes": 7245,
@@ -3599,6 +3623,14 @@
    "take": 1,
    "heard": "와요"
   },
+  "와이": {
+   "objectKey": "hangeul-mastery/audio/1ad0c466f780b4b91ee8e482.mp3",
+   "bytes": 11565,
+   "durationMs": 1128,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 3,
+   "heard": "와이"
+  },
   "왜": {
    "objectKey": "hangeul-mastery/audio/8a10d0f97d5db8035a189235.mp3",
    "bytes": 8445,
@@ -3606,6 +3638,14 @@
    "voice": "874ee05a0e",
    "take": 1,
    "heard": "왜"
+  },
+  "왜요": {
+   "objectKey": "hangeul-mastery/audio/1cea71e9cebad49dec1216da.mp3",
+   "bytes": 8685,
+   "durationMs": 840,
+   "voice": "openai-gpt-4o-mini-tts",
+   "take": 1,
+   "heard": "왜요?"
   },
   "외": {
    "objectKey": "hangeul-mastery/audio/1eb6e2e7431128b1223ade8c.mp3",
