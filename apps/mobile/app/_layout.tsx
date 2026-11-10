@@ -380,9 +380,11 @@ function RootNavigator() {
                   <Stack.Screen
                     name="courses/[courseId]/chapter-complete"
                     options={{
-                      headerShown: true,
-                      headerTitle: "",
-                      animation: transition,
+                      headerShown: false,
+                      // Opaque: the Hakgyo hero at the top fades into the
+                      // page colour.
+                      contentStyle: { backgroundColor: colors.background },
+                      ...formSheetOptions({ detents: "fitToContents" }),
                     }}
                   />
                   <Stack.Screen

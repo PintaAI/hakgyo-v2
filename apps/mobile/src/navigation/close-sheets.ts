@@ -6,6 +6,7 @@ const SHEET_ROUTES = new Set([
   "assessment-questions",
   "auth",
   "courses/[courseId]",
+  "courses/[courseId]/chapter-complete",
   "courses/[courseId]/items/[courseItemId]/result",
   "material-link",
   "organization-switcher",
