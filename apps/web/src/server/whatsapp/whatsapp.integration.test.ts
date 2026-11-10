@@ -455,6 +455,7 @@ run("WhatsApp groups through Evolution API", () => {
         id: ids.event,
         organizationId: ids.organization,
         courseId: ids.course,
+        assessmentId: assessment.id,
         courseItemId: ids.item,
         createdByMembershipId: ids.membership,
         type: "TRYOUT",

@@ -11,7 +11,12 @@ Bedanya:
 
 ## Sebelum mulai
 
-- Tugasnya harus sudah **tampil di kurikulum**, bukan hanya tersimpan di menu **Bahan ajar**, dan minimal punya satu soal. Jika belum, daftar tugas menampilkan **Belum ada tugas yang siap di kurikulum ini**. Lihat [Kurikulum dan Bahan Ajar](/docs/pengajar/kurikulum-bahan-ajar).
+- Siapkan tugasnya dengan minimal satu soal. Tugas bisa diambil dari dua tempat:
+  - **Tugas di kurikulum**: tugas yang sudah tampil di salah satu bab. Murid bisa membuka soalnya kapan saja, juga sebelum latihan dibuka.
+  - **Bank tugas**: semua tugas lembaga Anda di menu **Bahan ajar** > **Tugas**, termasuk yang tidak dipasang di kurikulum. Tugas yang tidak ada di kurikulum baru terlihat murid saat latihan dibuka, jadi soalnya tetap rahasia. Pilih ini untuk tryout dan simulasi ujian.
+
+  Lihat [Kurikulum dan Bahan Ajar](/docs/pengajar/kurikulum-bahan-ajar).
+
 - Kelas yang ikut harus punya murid aktif. Latihan tidak bisa dibuka untuk kelas tanpa murid aktif.
 - Periksa soal dan jadwal sekali lagi. Setelah dibuat, judul, urutan soal, jadwal, dan durasi **tidak bisa diubah**, termasuk untuk draf, dan soal tugasnya terkunci selama latihan berjalan.
 
@@ -22,7 +27,7 @@ Ada dua pintu masuk:
 - **Dari kurikulum:** buka **Kurikulum**, pilih kurikulumnya, lalu tab **Latihan & tryout**. Dari sini Anda bisa memilih satu, beberapa, atau semua kelas. Tab ini hanya terlihat oleh [pengelola kurikulum](/docs/pengajar/peran-akses#pengelola-kurikulum).
 - **Dari kelas:** buka halaman kelas, lalu tab **Latihan & tryout**. Kelas tersebut otomatis terpilih.
 
-Setiap latihan tampil sebagai kartu berisi jenis, status, kelas yang ikut, durasi, jumlah peserta, dan jadwal.
+Setiap latihan tampil sebagai kartu berisi jenis, status, nama tugas, kelas yang ikut, durasi, jumlah peserta, dan jadwal. Latihan yang tugasnya diambil dari bank diberi keterangan **Bank tugas** di samping nama tugasnya.
 
 <doc-preview name="latihan-tryout-daftar" caption="Daftar latihan dan tryout dengan data contoh. Coba klik Lihat peserta & hasil, atau tombol Tutup pada latihan yang sedang dibuka."></doc-preview>
 
@@ -30,7 +35,11 @@ Setiap latihan tampil sebagai kartu berisi jenis, status, kelas yang ikut, duras
 
 1. Klik **Buat latihan / tryout**. Panel berisi empat bagian terbuka dari samping.
 2. **Jenis:** pilih **Latihan** atau **Tryout**.
-3. **Tugas:** pilih tugas dari daftar yang dikelompokkan per bab. Kolom **Judul (opsional)** boleh dikosongkan; Hakgyo memakai judul seperti "Latihan Kuis Hangeul". Setelah tugas dipilih, atur **Urutan soal**:
+3. **Tugas:** pilih sumbernya dulu:
+   - **Tugas di kurikulum**: daftar tugas yang dikelompokkan per bab.
+   - **Bank tugas**: daftar tugas lembaga Anda, yang terbaru di atas. Ketik di kolom pencarian untuk mencari judul. Tugas yang juga ada di kurikulum diberi keterangan **Juga ada di kurikulum**; jika Anda memilihnya, muncul peringatan bahwa murid sudah bisa melihat soalnya sebelum latihan dibuka. Untuk soal yang harus rahasia, pilih tugas berketerangan **Hanya di bank tugas**.
+
+   Jika tugasnya punya batas waktu, **Durasi pengerjaan** langsung terisi dengan batas itu. Kolom **Judul (opsional)** boleh dikosongkan; Hakgyo memakai judul seperti "Latihan Kuis Hangeul". Setelah tugas dipilih, atur **Urutan soal**:
    - **Ikuti tugas** (bawaan): mengikuti pengaturan **Acak soal** di tugasnya. Keterangan di bawah pilihan menunjukkan apakah soal akan diacak atau tidak.
    - **Urutan tetap**: semua murid mendapat soal dengan urutan yang sama seperti di tugas. Pilih ini untuk simulasi ujian yang nomornya harus sama, misalnya EPS-TOPIK dengan membaca di nomor 1-20 dan mendengar di nomor 21-40.
    - **Acak**: setiap murid mendapat urutan soal yang berbeda, walaupun tugasnya tidak diacak.
@@ -99,7 +108,7 @@ Hasilnya tugas biasa milik lembaga Anda:
 
 - Bagian **Membaca** dan **Mendengar**, poin 2,5 per soal, dan batas nilai **Manufaktur 60%** dan **Sektor lain 45%** sudah diatur seperti **Format EPS-TOPIK** di [Bagian dan urutan soal](/docs/pengajar/kurikulum-bahan-ajar#bagian-dan-urutan-soal).
 - Staf bisa mengubah soal, kunci jawaban, pembahasan, dan pengaturannya, seperti tugas lain.
-- Tampilkan set di kurikulum, lalu pakai untuk **Latihan** atau **Tryout**. Pilih Tryout jika set akan dipakai lagi untuk kelas berikutnya, karena jawaban benar tidak ditampilkan ke murid.
+- Pakai set untuk **Latihan** atau **Tryout** dengan memilihnya dari **Bank tugas**. Set tidak perlu ditampilkan di kurikulum, sehingga murid tidak bisa membuka soalnya sebelum tryout dibuka. Pilih Tryout jika set akan dipakai lagi untuk kelas berikutnya, karena jawaban benar tidak ditampilkan ke murid.
 - Audio soal mendengar dibuat dengan suara AI. Keterangan ini tertulis di deskripsi set dan terlihat murid.
 - Perubahan di bank soal Hakgyo nanti tidak mengubah set yang sudah dibuat. Buat set baru untuk memakai soal terbaru.
 
@@ -140,6 +149,7 @@ Semua perubahan nilai dan pembatalan dicatat di riwayat perubahan beserta alasan
 ## Apa yang dialami murid
 
 - Latihan yang **Terjadwal** dan **Dibuka** muncul di halaman **Belajar** dan menu **Latihan** murid, di situs web maupun aplikasi ponsel, lengkap dengan jadwalnya.
+- Tugas dari **Bank tugas** yang tidak ada di kurikulum tidak muncul di daftar bab murid. Murid hanya bisa membukanya lewat latihan atau tryout, dan soalnya baru terlihat saat mulai mengerjakan.
 - Saat mulai, waktu berjalan sesuai durasi. Gambar dan audio soal diunduh lebih dulu supaya tidak tersendat.
 - Murid melihat nilai dan papan peringkat setelah mengirim. Pada **Latihan**, jawaban benar dan pembahasan baru muncul setelah ditutup. Pada **Tryout**, keduanya tidak pernah ditampilkan.
 - Di aplikasi ponsel, murid bisa mengerjakan tanpa internet. Jawaban terkirim sedikit demi sedikit saat ada internet, dan tugas terkirim otomatis saat waktu habis. Jawaban yang diisi sebelum waktu habis tetap dinilai walaupun baru terkirim belakangan. Pada **Tryout** ini berlaku sampai 24 jam setelah ditutup, jadi nilai dan peringkat tryout masih bisa berubah dalam 24 jam itu. Pada **Latihan** jawaban harus terkirim sebelum ditutup, karena pembahasannya langsung terbuka.

@@ -173,6 +173,8 @@ export async function buildLearnerState(
       submittedAt: attempt.submittedAt?.toISOString() ?? null,
       gradedAt: attempt.gradedAt?.toISOString() ?? null,
     };
+    // Standalone attempts always have a course item (only library event attempts have none).
+    if (!courseItemId) continue;
     const existing = attemptsByItem[courseItemId];
     if (existing) {
       existing.count += 1;

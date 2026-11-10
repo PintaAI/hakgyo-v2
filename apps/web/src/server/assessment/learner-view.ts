@@ -373,6 +373,8 @@ export async function getLearnerAssessmentsForCourseItems(
 
   const attemptsByItem = new Map<string, LatestStandaloneAttempt[]>();
   for (const { courseItemId, ...attempt } of standaloneAttempts) {
+    // Standalone attempts always have a course item (only library event attempts have none).
+    if (!courseItemId) continue;
     const list = attemptsByItem.get(courseItemId);
     if (list) list.push(attempt);
     else attemptsByItem.set(courseItemId, [attempt]);

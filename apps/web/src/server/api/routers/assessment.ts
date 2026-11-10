@@ -48,6 +48,7 @@ import {
 } from "~/server/assessment/inputs";
 import {
   getLearnerAssessment,
+  getLearnerAttemptAssessment,
   getMyAttempt,
   listMyAttempts,
   saveAnswers,
@@ -321,6 +322,12 @@ export const assessmentRouter = createTRPCRouter({
     .input(z.object({ courseItemId: id, attemptId: id.optional() }))
     .query(({ ctx, input }) =>
       getLearnerAssessment(ctx.db, input, ctx.actorUserId),
+    ),
+  /** An event attempt's assessment, also for library events whose attempts have no course item. */
+  getForAttempt: protectedProcedure
+    .input(z.object({ attemptId: id }))
+    .query(({ ctx, input }) =>
+      getLearnerAttemptAssessment(ctx.db, input, ctx.actorUserId),
     ),
   startAttempt: protectedProcedure
     .input(

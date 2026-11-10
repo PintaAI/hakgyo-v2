@@ -419,6 +419,15 @@ function RootNavigator() {
                       fullScreenGestureEnabled: false,
                     }}
                   />
+                  <Stack.Screen
+                    name="event-attempts/[attemptId]"
+                    options={{
+                      headerShown: true,
+                      animation: transition,
+                      gestureEnabled: false,
+                      fullScreenGestureEnabled: false,
+                    }}
+                  />
                 </Stack.Protected>
               </Stack>
               {session ? <WhatsNewPrompt /> : null}

@@ -158,7 +158,20 @@ export const reviewAccessSelect = {
   cohortId: true,
   userId: true,
   courseItem: { select: { module: { select: { courseId: true } } } },
+  // Attempts of a library assessment event have no course item; the event names the course.
+  assessmentEvent: { select: { courseId: true } },
 } satisfies Prisma.AssessmentAttemptSelect;
+
+/** The course an attempt belongs to: its course item's, or its event's for a library assessment. */
+export function attemptCourseId(attempt: {
+  courseItem: { module: { courseId: string } } | null;
+  assessmentEvent: { courseId: string } | null;
+}) {
+  const courseId =
+    attempt.courseItem?.module.courseId ?? attempt.assessmentEvent?.courseId;
+  if (!courseId) throw new TRPCError({ code: "NOT_FOUND" });
+  return courseId;
+}
 
 /** Reviewers need cohort review rights (or course management for cohort-less attempts). */
 export async function authorizeReview(
@@ -176,7 +189,7 @@ export async function authorizeReview(
           userId,
         })
       : requireCoursePermission({
-          courseId: attempt.courseItem.module.courseId,
+          courseId: attemptCourseId(attempt),
           permission: "course.manage",
           userId,
         }),

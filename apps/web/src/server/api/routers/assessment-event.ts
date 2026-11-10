@@ -71,6 +71,13 @@ const targetCohortSelect = {
  * whole-table grouped subquery, so list queries use this select and attach counts for their page
  * with `withEventSummaryCounts`. Single-row queries keep the counts in `eventSummarySelect`.
  */
+const eventAssessmentSelect = {
+  id: true,
+  title: true,
+  description: true,
+  passingScore: true,
+  maxAttempts: true,
+} satisfies Prisma.AssessmentSelect;
 const eventSummaryBaseSelect = {
   id: true,
   title: true,
@@ -85,33 +92,25 @@ const eventSummaryBaseSelect = {
   cancelledAt: true,
   createdAt: true,
   course: { select: { id: true, title: true } },
+  // The event's own assessment: from the course or from the organization's library.
+  assessment: { select: eventAssessmentSelect },
+  // The course placement the assessment was picked from (null for a library assessment). Kept
+  // with its assessment for app versions that read `courseItem.assessment`; those never get
+  // library events (see `includeLibraryEvents`).
   courseItem: {
-    select: {
-      id: true,
-      assessment: {
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          passingScore: true,
-          maxAttempts: true,
-        },
-      },
-    },
+    select: { id: true, assessment: { select: eventAssessmentSelect } },
   },
 } satisfies Prisma.AssessmentEventSelect;
+/** One event's summary with its counts in the same query (lists add them per page instead). */
+const countedEventAssessmentSelect = {
+  ...eventAssessmentSelect,
+  _count: { select: { questions: true } },
+} satisfies Prisma.AssessmentSelect;
 const eventSummarySelect = {
   ...eventSummaryBaseSelect,
+  assessment: { select: countedEventAssessmentSelect },
   courseItem: {
-    select: {
-      ...eventSummaryBaseSelect.courseItem.select,
-      assessment: {
-        select: {
-          ...eventSummaryBaseSelect.courseItem.select.assessment.select,
-          _count: { select: { questions: true } },
-        },
-      },
-    },
+    select: { id: true, assessment: { select: countedEventAssessmentSelect } },
   },
   _count: { select: { participants: true, attempts: true } },
 } satisfies Prisma.AssessmentEventSelect;
@@ -135,25 +134,25 @@ function shapeTargets(
   }));
 }
 
+type EventAssessmentRow = Prisma.AssessmentGetPayload<{
+  select: typeof eventAssessmentSelect;
+}>;
+type CountedAssessment = EventAssessmentRow & { _count: { questions: number } };
 type EventSummaryRow = {
   id: string;
-  courseItem: { assessment: { id: string } | null };
+  assessment: EventAssessmentRow;
+  courseItem: { id: string; assessment: EventAssessmentRow | null } | null;
 };
 type WithEventSummaryCounts<T extends EventSummaryRow> = Omit<
   T,
-  "courseItem"
+  "assessment" | "courseItem"
 > & {
-  courseItem: Omit<T["courseItem"], "assessment"> & {
-    assessment:
-      | (NonNullable<T["courseItem"]["assessment"]> & {
-          _count: { questions: number };
-        })
-      | null;
-  };
+  assessment: CountedAssessment;
+  courseItem: { id: string; assessment: CountedAssessment | null } | null;
   _count: { participants: number; attempts: number };
 };
 
-/** Adds the `eventSummarySelect` counts to rows loaded with `eventSummaryBaseSelect`. */
+/** Adds the participant, attempt and question counts to rows loaded with `eventSummaryBaseSelect`. */
 async function withEventSummaryCounts<T extends EventSummaryRow>(
   db: Prisma.TransactionClient | Prisma.DefaultPrismaClient,
   events: T[],
@@ -162,9 +161,12 @@ async function withEventSummaryCounts<T extends EventSummaryRow>(
   const eventIds = events.map((event) => event.id);
   const assessmentIds = [
     ...new Set(
-      events.flatMap((event) =>
-        event.courseItem.assessment ? [event.courseItem.assessment.id] : [],
-      ),
+      events.flatMap((event) => [
+        event.assessment.id,
+        ...(event.courseItem?.assessment
+          ? [event.courseItem.assessment.id]
+          : []),
+      ]),
     ),
   ];
   const [participantGroups, attemptGroups, questionGroups] = await Promise.all([
@@ -178,13 +180,11 @@ async function withEventSummaryCounts<T extends EventSummaryRow>(
       where: { assessmentEventId: { in: eventIds } },
       _count: { _all: true },
     }),
-    assessmentIds.length
-      ? db.assessmentQuestion.groupBy({
-          by: ["assessmentId"],
-          where: { assessmentId: { in: assessmentIds } },
-          _count: { _all: true },
-        })
-      : [],
+    db.assessmentQuestion.groupBy({
+      by: ["assessmentId"],
+      where: { assessmentId: { in: assessmentIds } },
+      _count: { _all: true },
+    }),
   ]);
   const participants = new Map(
     participantGroups.map((group) => [group.eventId, group._count._all]),
@@ -195,25 +195,26 @@ async function withEventSummaryCounts<T extends EventSummaryRow>(
   const questions = new Map(
     questionGroups.map((group) => [group.assessmentId, group._count._all]),
   );
+  const counted = (assessment: EventAssessmentRow): CountedAssessment => ({
+    ...assessment,
+    _count: { questions: questions.get(assessment.id) ?? 0 },
+  });
   return events.map((event) => {
-    const assessment = event.courseItem.assessment;
-    // Generic spreads are not narrowed by TypeScript; the shape matches the declared type.
+    const placed = event.courseItem;
     return {
       ...event,
-      courseItem: {
-        ...event.courseItem,
-        assessment: assessment
-          ? {
-              ...assessment,
-              _count: { questions: questions.get(assessment.id) ?? 0 },
-            }
-          : null,
-      },
+      assessment: counted(event.assessment),
+      courseItem: placed
+        ? {
+            ...placed,
+            assessment: placed.assessment ? counted(placed.assessment) : null,
+          }
+        : null,
       _count: {
         participants: participants.get(event.id) ?? 0,
         attempts: attempts.get(event.id) ?? 0,
       },
-    } as unknown as WithEventSummaryCounts<T>;
+    };
   });
 }
 const learnerAttemptSelect = {
@@ -333,7 +334,7 @@ type LearnerEventRow = {
       select: typeof learnerAttemptSelect;
     }>
   >;
-  courseItem: { assessment: { maxAttempts: number | null } | null };
+  assessment: { maxAttempts: number | null };
 };
 
 /** The targeted class a learner would join: real before self-paced, then the latest joined. */
@@ -366,7 +367,7 @@ function shapeLearnerEvent<T extends LearnerEventRow>(
   const entry = resolveAssessmentEntry({
     attemptStatus: latestAttempt?.status,
     attemptsUsed: attemptCount,
-    maxAttempts: event.courseItem.assessment?.maxAttempts ?? null,
+    maxAttempts: event.assessment.maxAttempts,
     available: isEventAvailable(event, now),
     invalidated: resultsWithheld,
   });
@@ -440,27 +441,35 @@ async function loadAssessmentMedia(
   });
 }
 
+/** Who may pick an event's assessment: class reviewers (from their class) or course managers. */
+async function requireEventAuthoring(
+  input: { courseId: string; cohortId?: string },
+  userId: string,
+) {
+  if (input.cohortId) {
+    const cohort = await requireCohortPermission({
+      cohortId: input.cohortId,
+      permission: "assessment.review",
+      userId,
+    });
+    if (cohort.courseId !== input.courseId) {
+      throw new TRPCError({ code: "NOT_FOUND" });
+    }
+  } else {
+    await requireCoursePermission({
+      courseId: input.courseId,
+      permission: "course.manage",
+      userId,
+    });
+  }
+}
+
 export const assessmentEventRouter = createTRPCRouter({
   /** Assessments of the course that can run as an event. */
   listAssessmentItems: protectedProcedure
     .input(z.object({ courseId: id, cohortId: id.optional() }))
     .query(async ({ ctx, input }) => {
-      if (input.cohortId) {
-        const cohort = await requireCohortPermission({
-          cohortId: input.cohortId,
-          permission: "assessment.review",
-          userId: ctx.actorUserId,
-        });
-        if (cohort.courseId !== input.courseId) {
-          throw new TRPCError({ code: "NOT_FOUND" });
-        }
-      } else {
-        await requireCoursePermission({
-          courseId: input.courseId,
-          permission: "course.manage",
-          userId: ctx.actorUserId,
-        });
-      }
+      await requireEventAuthoring(input, ctx.actorUserId);
       return ctx.db.courseItem.findMany({
         where: {
           type: "ASSESSMENT",
@@ -486,6 +495,56 @@ export const assessmentEventRouter = createTRPCRouter({
           },
         },
       });
+    }),
+  /**
+   * The organization's assessment library for an event: every assessment with questions, also
+   * ones not placed in any course. `placedInCourse` warns that learners of this course can
+   * already see and take it as a chapter tugas.
+   */
+  listLibraryAssessments: protectedProcedure
+    .input(
+      z.object({
+        courseId: id,
+        cohortId: id.optional(),
+        query: z.string().trim().max(200).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      await requireEventAuthoring(input, ctx.actorUserId);
+      const course = await ctx.db.course.findUniqueOrThrow({
+        where: { id: input.courseId },
+        select: { organizationId: true },
+      });
+      const assessments = await ctx.db.assessment.findMany({
+        where: {
+          organizationId: course.organizationId,
+          questions: { some: {} },
+          ...(input.query
+            ? { title: { contains: input.query, mode: "insensitive" } }
+            : {}),
+        },
+        orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+        take: 100,
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          timeLimitMinutes: true,
+          shuffleQuestions: true,
+          sections: timedSectionsSelect,
+          updatedAt: true,
+          _count: { select: { questions: true } },
+          courseItems: {
+            where: { isPublished: true, module: { courseId: input.courseId } },
+            select: { id: true },
+            take: 1,
+          },
+        },
+      });
+      return assessments.map(({ courseItems, ...assessment }) => ({
+        ...assessment,
+        placedInCourse: courseItems.length > 0,
+      }));
     }),
 
   /**
@@ -584,7 +643,10 @@ export const assessmentEventRouter = createTRPCRouter({
     .input(
       z.object({
         courseId: id,
-        courseItemId: id,
+        /** An assessment shown in the course; or `assessmentId` from the library. */
+        courseItemId: id.optional(),
+        /** An assessment from the organization's library, which learners never see before. */
+        assessmentId: id.optional(),
         type: z.enum(["QUICK_ASSESSMENT", "TRYOUT"]),
         target: eventTarget,
         title: z.string().trim().min(1).max(200),
@@ -604,9 +666,21 @@ export const assessmentEventRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const { courseItemId, assessmentId, ...rest } = input;
+      if (Boolean(courseItemId) === Boolean(assessmentId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Pilih satu tugas untuk latihan atau tryout ini.",
+        });
+      }
       const { eventId, participantCount } = await createAssessmentEvent(
         ctx.db,
-        input,
+        {
+          ...rest,
+          source: courseItemId
+            ? { courseItemId }
+            : { assessmentId: assessmentId! },
+        },
         ctx.actorUserId,
       );
       const { cohorts, ...event } =
@@ -701,23 +775,28 @@ export const assessmentEventRouter = createTRPCRouter({
           );
         }
       }
-      // READ COMMITTED + a per-learner/item advisory lock (shared with standalone attempts, which
-      // use the same attempt numbering). The (courseItemId, userId, attemptNumber) unique
-      // constraint stays as a backstop: on P2002 the transaction re-runs and returns the
-      // in-progress attempt created by the winner.
+      // READ COMMITTED + a per-learner advisory lock: on the course item for an assessment of the
+      // course (shared with standalone attempts, which use the same attempt numbering), on the
+      // event for a library assessment. For course items the (courseItemId, userId,
+      // attemptNumber) unique constraint stays as a backstop: on P2002 the transaction re-runs
+      // and returns the in-progress attempt created by the winner.
       return withTransactionRetry(
         () =>
           ctx.db.$transaction(async (tx) => {
             // FOR SHARE makes `close` wait for in-flight starts, so its auto-submit sees them.
             const [eventItem] = await tx.$queryRaw<
-              Array<{ courseItemId: string }>
+              Array<{ courseItemId: string | null }>
             >`
               SELECT "courseItemId" FROM "AssessmentEvent"
               WHERE "id" = ${input.eventId}
               FOR SHARE
             `;
             if (!eventItem) throw new TRPCError({ code: "NOT_FOUND" });
-            await lockAttemptStart(tx, ctx.actorUserId, eventItem.courseItemId);
+            await lockAttemptStart(
+              tx,
+              ctx.actorUserId,
+              eventItem.courseItemId ?? `event:${input.eventId}`,
+            );
             const event = await tx.assessmentEvent.findUnique({
               where: { id: input.eventId },
               select: {
@@ -736,17 +815,8 @@ export const assessmentEventRouter = createTRPCRouter({
                     },
                   },
                 },
-                courseItem: {
-                  select: {
-                    isPublished: true,
-                    assessment: {
-                      select: {
-                        id: true,
-                        maxAttempts: true,
-                      },
-                    },
-                  },
-                },
+                assessment: { select: { id: true, maxAttempts: true } },
+                courseItem: { select: { isPublished: true } },
               },
             });
             if (!event) throw new TRPCError({ code: "NOT_FOUND" });
@@ -798,7 +868,8 @@ export const assessmentEventRouter = createTRPCRouter({
               }
               participant = joined;
             }
-            if (!event.courseItem.isPublished || !event.courseItem.assessment) {
+            // An assessment of the course must still be shown in it; a library one is the event's.
+            if (event.courseItemId && !event.courseItem?.isPublished) {
               throw new TRPCError({
                 code: "PRECONDITION_FAILED",
                 message: "Tugas ini sudah tidak tersedia.",
@@ -813,14 +884,14 @@ export const assessmentEventRouter = createTRPCRouter({
               orderBy: { attemptNumber: "desc" },
             });
             if (current) return { ...current, courseId: event.courseId };
-            // One grouped query serves both the per-event limit and the item-wide attempt number
-            // (event attempts always use the event's course item).
+            // One grouped query serves both the per-event limit and the attempt number: item-wide
+            // for an assessment of the course (event attempts use the event's course item),
+            // per event for a library assessment.
             const attemptGroups = await tx.assessmentAttempt.groupBy({
               by: ["assessmentEventId"],
-              where: {
-                courseItemId: event.courseItemId,
-                userId: ctx.actorUserId,
-              },
+              where: event.courseItemId
+                ? { courseItemId: event.courseItemId, userId: ctx.actorUserId }
+                : { assessmentEventId: event.id, userId: ctx.actorUserId },
               _count: { _all: true },
               _max: { attemptNumber: true },
             });
@@ -829,8 +900,8 @@ export const assessmentEventRouter = createTRPCRouter({
                 (group) => group.assessmentEventId === event.id,
               )?._count._all ?? 0;
             if (
-              event.courseItem.assessment.maxAttempts !== null &&
-              eventAttemptCount >= event.courseItem.assessment.maxAttempts
+              event.assessment.maxAttempts !== null &&
+              eventAttemptCount >= event.assessment.maxAttempts
             ) {
               throw new TRPCError({
                 code: "FORBIDDEN",
@@ -851,7 +922,7 @@ export const assessmentEventRouter = createTRPCRouter({
                 : null;
             const created = await tx.assessmentAttempt.create({
               data: {
-                assessmentId: event.courseItem.assessment.id,
+                assessmentId: event.assessment.id,
                 courseItemId: event.courseItemId,
                 organizationId: event.organizationId,
                 cohortId: attemptCohortId,
@@ -972,11 +1043,10 @@ export const assessmentEventRouter = createTRPCRouter({
       // Images and audio the learner can download ahead, once the event has opened (never
       // before, so listening material is not handed out early).
       const media =
-        (learnerEvent.entry.canStart ||
-          learnerEvent.entry.canReattempt ||
-          learnerEvent.entry.state === "IN_PROGRESS") &&
-        event.courseItem.assessment
-          ? await loadAssessmentMedia(ctx.db, event.courseItem.assessment.id)
+        learnerEvent.entry.canStart ||
+        learnerEvent.entry.canReattempt ||
+        learnerEvent.entry.state === "IN_PROGRESS"
+          ? await loadAssessmentMedia(ctx.db, event.assessment.id)
           : [];
       if (
         event.status !== "CLOSED" &&

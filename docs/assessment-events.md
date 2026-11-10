@@ -1,7 +1,8 @@
 # Latihan & tryout (assessment events)
 
 Courses hold the curriculum. A **Latihan** (`QUICK_ASSESSMENT`) or **Tryout** (`TRYOUT`) runs one
-published assessment of the course for one or more classes (cohorts) of that course.
+assessment for one or more classes (cohorts) of a course: one published in the course, or one from
+the organization's library (the "Bank tugas").
 
 | Type    | After closing                                |
 | ------- | -------------------------------------------- |
@@ -9,6 +10,30 @@ published assessment of the course for one or more classes (cohorts) of that cou
 | Tryout  | Score and leaderboard only, no answer review |
 
 Both show a combined leaderboard across all targeted classes.
+
+## The assessment: course or library
+
+`AssessmentEvent.assessmentId` is the assessment the event runs. `courseItemId` is the course
+placement it was picked from, or null for a library assessment:
+
+- **From the course** ("Tugas di kurikulum", `assessmentEvent.listAssessmentItems`): a published
+  item of the course. Learners also see it in the chapter list, and its questions (without answers)
+  are in the course bundle on their phones before the event opens. Its attempts carry the item and
+  share its attempt numbering with chapter attempts.
+- **From the library** ("Bank tugas", `assessmentEvent.listLibraryAssessments`): any assessment of
+  the organization with questions. Learners never see it before the event opens: it is in no
+  chapter list and no bundle, and its questions reach the learner only when they start
+  (`mobileSyncV2.startEventAssessment`, `assessment.getForAttempt`). Its attempts have no
+  `courseItemId`, number per event, and lock on the event when starting. `placedInCourse` warns
+  staff when the picked assessment is also shown in this course.
+
+Code that needs the course of an attempt takes its item's, or its event's for a library event
+(`attemptCourseId`, `assessmentContext`; review scopes and register filters match both). Learners
+open such attempts at `/learn/assessments/{eventId}/attempts/{attemptId}` on the web and
+`/event-attempts/[attemptId]` in the app. App builds that do not send `includeLibraryEvents` to
+`mobileSyncV2.getIndex` get neither library events nor their attempts, because they read the course
+item unguarded. Deleting an assessment deletes the library events running it with their attempts;
+deleting a course deletes its events' attempts too.
 
 ## Targets and participants
 
@@ -90,10 +115,11 @@ JSON strings (culture sections).
 ## Starting on mobile
 
 Starting needs a connection: the server records the start time, checks the attempt limit and the
-event window, opens a due scheduled event and picks the attempt's question order
-(`mobileSyncV2.startEventAssessment`). The questions themselves, without answers, are already on
+event window and opens a due scheduled event (`mobileSyncV2.startEventAssessment`). The app makes
+the attempt's shuffle seed and sends it, so the preview shows the attempt's own order. For an event from the course, the questions themselves, without answers, are already on
 the device in the course bundle, so the event screen shows the attempt's first screen from the
-bundle the moment the learner taps "Mulai" (`AttemptStartingPreview`): the first section's intro,
+bundle the moment the learner taps "Mulai" (`AttemptStartingPreview`); a library event shows only
+the starting status until the start returns the questions: the first section's intro,
 or the first question when the assessment does not shuffle questions (shuffled options are left
 out). The learner event detail does not carry the event's own shuffle setting, so an event set to
 "Acak" on an unshuffled assessment swaps that first question once the attempt opens. Nothing can be answered until the start returns; then the attempt screen

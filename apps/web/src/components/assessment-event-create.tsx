@@ -1,6 +1,14 @@
 "use client";
 
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import {
   BookOpenCheckIcon,
   LoaderCircleIcon,
@@ -30,11 +38,29 @@ import {
 } from "~/components/resource-picker";
 import { cn } from "~/lib/utils";
 import { sectionedDurationMinutes } from "~/lib/assessment-sections";
-import { api } from "~/trpc/react";
+import { api, type RouterOutputs } from "~/trpc/react";
 
 type EventType = "QUICK_ASSESSMENT" | "TRYOUT";
 type StartMode = "now" | "schedule" | "draft";
 type QuestionOrder = "assessment" | "fixed" | "shuffled";
+/** Where the event's tugas comes from: a chapter of the course, or the organization's bank. */
+type AssessmentSource = "course" | "library";
+type LibraryAssessment =
+  RouterOutputs["assessmentEvent"]["listLibraryAssessments"][number];
+
+const sourceOptions: Array<[AssessmentSource, string]> = [
+  ["course", "Tugas di kurikulum"],
+  ["library", "Bank tugas"],
+];
+
+const sourceHint: Record<AssessmentSource, string> = {
+  course:
+    "Tugas yang sudah tampil di bab kurikulum. Murid bisa membuka soalnya sebelum event dibuka.",
+  library:
+    "Tugas dari bank organisasi. Kalau tugas tidak dipasang di kurikulum, murid baru melihat soalnya saat event dibuka.",
+};
+
+const LIBRARY_SEARCH_DELAY_MS = 300;
 
 const HOUR = 60 * 60_000;
 const DAY = 24 * HOUR;
@@ -185,7 +211,14 @@ export function CreateAssessmentEventSheet({
   const [type, setType] = useState<EventType>(
     cohortId ? "QUICK_ASSESSMENT" : "TRYOUT",
   );
+  const [source, setSource] = useState<AssessmentSource>("course");
   const [courseItemId, setCourseItemId] = useState<string | null>(null);
+  // Kept whole: a later search can drop the picked tugas from the loaded list.
+  const [libraryPick, setLibraryPick] = useState<LibraryAssessment | null>(
+    null,
+  );
+  const [librarySearch, setLibrarySearch] = useState("");
+  const [libraryQuery, setLibraryQuery] = useState("");
   const [title, setTitle] = useState("");
   const [questionOrder, setQuestionOrder] =
     useState<QuestionOrder>("assessment");
@@ -207,6 +240,27 @@ export function CreateAssessmentEventSheet({
     { courseId, cohortId },
     { enabled: open },
   );
+  // The bank lists only the newest tugas, so search runs on the server.
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setLibraryQuery(librarySearch),
+      LIBRARY_SEARCH_DELAY_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [librarySearch]);
+  // Clearing the search reloads the newest tugas right away.
+  const changeLibrarySearch = useCallback((search: string) => {
+    setLibrarySearch(search);
+    if (!search) setLibraryQuery("");
+  }, []);
+  const libraryAssessments =
+    api.assessmentEvent.listLibraryAssessments.useQuery(
+      { courseId, cohortId, query: libraryQuery || undefined },
+      {
+        enabled: open && source === "library",
+        placeholderData: keepPreviousData,
+      },
+    );
   const targets = api.assessmentEvent.listTargetCohorts.useQuery(
     { courseId },
     { enabled: open },
@@ -226,9 +280,32 @@ export function CreateAssessmentEventSheet({
       })) ?? [],
     [assessmentItems.data],
   );
+  const libraryOptions = useMemo<ResourcePickerOption[]>(() => {
+    const loaded = libraryAssessments.data ?? [];
+    const list =
+      libraryPick && !loaded.some((entry) => entry.id === libraryPick.id)
+        ? [libraryPick, ...loaded]
+        : loaded;
+    return list.map((assessment) => ({
+      id: assessment.id,
+      title: assessment.title,
+      description: assessment.description,
+      count: assessment._count.questions,
+      timeLimitMinutes: assessment.timeLimitMinutes,
+      updatedAt: assessment.updatedAt,
+      group: assessment.placedInCourse
+        ? "Juga ada di kurikulum"
+        : "Hanya di bank tugas",
+    }));
+  }, [libraryAssessments.data, libraryPick]);
   const selectedItem = assessmentItems.data?.find(
     (item) => item.id === courseItemId,
   );
+  // The picked tugas, from either source.
+  const selectedAssessment =
+    source === "course" ? selectedItem?.assessment : libraryPick;
+  const picked =
+    source === "course" ? Boolean(courseItemId) : Boolean(libraryPick);
   const cohorts = useMemo(() => targets.data?.cohorts ?? [], [targets.data]);
   const canTargetAll = Boolean(targets.data?.canTargetAll) && !cohortId;
   const targetAll = allCohorts && canTargetAll;
@@ -254,12 +331,12 @@ export function CreateAssessmentEventSheet({
         ? "Waktu buka harus di masa depan."
         : null;
   // Timed sections set the duration on the server; show it instead of the field.
-  const sectionedMinutes = selectedItem?.assessment
-    ? sectionedDurationMinutes(selectedItem.assessment.sections)
+  const sectionedMinutes = selectedAssessment
+    ? sectionedDurationMinutes(selectedAssessment.sections)
     : null;
   const duration = sectionedMinutes ?? Number(durationMinutes);
   const ready =
-    Boolean(courseItemId) &&
+    picked &&
     (targetAll || pickedCohortIds.length > 0) &&
     Number.isInteger(duration) &&
     duration >= 1 &&
@@ -267,12 +344,20 @@ export function CreateAssessmentEventSheet({
     !timeError;
 
   function reset() {
+    setSource("course");
     setCourseItemId(null);
+    setLibraryPick(null);
+    setLibrarySearch("");
     setTitle("");
     setQuestionOrder("assessment");
     setStartMode("now");
     setPickedCohortIds(cohortId ? [cohortId] : []);
     setAllCohorts(!cohortId);
+  }
+
+  /** A tugas with its own time limit starts the duration field at that limit. */
+  function pickAssessment(timeLimitMinutes: number | null | undefined) {
+    if (timeLimitMinutes) setDurationMinutes(String(timeLimitMinutes));
   }
 
   function toggleCohort(id: string, checked: boolean) {
@@ -285,14 +370,21 @@ export function CreateAssessmentEventSheet({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!ready || !courseItemId) return;
+    if (!ready) return;
+    const assessmentRef =
+      source === "library" && libraryPick
+        ? { assessmentId: libraryPick.id }
+        : source === "course" && courseItemId
+          ? { courseItemId }
+          : null;
+    if (!assessmentRef) return;
     const eventTitle =
       title.trim() ||
-      `${eventTypeLabel[type]} ${selectedItem?.assessment?.title ?? ""}`.trim();
+      `${eventTypeLabel[type]} ${selectedAssessment?.title ?? ""}`.trim();
     try {
       const created = await create.mutateAsync({
         courseId,
-        courseItemId,
+        ...assessmentRef,
         type,
         target: {
           allCohorts: targetAll,
@@ -330,7 +422,7 @@ export function CreateAssessmentEventSheet({
       : startMode === "schedule"
         ? "Jadwalkan"
         : "Simpan draft";
-  const summary = !courseItemId
+  const summary = !picked
     ? "Pilih tugas untuk melanjutkan."
     : targets.isPending
       ? "Menghitung peserta…"
@@ -381,17 +473,81 @@ export function CreateAssessmentEventSheet({
             </Section>
 
             <Section step={2} title="Tugas">
-              <ResourcePicker
-                kind="ASSESSMENT"
-                id="event-assessment"
-                options={assessmentOptions}
-                value={courseItemId}
-                onValueChange={setCourseItemId}
-                loading={assessmentItems.isPending}
-                emptyLabel="Belum ada tugas yang siap di kurikulum ini"
-                description="Hanya tugas yang tampil di kurikulum dan sudah memiliki soal."
-                defaultSortLabel="Urutan kurikulum"
-              />
+              <div className="space-y-2">
+                <div
+                  role="radiogroup"
+                  aria-label="Sumber tugas"
+                  className="grid grid-cols-2 gap-2"
+                >
+                  {sourceOptions.map(([value, label]) => (
+                    <Button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={source === value}
+                      variant={source === value ? "default" : "outline"}
+                      onClick={() => setSource(value)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  {sourceHint[source]}
+                </p>
+              </div>
+              {source === "course" ? (
+                <ResourcePicker
+                  kind="ASSESSMENT"
+                  id="event-assessment"
+                  options={assessmentOptions}
+                  value={courseItemId}
+                  onValueChange={(id) => {
+                    setCourseItemId(id);
+                    pickAssessment(
+                      assessmentItems.data?.find((item) => item.id === id)
+                        ?.assessment?.timeLimitMinutes,
+                    );
+                  }}
+                  loading={assessmentItems.isPending}
+                  emptyLabel="Belum ada tugas yang siap di kurikulum ini"
+                  description="Hanya tugas yang tampil di kurikulum dan sudah memiliki soal."
+                  defaultSortLabel="Urutan kurikulum"
+                />
+              ) : (
+                <ResourcePicker
+                  kind="ASSESSMENT"
+                  id="event-assessment"
+                  options={libraryOptions}
+                  value={libraryPick?.id ?? null}
+                  onValueChange={(id) => {
+                    const next = libraryAssessments.data?.find(
+                      (entry) => entry.id === id,
+                    );
+                    if (!next) return;
+                    setLibraryPick(next);
+                    pickAssessment(next.timeLimitMinutes);
+                  }}
+                  onSearchChange={changeLibrarySearch}
+                  loading={libraryAssessments.isPending}
+                  title="Pilih dari bank tugas"
+                  emptyLabel="Belum ada tugas bersoal di bank organisasi"
+                  description="Tugas organisasi yang sudah memiliki soal, yang terbaru lebih dulu."
+                  defaultSortLabel="Terbaru"
+                  groupLabel="Tempat"
+                />
+              )}
+              {source === "library" && libraryAssessments.error ? (
+                <p className="text-destructive text-xs">
+                  {libraryAssessments.error.message}
+                </p>
+              ) : null}
+              {source === "library" && libraryPick?.placedInCourse ? (
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  Tugas ini juga ada di kurikulum, jadi murid sudah bisa melihat
+                  soalnya sebelum event dibuka.
+                </p>
+              ) : null}
               <div className="space-y-2">
                 <Label htmlFor="event-title">
                   Judul{" "}
@@ -404,8 +560,8 @@ export function CreateAssessmentEventSheet({
                   value={title}
                   maxLength={200}
                   placeholder={
-                    selectedItem?.assessment
-                      ? `${eventTypeLabel[type]} ${selectedItem.assessment.title}`
+                    selectedAssessment
+                      ? `${eventTypeLabel[type]} ${selectedAssessment.title}`
                       : type === "TRYOUT"
                         ? "Pemantapan akhir kurikulum"
                         : "Latihan pekan 1"
@@ -413,7 +569,7 @@ export function CreateAssessmentEventSheet({
                   onChange={(event) => setTitle(event.target.value)}
                 />
               </div>
-              {selectedItem?.assessment ? (
+              {selectedAssessment ? (
                 <div className="space-y-2">
                   <Label id="event-question-order">Urutan soal</Label>
                   <div
@@ -439,7 +595,7 @@ export function CreateAssessmentEventSheet({
                   <p className="text-muted-foreground text-xs">
                     {questionOrderHint(
                       questionOrder,
-                      selectedItem.assessment.shuffleQuestions,
+                      selectedAssessment.shuffleQuestions,
                     )}
                   </p>
                 </div>

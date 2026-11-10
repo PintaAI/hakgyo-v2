@@ -1066,6 +1066,7 @@ async function main() {
         id,
         organizationId: ORG_ID,
         courseId: courseIds.get(cohort.course)!,
+        assessmentId: item.assessmentId!,
         courseItemId: item.id,
         createdByMembershipId: teacherMembership.id,
         type: spec.type,

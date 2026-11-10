@@ -21,7 +21,8 @@ export type AssessmentLiveStatus = {
     scheduled: boolean;
     courseId: string;
     courseTitle: string;
-    courseItemId: string;
+    /** Null when the event runs the assessment from the library. */
+    courseItemId: string | null;
   }>;
   /** Public quizzes visitors can currently start. */
   openPublicQuizzes: Array<{ quizId: string; title: string }>;
@@ -60,7 +61,7 @@ export async function getAssessmentLiveStatus(
       // Scheduled events open automatically, so they lock the assessment as well.
       where: {
         status: { in: ["SCHEDULED", "OPEN"] },
-        courseItem: { assessmentId },
+        assessmentId,
       },
       orderBy: { createdAt: "asc" },
       select: {

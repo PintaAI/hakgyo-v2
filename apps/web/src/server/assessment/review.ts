@@ -13,6 +13,7 @@ import type {
 } from "~/server/assessment/inputs";
 import { buildAssessmentAnswerReviewUpdate } from "~/server/assessment/answer-content";
 import {
+  chapterAttemptItemId,
   isPassingScore,
   markCourseItemCompleted,
   recordAssessmentPassed,
@@ -48,9 +49,15 @@ export async function getRegisterFilters(
     db.course.findMany({
       where: {
         organizationId,
-        modules: {
-          some: { items: { some: { attempts: { some: scope } } } },
-        },
+        OR: [
+          {
+            modules: {
+              some: { items: { some: { attempts: { some: scope } } } },
+            },
+          },
+          // Library event attempts have no item; the event names the course.
+          { assessmentEvents: { some: { attempts: { some: scope } } } },
+        ],
       },
       select: { id: true, title: true },
       orderBy: { title: "asc" },
@@ -82,6 +89,7 @@ export async function getReviewAttempt(
       assessmentEvent: {
         select: {
           ...attemptSummarySelect.assessmentEvent.select,
+          courseId: true,
           participants: {
             where: { invalidatedAt: { not: null } },
             select: { userId: true },
@@ -138,7 +146,11 @@ export async function getReviewAttempt(
     cohortId,
     ...summary
   } = attempt;
-  await authorizeReview(db, { ...summary, organizationId, cohortId }, userId);
+  await authorizeReview(
+    db,
+    { ...summary, organizationId, cohortId, assessmentEvent },
+    userId,
+  );
   const invalidated = Boolean(
     assessmentEvent?.participants.some(
       (participant) => participant.userId === attempt.userId,
@@ -285,15 +297,16 @@ export async function reviewAttempt(
         attempt.assessment.passingScore,
       );
       if (passed && !attempt.assessmentEvent) {
+        const courseItemId = chapterAttemptItemId(attempt);
         await markCourseItemCompleted(
           tx,
-          attempt.courseItemId,
+          courseItemId,
           attempt.userId,
           now,
-          attempt.courseItem.module.courseId,
+          attempt.courseItem?.module.courseId,
         );
         // Dated in the learner's stored time zone; the reviewer's request carries none.
-        await recordAssessmentPassed(tx, attempt, now);
+        await recordAssessmentPassed(tx, { ...attempt, courseItemId }, now);
       }
       return {
         status: "GRADED" as const,
@@ -328,13 +341,21 @@ function teacherReviewFilter(member: {
   const simplified = member.organization.permissionMode === "SIMPLE";
   return {
     OR: [
-      simplified
-        ? { cohortId: null }
-        : {
-            courseItem: {
-              module: { course: { ownerMembershipId: member.id } },
+      ...(simplified
+        ? [{ cohortId: null }]
+        : [
+            {
+              courseItem: {
+                module: { course: { ownerMembershipId: member.id } },
+              },
             },
-          },
+            // Library event attempts have no item; the event names the course.
+            {
+              assessmentEvent: {
+                course: { ownerMembershipId: member.id },
+              },
+            },
+          ]),
       {
         cohort: {
           is: {

@@ -36,7 +36,8 @@ type AttemptResult = {
 };
 
 type AttemptIdentity = {
-  courseItemId: string;
+  /** Null for attempts of events that run an assessment from the library. */
+  courseItemId: string | null;
   startedAt: Date;
   assessmentEvent?: unknown | null;
 };
@@ -127,12 +128,9 @@ export function latestStandaloneAttemptsByItem<T extends AttemptIdentity>(
 ) {
   const latest = new Map<string, T>();
   for (const attempt of attempts ?? []) {
-    if (attempt.assessmentEvent) continue;
+    if (attempt.assessmentEvent || !attempt.courseItemId) continue;
     const current = latest.get(attempt.courseItemId);
-    if (
-      !current ||
-      attempt.startedAt.getTime() > current.startedAt.getTime()
-    ) {
+    if (!current || attempt.startedAt.getTime() > current.startedAt.getTime()) {
       latest.set(attempt.courseItemId, attempt);
     }
   }

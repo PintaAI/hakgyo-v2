@@ -569,6 +569,7 @@ describe.skipIf(!enabled)("mobile sync compose ≙ online procedures", () => {
         id: fixtureId("event"),
         organizationId,
         courseId: fixtureCourseId,
+        assessmentId: fixtureId("quiz"),
         courseItemId: fixtureId("i-quiz"),
         createdByMembershipId: ownerMembershipId,
         type: "QUICK_ASSESSMENT",

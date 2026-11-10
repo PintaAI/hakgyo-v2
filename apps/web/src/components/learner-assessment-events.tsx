@@ -20,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { assessmentEventHref } from "~/lib/learner/hrefs";
 import type { RouterOutputs } from "~/trpc/react";
 
 type LearnerEvent = RouterOutputs["assessmentEvent"]["listForLearner"][number];
@@ -90,10 +91,7 @@ export function LearnerAssessmentEvents({
       <div className="grid gap-4 md:grid-cols-2">
         {events.map((event) => {
           const attempt = event.attempts[0];
-          const href =
-            event.entry.destination === "ATTEMPT" && attempt
-              ? `/learn/${event.course.id}/items/${event.courseItem.id}/attempts/${attempt.id}`
-              : `/learn/assessments/${event.id}`;
+          const href = assessmentEventHref(event);
           const score =
             attempt?.score !== null && attempt?.maxScore
               ? formatScoreOutOf(attempt.score, attempt.maxScore)

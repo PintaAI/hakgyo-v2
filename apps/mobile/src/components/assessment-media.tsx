@@ -133,25 +133,28 @@ export function AssessmentMediaStatus({
 
 /**
  * Downloads, in the background and on Wi-Fi only, the media of events the learner can work on
- * now (open, or started), from the course bundle on the device.
+ * now (open, or started), from the course bundle on the device. Events that run an assessment
+ * from the organization's library (no course item) are not in the bundle: their media is
+ * downloaded on the event screen, from the list the server gives once the event opens.
  */
 export function useOpenEventMediaPrefetch(
   events:
     | ReadonlyArray<{
         status?: string | null;
         course: { id: string };
-        courseItem: { id: string };
+        courseItem: { id: string } | null;
         entry: { canStart?: boolean; state?: string };
       }>
     | undefined,
 ) {
   const { prefetchEventMedia } = useMobileSyncActions();
   const key = (events ?? [])
-    .filter(
-      (event) =>
-        event.entry.canStart === true || event.entry.state === "IN_PROGRESS",
+    .flatMap((event) =>
+      event.courseItem &&
+      (event.entry.canStart === true || event.entry.state === "IN_PROGRESS")
+        ? [`${event.course.id}:${event.courseItem.id}`]
+        : [],
     )
-    .map((event) => `${event.course.id}:${event.courseItem.id}`)
     .sort()
     .join(",");
   useEffect(() => {

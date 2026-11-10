@@ -36,7 +36,8 @@ type AttemptResult = {
 };
 
 type AttemptIdentity = {
-  courseItemId: string;
+  /** Null for attempts of library events, which never count as a chapter attempt. */
+  courseItemId: string | null;
   startedAt: Date;
   assessmentEvent?: unknown;
 };

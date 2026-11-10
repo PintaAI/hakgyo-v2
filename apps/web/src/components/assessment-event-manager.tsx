@@ -404,7 +404,8 @@ export function AssessmentEventManager({
           <TrophyIcon className="text-muted-foreground mx-auto size-7" />
           <h3 className="mt-3 font-medium">Belum ada latihan atau tryout</h3>
           <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">
-            Buat dari tugas yang sudah tampil di kurikulum, lalu pilih kelasnya.
+            Buat dari tugas di kurikulum atau dari bank tugas, lalu pilih
+            kelasnya.
           </p>
         </div>
       )}
@@ -455,7 +456,7 @@ export function AssessmentEventManager({
             <DialogTitle>{detail.data?.title ?? "Hasil"}</DialogTitle>
             <DialogDescription>
               {detail.data
-                ? `${eventTypeLabel[detail.data.type]} · ${targetSummary(detail.data)}. `
+                ? `${eventTypeLabel[detail.data.type]} · ${detail.data.assessment.title}${detail.data.courseItem ? "" : " (bank tugas)"} · ${targetSummary(detail.data)}. `
                 : ""}
               Peserta yang belum mengirim tidak masuk peringkat.
             </DialogDescription>
@@ -538,7 +539,10 @@ function EventCard({
             </div>
             <CardTitle>{event.title}</CardTitle>
             <CardDescription className="mt-1">
-              {event.courseItem.assessment?.title}
+              {event.assessment.title}
+              {event.courseItem ? null : (
+                <span className="text-muted-foreground/80"> · Bank tugas</span>
+              )}
             </CardDescription>
           </div>
           <TrophyIcon className="text-muted-foreground size-5 shrink-0" />

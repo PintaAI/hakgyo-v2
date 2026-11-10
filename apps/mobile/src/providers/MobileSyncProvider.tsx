@@ -488,10 +488,19 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
         // online fallback reads the tRPC cache.
         utils.assessment.getMyAttempt.setData({ attemptId }, result.assessment);
         if (result.assessmentDetail) {
-          utils.assessment.getForCourseItem.setData(
-            { attemptId, courseItemId: result.assessment.courseItemId },
-            result.assessmentDetail,
-          );
+          const courseItemId = result.assessment.courseItemId;
+          // Library event attempts (no course item) are read through the attempt.
+          if (courseItemId) {
+            utils.assessment.getForCourseItem.setData(
+              { attemptId, courseItemId },
+              result.assessmentDetail,
+            );
+          } else {
+            utils.assessment.getForAttempt.setData(
+              { attemptId },
+              result.assessmentDetail,
+            );
+          }
         }
         await persistAttempt(queryClient, localData, {
           attempt: result.assessment,
@@ -831,13 +840,19 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
           { attemptId: input.attempt.id },
           input.attempt,
         );
-        utils.assessment.getForCourseItem.setData(
-          {
-            courseItemId: input.attempt.courseItemId,
-            attemptId: input.attempt.id,
-          },
-          input.assessmentDetail,
-        );
+        const courseItemId = input.attempt.courseItemId;
+        // Library event attempts (no course item) are read through the attempt.
+        if (courseItemId) {
+          utils.assessment.getForCourseItem.setData(
+            { courseItemId, attemptId: input.attempt.id },
+            input.assessmentDetail,
+          );
+        } else {
+          utils.assessment.getForAttempt.setData(
+            { attemptId: input.attempt.id },
+            input.assessmentDetail,
+          );
+        }
         if (localData) await persistAttempt(queryClient, localData, input);
       },
       prefetchLesson,

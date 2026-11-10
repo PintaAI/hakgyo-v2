@@ -1178,6 +1178,7 @@ export function createMobileSyncEngine({
           protocol: SYNC_PROTOCOL,
           organizationId,
           includeScheduledEvents: true,
+          includeLibraryEvents: true,
           knownIndexToken:
             local && !local.stale && !force ? local.token : undefined,
         });

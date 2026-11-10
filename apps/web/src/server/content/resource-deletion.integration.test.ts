@@ -93,6 +93,7 @@ test("deletes an assessment and all related learner progress atomically", () =>
       data: {
         organizationId: member.organizationId,
         courseId: course.id,
+        assessmentId: assessment.id,
         courseItemId: item.id,
         createdByMembershipId: member.id,
         durationMinutes: 30,
@@ -185,6 +186,7 @@ test("deletes a closed assessment event and its attempts without deleting the as
       data: {
         closedAt: new Date(),
         courseId: course.id,
+        assessmentId: assessment.id,
         courseItemId: item.id,
         createdByMembershipId: member.id,
         durationMinutes: 30,

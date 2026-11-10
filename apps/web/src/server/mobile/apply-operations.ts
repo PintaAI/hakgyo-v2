@@ -167,6 +167,20 @@ export type ApplySyncOperationsResult = {
   affectedCourseItemIds: string[];
 };
 
+/**
+ * An attempt's assessment for the device: through its course item, or through the attempt for a
+ * library assessment event, whose attempts have none.
+ */
+export function attemptAssessment(
+  reader: AssessmentCaller,
+  courseItemId: string | null,
+  attemptId: string,
+) {
+  return courseItemId
+    ? reader.getForCourseItem({ courseItemId, attemptId })
+    : reader.getForAttempt({ attemptId });
+}
+
 export async function applySyncOperations(
   ctx: LearnerContext,
   input: { operations: Array<z.input<typeof syncOperation>> },
@@ -304,8 +318,9 @@ export async function applySyncOperations(
       });
       if (!receipt) throw new TRPCError({ code: "NOT_FOUND" });
       // Writes below may land even when the operation ultimately fails, so
-      // the item counts as affected from here on.
-      affectedCourseItemIds.add(receipt.courseItemId);
+      // the item counts as affected from here on (library event attempts
+      // have no item).
+      if (receipt.courseItemId) affectedCourseItemIds.add(receipt.courseItemId);
       const entries = operation.entries;
       if (entries?.length) {
         // Runtime clients: answers count by when they were given (checked
@@ -349,10 +364,7 @@ export async function applySyncOperations(
         });
         const [current, assessmentDetail] = await Promise.all([
           reader.getMyAttempt({ attemptId: operation.attemptId }),
-          reader.getForCourseItem({
-            courseItemId: receipt.courseItemId,
-            attemptId: operation.attemptId,
-          }),
+          attemptAssessment(reader, receipt.courseItemId, operation.attemptId),
         ]);
         // Like the legacy path, acknowledge only once every answer the
         // learner gave in time is stored, so the device keeps answers the
@@ -465,10 +477,7 @@ export async function applySyncOperations(
       });
       const [current, assessmentDetail] = await Promise.all([
         reader.getMyAttempt({ attemptId: operation.attemptId }),
-        reader.getForCourseItem({
-          courseItemId: receipt.courseItemId,
-          attemptId: operation.attemptId,
-        }),
+        attemptAssessment(reader, receipt.courseItemId, operation.attemptId),
       ]);
       results.push({
         id: operation.id,
@@ -521,16 +530,20 @@ export const startAssessmentInput = z.object({
  */
 async function requireRuntimeFor(
   ctx: LearnerContext,
-  courseItemId: string,
+  source: { courseItemId: string } | { assessmentId: string },
   runtimeVersion: number | undefined,
 ) {
   const version = runtimeVersion ?? 1;
+  const assessmentWhere =
+    "courseItemId" in source
+      ? { courseItems: { some: { id: source.courseItemId } } }
+      : { id: source.assessmentId };
   if (version >= GROUPS_RUNTIME_VERSION) return;
   // Builds before groups would show grouped questions without their shared passage or picture.
   const grouped = await ctx.db.assessmentQuestion.count({
     where: {
       groupId: { not: null },
-      assessment: { courseItems: { some: { id: courseItemId } } },
+      assessment: assessmentWhere,
     },
   });
   if (grouped) {
@@ -543,7 +556,7 @@ async function requireRuntimeFor(
   if (version >= QUESTION_RULES_RUNTIME_VERSION) return;
   const sections = await ctx.db.assessmentSection.findMany({
     where: {
-      assessment: { courseItems: { some: { id: courseItemId } } },
+      assessment: assessmentWhere,
       questions: { some: {} },
     },
     select: {
@@ -578,7 +591,11 @@ export async function startAssessmentForLearner(
     ...ctx,
     requestCache: createRequestCache(),
   });
-  await requireRuntimeFor(ctx, input.courseItemId, input.runtimeVersion);
+  await requireRuntimeFor(
+    ctx,
+    { courseItemId: input.courseItemId },
+    input.runtimeVersion,
+  );
   const started = await assessment.startAttempt({
     courseItemId: input.courseItemId,
     cohortId: input.cohortId,
@@ -611,20 +628,25 @@ export async function startEventAssessmentForLearner(
   const assessment = assessmentRouter.createCaller(scopedCtx);
   const event = await ctx.db.assessmentEvent.findUnique({
     where: { id: input.eventId },
-    select: { courseItemId: true },
+    select: { assessmentId: true },
   });
   if (event) {
-    await requireRuntimeFor(ctx, event.courseItemId, input.runtimeVersion);
+    await requireRuntimeFor(
+      ctx,
+      { assessmentId: event.assessmentId },
+      input.runtimeVersion,
+    );
   }
   const started = await assessmentEvent.startAttempt({
     eventId: input.eventId,
     shuffleSeed: input.shuffleSeed,
   });
   const attempt = await assessment.getMyAttempt({ attemptId: started.id });
-  const assessmentDetail = await assessment.getForCourseItem({
-    courseItemId: attempt.courseItemId,
-    attemptId: attempt.id,
-  });
+  const assessmentDetail = await attemptAssessment(
+    assessment,
+    attempt.courseItemId,
+    attempt.id,
+  );
   return { attempt, assessmentDetail, serverNow: new Date() };
 }
 

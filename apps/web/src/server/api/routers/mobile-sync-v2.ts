@@ -128,6 +128,12 @@ export const mobileSyncV2Router = createTRPCRouter({
         knownIndexToken: z.string().min(1).optional(),
         /** Set by app versions that can show scheduled (upcoming) assessment events. */
         includeScheduledEvents: z.boolean().optional(),
+        /**
+         * Set by app versions that open events running a library assessment (no course item).
+         * Older builds read `event.courseItem` and `attempt.courseItemId` unguarded, so they get
+         * neither those events nor their attempts.
+         */
+        includeLibraryEvents: z.boolean().optional(),
       }),
     )
     .query(async ({ ctx, input }): Promise<SyncIndexResult<LearnerIndex>> => {

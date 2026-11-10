@@ -64,17 +64,24 @@ export async function lockEventTargets(
   return targetsOf(event);
 }
 
+/**
+ * An event needs a complete assessment and, when it was picked from the course, the placement
+ * must still be shown there. A library assessment has no placement.
+ */
 async function assertEventAssessmentReady(
   db: Db,
-  courseItem: { isPublished: boolean; assessmentId: string | null },
+  event: {
+    assessmentId: string;
+    courseItem: { isPublished: boolean } | null;
+  },
 ) {
-  if (!courseItem.isPublished || !courseItem.assessmentId) {
+  if (event.courseItem && !event.courseItem.isPublished) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "Tugas yang dipilih sudah tidak tampil di course.",
     });
   }
-  await assertAssessmentComplete(db, courseItem.assessmentId);
+  await assertAssessmentComplete(db, event.assessmentId);
 }
 
 const lifecycleEventSelect = {
@@ -86,7 +93,8 @@ const lifecycleEventSelect = {
   closesAt: true,
   notifyOnOpen: true,
   createdByMembershipId: true,
-  courseItem: { select: { isPublished: true, assessmentId: true } },
+  assessmentId: true,
+  courseItem: { select: { isPublished: true } },
   cohorts: { select: { cohortId: true } },
 } satisfies Prisma.AssessmentEventSelect;
 
@@ -167,7 +175,7 @@ export async function openAssessmentEvent(
           message: "Waktu tutup harus di masa depan.",
         });
       }
-      await assertEventAssessmentReady(tx, event.courseItem);
+      await assertEventAssessmentReady(tx, event);
       if (event.allCohorts) await addAllCohortTargets(tx, event);
       else if (event.cohorts.length === 0) {
         throw new TRPCError({
@@ -246,7 +254,7 @@ export async function scheduleAssessmentEvent(
         message: "Waktu tutup harus setelah waktu buka.",
       });
     }
-    await assertEventAssessmentReady(tx, event.courseItem);
+    await assertEventAssessmentReady(tx, event);
     if (event.allCohorts) await addAllCohortTargets(tx, event);
     else if (event.cohorts.length === 0) {
       throw new TRPCError({

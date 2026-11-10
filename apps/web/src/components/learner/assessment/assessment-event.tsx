@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import Link from "~/components/link";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { assessmentAttemptPresentation } from "~/lib/learner/assessment-state";
+import { assessmentEventAttemptHref } from "~/lib/learner/hrefs";
 import { dateLabel } from "~/lib/learner/study";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -36,9 +37,9 @@ export function AssessmentEvent({
   const attempt = event.attempts[0];
   const attemptState = assessmentAttemptPresentation(attempt);
   const invalidated = Boolean(event.participants[0]?.invalidatedAt);
-  const assessment = event.courseItem.assessment;
+  const assessment = event.assessment;
   const attemptHref = (attemptId: string) =>
-    `/learn/${event.course.id}/items/${event.courseItem.id}/attempts/${attemptId}`;
+    assessmentEventAttemptHref(event, attemptId);
   const opensAt = event.status === "SCHEDULED" ? event.opensAt : null;
   // Download the question media ahead once the event is open, while the connection is good.
   const media = useAssessmentMediaPreload(

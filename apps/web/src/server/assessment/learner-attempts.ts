@@ -19,6 +19,7 @@ import {
 } from "~/server/assessment/learner-view";
 import { buildAssessmentAnswerContentUpdate } from "~/server/assessment/answer-content";
 import {
+  chapterAttemptItemId,
   gradableAttemptSelect,
   gradeInProgressAttempt,
   lockAttemptStart,
@@ -37,6 +38,61 @@ import {
   isUniqueConstraintError,
   withTransactionRetry,
 } from "~/server/db-retry";
+
+/**
+ * The learner's view of an event attempt's assessment, found from the attempt alone: the only way
+ * to load an attempt of a library assessment (`AssessmentEvent.courseItemId` null), which has no
+ * course item. Takes the assessment the attempt ran, and the event's course for the context.
+ */
+export async function getLearnerAttemptAssessment(
+  db: PrismaClient,
+  input: { attemptId: string },
+  userId: string,
+) {
+  const [attempt, owner] = await Promise.all([
+    db.assessmentAttempt.findFirst({
+      where: { id: input.attemptId, userId },
+      select: learnerAssessmentAttemptSelect(userId),
+    }),
+    db.assessmentAttempt.findFirst({
+      where: { id: input.attemptId, userId },
+      select: {
+        assessmentId: true,
+        courseItemId: true,
+        assessmentEvent: {
+          select: {
+            courseId: true,
+            course: { select: { id: true, title: true } },
+          },
+        },
+      },
+    }),
+  ]);
+  if (!attempt || !owner) throw new TRPCError({ code: "NOT_FOUND" });
+  const event = owner.assessmentEvent;
+  const participant = attempt.assessmentEvent?.participants[0];
+  // Only event attempts: chapter attempts load through their course item.
+  if (!event || !participant || participant.invalidatedAt) {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+  const assessment = await db.assessment.findUnique({
+    where: { id: owner.assessmentId },
+    select: learnerAssessmentItemSelect.assessment.select,
+  });
+  if (!assessment) throw new TRPCError({ code: "NOT_FOUND" });
+  return shapeLearnerAssessment({
+    item: {
+      id: owner.courseItemId ?? owner.assessmentId,
+      module: { courseId: event.courseId, title: "", course: event.course },
+      assessment,
+    },
+    attemptId: input.attemptId,
+    attempt,
+    latestStandaloneAttempt: null,
+    standaloneAttemptCount: 0,
+    eligibleCohorts: [],
+  });
+}
 
 /** The learner's view of a placed assessment, optionally for one of their attempts. */
 export async function getLearnerAssessment(
@@ -563,10 +619,14 @@ export async function saveAnswers(
   if (attempt.assessmentEvent) {
     requireOpenEventParticipation(attempt.assessmentEvent);
   } else if (attempt.status === "IN_PROGRESS") {
-    await requireInProgressAttemptAccess(db, attempt.courseItemId, userId);
+    await requireInProgressAttemptAccess(
+      db,
+      chapterAttemptItemId(attempt),
+      userId,
+    );
   } else {
     await requireCourseItemAccess({
-      courseItemId: attempt.courseItemId,
+      courseItemId: chapterAttemptItemId(attempt),
       userId,
     });
   }
@@ -672,7 +732,7 @@ export async function submitAttempt(
     requireEventParticipationForSync(attempt.assessmentEvent, new Date());
   } else {
     await requireCourseItemAccess({
-      courseItemId: attempt.courseItemId,
+      courseItemId: chapterAttemptItemId(attempt),
       userId,
     });
   }
@@ -723,14 +783,15 @@ export async function submitAttempt(
       });
       await recordAssessmentSubmitted(tx, full, now);
       if (graded.passed && !full.assessmentEvent) {
+        const courseItemId = chapterAttemptItemId(full);
         await markCourseItemCompleted(
           tx,
-          full.courseItemId,
+          courseItemId,
           userId,
           now,
-          full.courseItem.module.courseId,
+          full.courseItem?.module.courseId,
         );
-        await recordAssessmentPassed(tx, full, now);
+        await recordAssessmentPassed(tx, { ...full, courseItemId }, now);
       }
       return {
         status: graded.status,
@@ -817,6 +878,7 @@ export async function getMyAttempt(
           title: true,
           type: true,
           status: true,
+          course: { select: { id: true, title: true } },
           participants: {
             where: { userId },
             select: { invalidatedAt: true, invalidationReason: true },
@@ -840,7 +902,7 @@ export async function getMyAttempt(
   if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
   if (!attempt.assessmentEvent) {
     await requireCourseItemAccess({
-      courseItemId: attempt.courseItemId,
+      courseItemId: chapterAttemptItemId(attempt),
       userId,
     });
   }
