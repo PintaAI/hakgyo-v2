@@ -1,5 +1,4 @@
 import {
-  assessmentRef,
   audioClip,
   b,
   callout,
@@ -247,7 +246,6 @@ export const m6ReadingWriting: ModuleContent = {
           "Susun kata",
           "Susun kata dari huruf-hurufnya, sama seperti saat mengetik.",
         ),
-        assessmentRef("m6-quiz"),
         callout(
           "success",
           b("Ingat: "),

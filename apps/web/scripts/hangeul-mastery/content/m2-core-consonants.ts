@@ -1,5 +1,4 @@
 import {
-  assessmentRef,
   audioClip,
   b,
   callout,
@@ -10,7 +9,6 @@ import {
   p,
   rules,
   syllableGrid,
-  vocabularyRef,
 } from "../blocks";
 import type { ModuleContent, QuestionContent } from "../content-types";
 
@@ -264,7 +262,6 @@ export const m2CoreConsonants: ModuleContent = {
           VOWELS,
           { showRomanization: true },
         ),
-        vocabularyRef("m2-vocab-nm-sb"),
         game(
           "syllable-forge",
           "core-consonants",
@@ -556,14 +553,12 @@ export const m2CoreConsonants: ModuleContent = {
           "우리나라",
           "우리나라: negara kita, sebutan orang Korea untuk Korea",
         ),
-        vocabularyRef("m2-vocab-gdj-hr"),
         game(
           "stroke-master",
           "core-consonants",
           "Ulangi semua konsonan inti",
           "Sepuluh konsonan inti dan enam vokal dasar. Ulangi sampai kamu bisa menjawab tanpa ragu.",
         ),
-        assessmentRef("m2-quiz"),
         callout(
           "success",
           b("Ingat: "),

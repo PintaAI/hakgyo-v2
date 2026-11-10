@@ -1,5 +1,4 @@
 import {
-  assessmentRef,
   audioClip,
   b,
   callout,
@@ -10,7 +9,6 @@ import {
   p,
   rules,
   syllableGrid,
-  vocabularyRef,
 } from "../blocks";
 import type { ModuleContent, QuestionContent } from "../content-types";
 
@@ -397,14 +395,12 @@ export const m1BasicVowels: ModuleContent = {
         syllableGrid("Semua vokal dasar", ["ㅇ"], VOWELS, {
           showRomanization: true,
         }),
-        vocabularyRef("m1-vocab-a"),
         game(
           "syllable-forge",
           "basic-vowels",
           "Susun blok vokal",
           "Susun ㅇ dengan keenam vokal. Tegak di kanan, datar di bawah.",
         ),
-        assessmentRef("m1-quiz"),
         callout(
           "success",
           b("Ingat: "),

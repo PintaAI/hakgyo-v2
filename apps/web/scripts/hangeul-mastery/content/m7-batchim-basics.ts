@@ -1,5 +1,4 @@
 import {
-  assessmentRef,
   audioClip,
   b,
   callout,
@@ -10,7 +9,6 @@ import {
   p,
   rules,
   syllableGrid,
-  vocabularyRef,
 } from "../blocks";
 import type {
   BlockNoteBlock,
@@ -200,12 +198,6 @@ export const m7BatchimBasics: ModuleContent = {
       description: "ㄹ di bawah blok dibaca l, bukan r.",
       minutes: 6,
       blocks: [
-        callout(
-          "info",
-          "ㄹ di awal blok dibaca r ringan. Di bawah blok, ㄹ dibaca ",
-          b("l"),
-          ".",
-        ),
         rules({
           title: "Tiga bunyi ㄹ",
           columns: ["Posisi", "Dibaca", "Contoh"],
@@ -407,7 +399,6 @@ export const m7BatchimBasics: ModuleContent = {
           ["ㅏ", "ㅓ", "ㅗ", "ㅜ", "ㅣ"],
           { final: "ㄱ" },
         ),
-        vocabularyRef("m7-vocab-batchim"),
         game(
           "syllable-forge",
           "batchim",
@@ -420,7 +411,6 @@ export const m7BatchimBasics: ModuleContent = {
           "Susun kata batchim",
           "Susun 한국, 사랑, 선생님, dan kata lain dari huruf-hurufnya.",
         ),
-        assessmentRef("m7-quiz"),
         callout(
           "success",
           b("Ingat: "),

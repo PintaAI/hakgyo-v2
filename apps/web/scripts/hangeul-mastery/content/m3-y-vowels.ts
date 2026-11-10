@@ -1,5 +1,4 @@
 import {
-  assessmentRef,
   audioClip,
   b,
   callout,
@@ -11,7 +10,6 @@ import {
   p,
   rules,
   syllableGrid,
-  vocabularyRef,
 } from "../blocks";
 import type { ModuleContent, QuestionContent } from "../content-types";
 
@@ -203,12 +201,6 @@ export const m3YVowels: ModuleContent = {
       description: "ㅐ dan ㅔ bunyinya sama, jadi kamu hafalkan ejaannya.",
       minutes: 6,
       blocks: [
-        callout(
-          "info",
-          "ㅐ dan ㅔ ditulis berbeda, tapi sekarang ",
-          b("bunyinya sama"),
-          ". Tugasmu hanya menghafal ejaan tiap kata.",
-        ),
         letters(
           "Huruf baru",
           [
@@ -394,14 +386,12 @@ export const m3YVowels: ModuleContent = {
           "Kamu: 여기요, 메뉴 주세요. = Permisi, minta menunya.",
         ),
         audioClip("이거 주세요", "Kamu: 이거 주세요. = Minta yang ini."),
-        vocabularyRef("m3-vocab-f"),
         game(
           "word-builder",
           "y-vowels",
           "Susun kata",
           "Susun kata seperti 우유, 노래, dan 가게 dari suku katanya.",
         ),
-        assessmentRef("m3-quiz"),
         callout(
           "success",
           b("Ingat: "),

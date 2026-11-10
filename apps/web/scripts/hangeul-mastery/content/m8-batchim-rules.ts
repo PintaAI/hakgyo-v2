@@ -1,5 +1,4 @@
 import {
-  assessmentRef,
   audioClip,
   b,
   callout,
@@ -367,7 +366,6 @@ export const m8BatchimRules: ModuleContent = {
           "Susun kata batchim",
           "Ulangi semua kata dari modul batchim.",
         ),
-        assessmentRef("m8-quiz"),
         callout(
           "success",
           b("Ingat: "),

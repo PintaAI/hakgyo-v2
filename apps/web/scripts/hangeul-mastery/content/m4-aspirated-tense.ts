@@ -1,5 +1,4 @@
 import {
-  assessmentRef,
   audioClip,
   b,
   callout,
@@ -10,7 +9,6 @@ import {
   p,
   rules,
   syllableGrid,
-  vocabularyRef,
 } from "../blocks";
 import type { ModuleContent, QuestionContent } from "../content-types";
 
@@ -184,7 +182,6 @@ export const m4AspiratedTense: ModuleContent = {
         ),
         audioClip("카메라", "카메라 = kamera"),
         audioClip("아파트", "아파트 = apartemen"),
-        vocabularyRef("m4-vocab-g"),
         game(
           "stroke-master",
           "aspirated-tense",
@@ -376,7 +373,6 @@ export const m4AspiratedTense: ModuleContent = {
         p("Untuk belanja: baca dulu, lalu putar."),
         audioClip("너무 비싸요", "너무 비싸요! = Mahal sekali!"),
         audioClip("싸게 해 주세요", "싸게 해 주세요. = Tolong kasih murah."),
-        vocabularyRef("m4-vocab-h"),
         game(
           "syllable-forge",
           "aspirated-tense",
@@ -455,10 +451,6 @@ export const m4AspiratedTense: ModuleContent = {
         "Latih telinga dan mulut untuk membedakan polos, berhembus, dan tegang.",
       minutes: 8,
       blocks: [
-        callout(
-          "info",
-          "Banyak konsonan punya tiga versi: polos, berhembus, dan tegang. Pelajaran ini melatih telinga dan mulutmu untuk membedakannya.",
-        ),
         rules({
           title: "Tiga versi, tiga cara",
           intro:
@@ -546,7 +538,6 @@ export const m4AspiratedTense: ModuleContent = {
           "Susun kata",
           "Susun kata seperti 커피, 토끼, dan 비싸다 dari suku katanya.",
         ),
-        assessmentRef("m4-quiz"),
         callout(
           "success",
           b("Ingat: "),

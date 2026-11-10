@@ -1,4 +1,4 @@
-import { assessmentRef, audioClip, b, callout, lessonPage, p } from "../blocks";
+import { audioClip, b, callout, lessonPage, p } from "../blocks";
 import type {
   BlockNoteBlock,
   ModuleContent,
@@ -313,7 +313,6 @@ export const m9FinalExam: ModuleContent = {
           b("nilai 80"),
           " (24 benar). Tidak ada batas waktu, dan kalau belum lulus kamu bisa mencoba lagi.",
         ),
-        assessmentRef("m9-mastery-exam"),
         callout(
           "success",
           b("Kamu pasti bisa. "),

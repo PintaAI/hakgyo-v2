@@ -1,5 +1,4 @@
 import {
-  assessmentRef,
   audioClip,
   b,
   callout,
@@ -10,7 +9,6 @@ import {
   p,
   rules,
   syllableGrid,
-  vocabularyRef,
 } from "../blocks";
 import type { ModuleContent, QuestionContent } from "../content-types";
 
@@ -302,14 +300,12 @@ export const m5WVowels: ModuleContent = {
           NO_ROMANIZATION,
         ),
         audioClip("최고예요!", "최고예요! = Yang terbaik!"),
-        vocabularyRef("m5-vocab-i"),
         game(
           "word-builder",
           "w-vowels",
           "Susun kata dengan vokal W",
           "Susun 회사, 가위, 과자, dan kata lain dari huruf-hurufnya.",
         ),
-        assessmentRef("m5-quiz"),
         callout(
           "success",
           b("Ingat: "),
