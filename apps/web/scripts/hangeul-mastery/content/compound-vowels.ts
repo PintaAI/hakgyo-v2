@@ -50,22 +50,22 @@ const COMPOUND = [
   "ㅢ",
 ];
 
-// Chapter 3: every compound vowel, then the map from Indonesian vowels. The
+// Chapter 3: every compound vowel, then the Indonesian vowels against the Korean ones. The
 // module key predates the vowels-first order (it was chapter 5, the W vowels)
 // and stays for progress.
 export const compoundVowels: ModuleContent = {
   key: "m5-w-vowels",
-  title: "Vokal gabungan",
+  title: "Vokal rangkap",
   description:
-    "ㅐ ㅔ (e di bebek), vokal W, dan ㅚ ㅟ ㅢ. Setelah bab ini kamu kenal semua vokal Hangeul.",
+    "Sebelas vokal rangkap, lalu perbandingan vokal Indonesia dan vokal Korea. Setelah bab ini kamu kenal semua vokal Hangeul.",
   items: [
     {
       type: "material",
       key: "m3-ae-e",
-      title: "ㅐ ㅔ ㅒ ㅖ: e di bebek",
+      title: "Vokal rangkap",
       description:
-        'Dua ejaan untuk satu bunyi yang sudah kamu kenal: "e" di "bebek".',
-      minutes: 5,
+        "Sebelas vokal yang dibuat dari dua vokal: ㅐ ㅔ ㅒ ㅖ, ㅘ ㅝ ㅙ ㅞ, dan ㅚ ㅟ ㅢ.",
+      minutes: 8,
       blocks: [
         lessonPage({
           theme: "rose",
@@ -73,52 +73,64 @@ export const compoundVowels: ModuleContent = {
           imageAlt: "Teman kagum melihat apel di pasar buah",
           chapter: 3,
           title: "ㅐ ㅔ ㅘ ㅝ ㅚ ㅟ ㅢ",
-          subtitle: "Vokal gabungan",
+          subtitle: "Vokal rangkap",
           question: "와!",
           answer: "우와!",
           cards: [
             {
-              label: "Sudah kamu kenal",
-              title: "ㅐ ㅔ",
-              description: "e di bebek, dua ejaan",
+              label: "Huruf baru",
+              title: "11 vokal rangkap",
+              description: "Dua vokal jadi satu",
             },
             {
-              label: "Bunyi w",
-              title: "ㅘ ㅝ ㅙ ㅞ",
-              description: "ㅗ atau ㅜ + vokal lain",
+              label: "Tips",
+              title: "a i u e o",
+              description: "Vokal Indonesia di Hangeul",
             },
             {
-              label: "Tambah ㅣ",
-              title: "ㅚ ㅟ ㅢ",
-              description: "Tiga vokal terakhir",
+              label: "Kosakata",
+              title: "왜 · 예의 · 위",
+              description: "Kata dari semua vokal",
             },
           ],
           goals: [
             "Membaca semua vokal Hangeul.",
-            "Tahu vokal mana yang bunyinya sama.",
+            "Tahu vokal mana yang bunyinya sama dengan vokal Indonesia.",
           ],
         }),
         rules({
-          title: "Vokal tegak + ㅣ",
-          intro: "Tambahkan ㅣ di kanan vokal tegak, jadilah bunyi e.",
-          columns: ["Gabungan", "Jadi", "Dibaca"],
+          title: "Tiga cara merangkap vokal",
+          intro:
+            "Semua vokal rangkap dibuat dari vokal yang sudah kamu pelajari.",
+          columns: ["Cara", "Jadi", "Dibaca"],
           rows: [
-            { when: "ㅏ + ㅣ", result: "ㅐ", example: '애 "e"' },
-            { when: "ㅓ + ㅣ", result: "ㅔ", example: '에 "e"' },
-            { when: "ㅑ + ㅣ", result: "ㅒ", example: '얘 "ye"' },
-            { when: "ㅕ + ㅣ", result: "ㅖ", example: '예 "ye"' },
+            {
+              when: "Vokal tegak + ㅣ",
+              result: "ㅐ ㅔ ㅒ ㅖ",
+              example: "e, e, ye, ye",
+            },
+            {
+              when: "ㅗ atau ㅜ + vokal",
+              result: "ㅘ ㅝ ㅙ ㅞ",
+              example: "wa, wo, we, we",
+            },
+            {
+              when: "Vokal mendatar + ㅣ",
+              result: "ㅚ ㅟ ㅢ",
+              example: "we, wi, ui",
+            },
           ],
           tip: {
-            title: "Dua ejaan, satu bunyi",
-            text: "ㅐ dan ㅔ sekarang dibaca sama. Hafalkan ejaannya per kata.",
+            title: "Banyak yang bunyinya sama",
+            text: "ㅐ = ㅔ, ㅒ = ㅖ, dan ㅙ = ㅚ = ㅞ. Hafalkan ejaannya per kata.",
           },
         }),
         letters(
-          "Huruf baru",
+          "Vokal + ㅣ: bunyi e",
           [
             {
               character: "ㅐ",
-              cue: 'Sama dengan "e" di "bebek".',
+              cue: 'Seperti "e" di "bebek". Bentuknya ㅏ + ㅣ.',
               romanization: "ae",
               say: "애",
               example: {
@@ -129,16 +141,15 @@ export const compoundVowels: ModuleContent = {
             },
             {
               character: "ㅔ",
-              cue: 'Sama dengan ㅐ: "e" di "bebek".',
+              cue: "Sama dengan ㅐ. Bentuknya ㅓ + ㅣ.",
               romanization: "e",
               say: "에",
             },
             {
               character: "ㅒ",
-              cue: '"y" lalu e.',
+              cue: '"y" lalu e. Jarang dipakai.',
               romanization: "yae",
               say: "얘",
-              note: "Jarang dipakai.",
             },
             {
               character: "ㅖ",
@@ -154,125 +165,46 @@ export const compoundVowels: ModuleContent = {
           ],
           ROMANIZATION,
         ),
-        contrast(
-          "Bunyi sama, ejaan beda",
-          "Putar tiap pasangan. Keduanya terdengar sama.",
-          [
-            {
-              items: [
-                { text: "애", romanization: "ae" },
-                { text: "에", romanization: "e" },
-              ],
-            },
-            {
-              items: [
-                { text: "얘", romanization: "yae" },
-                { text: "예", romanization: "ye" },
-              ],
-            },
-          ],
-          ROMANIZATION,
-        ),
-      ],
-    },
-    {
-      type: "material",
-      key: "m5-wa-wo-wae-we",
-      title: "ㅘ ㅝ ㅙ ㅞ: bunyi w",
-      description: "ㅗ atau ㅜ yang disambung vokal lain jadi bunyi w.",
-      minutes: 5,
-      blocks: [
-        rules({
-          title: "Dua vokal jadi satu",
-          intro:
-            'Ucapkan ㅗ atau ㅜ dengan cepat, lalu langsung ke vokal berikutnya. Bibir yang bulat membuka, jadi terdengar "w".',
-          columns: ["Gabungan", "Jadi", "Dibaca"],
-          rows: [
-            { when: "ㅗ + ㅏ", result: "ㅘ", example: '와 "wa"' },
-            { when: "ㅜ + ㅓ", result: "ㅝ", example: "워 w + ㅓ" },
-            { when: "ㅗ + ㅐ", result: "ㅙ", example: '왜 "we"' },
-            { when: "ㅜ + ㅔ", result: "ㅞ", example: '웨 "we"' },
-          ],
-          tip: {
-            title: "Pasangannya tetap",
-            text: "ㅗ hanya bergabung dengan ㅏ dan ㅐ. ㅜ hanya dengan ㅓ dan ㅔ.",
-          },
-        }),
         letters(
-          "Huruf baru",
+          "ㅗ atau ㅜ + vokal: bunyi w",
           [
             {
               character: "ㅘ",
-              cue: 'Seperti "wa" di "wajah".',
+              cue: 'ㅗ + ㅏ. Seperti "wa" di "wajah".',
               romanization: "wa",
               say: "와",
               example: { word: "우와", meaning: "wah!", romanization: "uwa" },
             },
             {
               character: "ㅝ",
-              cue: "Bibir bulat dulu, lalu buka ke ㅓ yang santai.",
+              cue: "ㅜ + ㅓ. Bibir bulat dulu, lalu buka ke ㅓ yang santai.",
               romanization: "wo",
               say: "워",
-              note: 'Bukan "wo" dengan o bulat: ujungnya ㅓ.',
             },
             {
               character: "ㅙ",
-              cue: '"w" lalu "e" di "bebek".',
+              cue: 'ㅗ + ㅐ. "w" lalu e di "bebek".',
               romanization: "wae",
               say: "왜",
               example: { word: "왜", meaning: "kenapa", romanization: "wae" },
             },
             {
               character: "ㅞ",
-              cue: "Bunyinya sama dengan ㅙ.",
+              cue: "ㅜ + ㅔ. Bunyinya sama dengan ㅙ.",
               romanization: "we",
               say: "웨",
-              note: "Jarang, banyak muncul di kata serapan.",
             },
           ],
           ROMANIZATION,
         ),
-        contrast(
-          "ㅘ atau ㅝ?",
-          "Putar, lalu dengarkan ujungnya.",
-          [
-            {
-              items: [
-                { text: "와", romanization: "wa" },
-                { text: "워", romanization: "wo" },
-              ],
-              note: "ㅘ berakhir ㅏ yang terbuka lebar, ㅝ berakhir ㅓ.",
-            },
-          ],
-          ROMANIZATION,
-        ),
-      ],
-    },
-    {
-      type: "material",
-      key: "m5-oe-wi-ui",
-      title: "ㅚ ㅟ ㅢ: tambah ㅣ",
-      description: "Tiga vokal terakhir, lalu semua vokal gabungan.",
-      minutes: 6,
-      blocks: [
-        rules({
-          title: "Vokal mendatar + ㅣ",
-          columns: ["Gabungan", "Jadi", "Dibaca"],
-          rows: [
-            { when: "ㅗ + ㅣ", result: "ㅚ", example: '외 "we"' },
-            { when: "ㅜ + ㅣ", result: "ㅟ", example: '위 "wi"' },
-            { when: "ㅡ + ㅣ", result: "ㅢ", example: "의 ㅡ cepat ke ㅣ" },
-          ],
-        }),
         letters(
-          "Huruf baru",
+          "Vokal mendatar + ㅣ",
           [
             {
               character: "ㅚ",
-              cue: '"we", sama dengan ㅙ.',
+              cue: 'ㅗ + ㅣ, tapi dibaca "we", sama dengan ㅙ.',
               romanization: "oe",
               say: "외",
-              note: "Bentuknya ㅗ + ㅣ, tapi dibaca we.",
               example: {
                 word: "외워요",
                 meaning: "menghafal",
@@ -281,14 +213,14 @@ export const compoundVowels: ModuleContent = {
             },
             {
               character: "ㅟ",
-              cue: 'Seperti "wi" di "wisata".',
+              cue: 'ㅜ + ㅣ. Seperti "wi" di "wisata".',
               romanization: "wi",
               say: "위",
               example: { word: "위", meaning: "atas", romanization: "wi" },
             },
             {
               character: "ㅢ",
-              cue: "ㅡ dengan bibir datar, cepat meluncur ke ㅣ.",
+              cue: "ㅡ + ㅣ. ㅡ dengan bibir datar, cepat meluncur ke ㅣ.",
               romanization: "ui",
               say: "의",
               example: {
@@ -301,9 +233,15 @@ export const compoundVowels: ModuleContent = {
           ROMANIZATION,
         ),
         contrast(
-          "ㅙ ㅚ ㅞ: bunyinya sama",
-          "Putar ketiganya. Ketiganya dibaca we, jadi hafalkan ejaan katanya.",
+          "Bunyi sama, ejaan beda",
+          "Putar tiap baris. Yang satu baris terdengar sama.",
           [
+            {
+              items: [
+                { text: "애", romanization: "ae" },
+                { text: "에", romanization: "e" },
+              ],
+            },
             {
               items: [
                 { text: "왜", romanization: "wae" },
@@ -314,55 +252,96 @@ export const compoundVowels: ModuleContent = {
           ],
           ROMANIZATION,
         ),
-        syllableGrid("Semua vokal gabungan", ["ㅇ"], COMPOUND, ROMANIZATION),
+        syllableGrid(
+          "Sebelas vokal rangkap dengan ㅇ",
+          ["ㅇ"],
+          COMPOUND,
+          ROMANIZATION,
+        ),
         game(
-          "syllable-forge",
+          "stroke-master",
           "compound-vowels",
-          "Susun vokal gabungan",
-          "Ketik dua vokal berurutan, nanti keduanya bergabung jadi satu.",
+          "Kenali vokal rangkap",
+          "Cocokkan bentuk vokal rangkap dengan bunyinya.",
         ),
       ],
     },
     {
       type: "material",
       key: "m5-sound-map",
-      title: "Peta vokal: dari a i u e o ke Hangeul",
+      title: "Vokal Indonesia dan vokal Korea",
       description:
-        "Vokal Indonesia yang sudah kamu punya, dan dua bunyi Korea yang benar-benar baru.",
-      minutes: 5,
+        "Bunyi a i u e o di Hangeul, contoh pelafalannya, dan dua bunyi yang tidak ada di bahasa Indonesia.",
+      minutes: 6,
       blocks: [
         callout(
           "info",
-          'Bahasa Indonesia punya 5 huruf vokal, tapi huruf e dibaca dua cara: e di "bebek" dan e di "emas". Sekarang kamu kenal ',
-          b("21 vokal Korea"),
-          ". Ini cara menghubungkannya.",
+          'Bahasa Indonesia punya 5 huruf vokal: a, i, u, e, o. Huruf e dibaca dua cara, seperti di "bebek" dan di "emas". Bahasa Korea punya ',
+          b("21 vokal"),
+          ", tapi banyak bunyinya sama dengan vokal Indonesia.",
         ),
-        rules({
-          title: "Vokal Indonesia di Hangeul",
-          columns: ["Bahasa Indonesia", "Hangeul", "Contoh"],
-          theme: "green",
-          rows: [
-            { when: 'a di "apa"', result: "ㅏ", example: "아이 anak" },
-            { when: 'i di "ini"', result: "ㅣ", example: "이 dua" },
-            { when: 'u di "batu"', result: "ㅜ", example: "우유 susu" },
-            { when: 'o di "obat"', result: "ㅗ", example: "오이 timun" },
-            { when: 'e di "bebek"', result: "ㅐ / ㅔ", example: "애, 에" },
+        letters(
+          "Dari a i u e o ke Hangeul",
+          [
             {
-              when: 'e di "emas"',
-              result: "mirip ㅡ",
-              example: "으, bibir datar",
+              character: "ㅏ",
+              cue: 'a di "apa": sama.',
+              romanization: "a",
+              say: "아",
+              example: { word: "아이", meaning: "anak", romanization: "ai" },
             },
             {
-              when: "tidak ada",
-              result: "ㅓ",
-              example: "어, o tanpa bibir bulat",
+              character: "ㅣ",
+              cue: 'i di "ini": sama.',
+              romanization: "i",
+              say: "이",
+              example: { word: "이유", meaning: "alasan", romanization: "iyu" },
+            },
+            {
+              character: "ㅜ",
+              cue: 'u di "batu": sama, bibir bulat dan maju.',
+              romanization: "u",
+              say: "우",
+              example: { word: "우유", meaning: "susu", romanization: "uyu" },
+            },
+            {
+              character: "ㅗ",
+              cue: 'o di "obat": sama, bibir bulat.',
+              romanization: "o",
+              say: "오",
+              example: { word: "오이", meaning: "timun", romanization: "oi" },
+            },
+            {
+              character: "ㅔ",
+              cue: 'e di "bebek": sama. ㅐ juga dibaca begini.',
+              romanization: "e",
+              say: "에",
+              example: {
+                word: "애",
+                meaning: "anak (santai)",
+                romanization: "ae",
+              },
+            },
+            {
+              character: "ㅡ",
+              cue: 'e di "emas": mirip, tapi bibir datar dan lidah ke belakang.',
+              romanization: "eu",
+              say: "으",
+            },
+            {
+              character: "ㅓ",
+              cue: 'Tidak ada di bahasa Indonesia: "o" dengan bibir santai.',
+              romanization: "eo",
+              say: "어",
+              example: {
+                word: "어이",
+                meaning: "hei! (kurang sopan)",
+                romanization: "eoi",
+              },
             },
           ],
-          tip: {
-            title: "Yang baru cuma dua",
-            text: "ㅓ dan ㅡ. Vokal lainnya bunyi yang sudah kamu kenal, ditambah y (ㅑ ㅕ ㅛ ㅠ ㅒ ㅖ) atau w (ㅘ ㅝ ㅙ ㅞ ㅚ ㅟ).",
-          },
-        }),
+          ROMANIZATION,
+        ),
         contrast(
           "Tiga pasangan yang paling sering tertukar",
           "Putar tiap pasangan sampai kamu bisa mendengar bedanya.",
@@ -383,19 +362,22 @@ export const compoundVowels: ModuleContent = {
             },
             {
               items: [
-                { text: "애", romanization: "ae" },
-                { text: "에", romanization: "e" },
+                { text: "오이", meaning: "timun", romanization: "oi" },
+                {
+                  text: "어이",
+                  meaning: "hei! (kurang sopan)",
+                  romanization: "eoi",
+                },
               ],
-              note: 'Sama-sama "e" di "bebek". Bedanya cuma ejaan.',
+              note: "Salah vokal, beda arti.",
             },
           ],
           ROMANIZATION,
         ),
-        game(
-          "stroke-master",
-          "compound-vowels",
-          "Kenali semua vokal",
-          "Cocokkan bentuk dan bunyi vokal gabungan, dengan beberapa vokal dasar sebagai ulangan.",
+        callout(
+          "success",
+          b("Ingat: "),
+          "yang tidak ada di bahasa Indonesia cuma ㅓ dan ㅡ. Vokal lainnya bunyi a, i, u, e, o, ditambah y atau w.",
         ),
       ],
     },
@@ -434,9 +416,9 @@ export const compoundVowels: ModuleContent = {
     {
       type: "assessment",
       key: "m5-quiz",
-      title: "Kuis bab 3: vokal gabungan",
+      title: "Kuis bab 3: vokal rangkap",
       description:
-        "12 soal tentang ㅐ ㅔ, vokal W, ㅚ ㅟ ㅢ, dan peta vokal Indonesia ke Hangeul.",
+        "12 soal tentang vokal rangkap dan perbedaan vokal Indonesia dan vokal Korea.",
       instructions:
         "Untuk soal mendengar, putar audionya sebanyak yang kamu perlukan. Nilai lulus 80%.",
       passingScore: 80,

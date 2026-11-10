@@ -59,7 +59,7 @@ export const HANGEUL_GAME_STAGES = [
   },
   {
     id: "compound-vowels",
-    title: "Vokal gabungan",
+    title: "Vokal rangkap",
     letters: ["ㅇ", ...allVowels],
     teaches: compoundVowels,
     batchim: false,

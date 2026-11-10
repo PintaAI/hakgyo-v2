@@ -43,6 +43,11 @@ export const hangeulImages: Record<string, HangeulImageSpec> = {
       "A fruit stall at a bright market, a young man holds up a red apple with a surprised, delighted expression while his friend points at it, baskets of fruit around them.",
     alt: "Teman kagum melihat apel di pasar buah",
   },
+  "chapter-consonants": {
+    prompt:
+      "A young woman at a desk at home on a video call with a smiling tutor on her laptop screen, she points to her lips while practising a sound, a notebook and a cup of tea beside her, warm evening light.",
+    alt: "Murid berlatih bicara bersama tutor lewat panggilan video",
+  },
   "chapter-6": {
     prompt:
       "A bright desk from above: an open notebook with abstract pen strokes (no readable letters), a pencil, and a smartphone being typed on with both thumbs, a plant in the corner.",

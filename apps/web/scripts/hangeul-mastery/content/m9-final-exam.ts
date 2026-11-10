@@ -279,7 +279,7 @@ export const m9FinalExam: ModuleContent = {
           theme: "rose",
           imageKey: "chapter-9",
           imageAlt: "Murid menyelesaikan ujian dengan senang",
-          chapter: 9,
+          chapter: 10,
           title: "한글 마스터",
           subtitle: "Ujian Hangeul Mastery",
           question: "준비됐어요?",

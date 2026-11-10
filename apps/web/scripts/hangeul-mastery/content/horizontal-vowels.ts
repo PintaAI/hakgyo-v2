@@ -1,7 +1,5 @@
 import {
   audioClip,
-  b,
-  callout,
   contrast,
   game,
   lessonPage,
@@ -42,16 +40,16 @@ export const horizontalVowels: ModuleContent = {
   key: "horizontal-vowels",
   title: "Vokal mendatar",
   description:
-    "Vokal yang ditulis di bawah: ㅗ ㅜ yang sudah kamu kenal, ㅡ yang baru, dan ㅛ ㅠ.",
+    "Vokal yang garisnya mendatar, ㅗ ㅜ ㅡ ㅛ ㅠ: cara melafalkannya dan tempatnya di bawah ㅇ.",
   items: [
     // Taught ㅗ ㅜ ㅡ when chapter 1 held every basic vowel; the key stays.
     {
       type: "material",
       key: "m1-vowels-o-u-eu",
-      title: "ㅗ ㅜ: o dan u, ditulis di bawah",
+      title: "Vokal mendatar: ㅗ ㅜ ㅡ ㅛ ㅠ",
       description:
-        "Dua vokal yang bunyinya sudah kamu kenal, dan kenapa ditulis di bawah ㅇ.",
-      minutes: 5,
+        "Lima vokal yang garisnya mendatar: cara melafalkannya dan kenapa ditulis di bawah ㅇ.",
+      minutes: 7,
       blocks: [
         lessonPage({
           theme: "sunset",
@@ -64,155 +62,65 @@ export const horizontalVowels: ModuleContent = {
           answer: "오, 우유!",
           cards: [
             {
-              label: "Sudah kamu kenal",
-              title: "ㅗ ㅜ",
-              description: "o di obat, u di batu",
+              label: "Huruf baru",
+              title: "ㅗ ㅜ ㅡ ㅛ ㅠ",
+              description: "Vokal yang garisnya mendatar",
             },
             {
-              label: "Bunyi baru",
-              title: "ㅡ",
-              description: "Mirip e di emas",
+              label: "Posisi",
+              title: "Di bawah ㅇ",
+              description: "Tegak di kanan, mendatar di bawah",
             },
             {
-              label: "Tambah garis",
-              title: "ㅛ ㅠ",
-              description: "Bunyi y di depan vokal",
+              label: "Kosakata",
+              title: "우유 · 여우",
+              description: "Kata dari vokal dasar",
             },
           ],
           goals: [
-            "Menulis vokal mendatar di bawah ㅇ.",
-            "Membedakan ㅗ dari ㅓ, dan ㅡ dari ㅜ.",
+            "Melafalkan ㅗ ㅜ ㅡ dengan bentuk bibir yang tepat.",
+            "Tahu kenapa vokal mendatar ditulis di bawah ㅇ.",
           ],
         }),
         rules({
           title: "Tegak di kanan, mendatar di bawah",
-          intro: "Garis panjang vokal menentukan tempatnya di dalam blok.",
+          intro: "Arah garis panjang vokal menentukan tempatnya.",
           columns: ["Vokal", "Ditulis", "Contoh"],
           rows: [
             {
-              when: "Tegak: ㅏ ㅓ ㅣ",
+              when: "Tegak: ㅏ ㅓ ㅣ ㅑ ㅕ",
               result: "di kanan ㅇ",
               example: "아 어 이",
             },
             {
-              when: "Mendatar: ㅗ ㅜ",
+              when: "Mendatar: ㅗ ㅜ ㅡ ㅛ ㅠ",
               result: "di bawah ㅇ",
-              example: "오 우",
+              example: "오 우 으",
             },
           ],
         }),
         letters(
-          "Huruf baru",
+          "Vokal mendatar",
           [
             {
               character: "ㅗ",
-              cue: 'Sama dengan "o" di "obat". Bibir bulat.',
+              cue: 'Seperti "o" di "obat". Bibir bulat.',
               romanization: "o",
               say: "오",
-              note: "Garis pendeknya ke atas.",
               example: { word: "오이", meaning: "timun", romanization: "oi" },
             },
             {
               character: "ㅜ",
-              cue: 'Sama dengan "u" di "batu". Bibir bulat dan maju.',
+              cue: 'Seperti "u" di "batu". Bibir bulat dan maju.',
               romanization: "u",
               say: "우",
-              note: "Garis pendeknya ke bawah.",
             },
-          ],
-          { showRomanization: true },
-        ),
-        contrast(
-          "ㅗ atau ㅓ?",
-          "Pasangan yang paling sering tertukar. Putar, lalu tirukan sambil lihat bibirmu.",
-          [
-            {
-              items: [
-                { text: "오", romanization: "o" },
-                { text: "어", romanization: "eo" },
-              ],
-              note: "ㅗ bibir bulat. ㅓ bibir santai.",
-            },
-            {
-              items: [
-                { text: "오이", meaning: "timun", romanization: "oi" },
-                {
-                  text: "어이",
-                  meaning: "hei! (kurang sopan)",
-                  romanization: "eoi",
-                },
-              ],
-              note: "Salah vokal, beda arti.",
-            },
-          ],
-          { showRomanization: true },
-        ),
-      ],
-    },
-    {
-      type: "material",
-      key: "horizontal-eu",
-      title: "ㅡ: bunyi baru kedua",
-      description: 'Mirip "e" di "emas", dengan bibir datar.',
-      minutes: 4,
-      blocks: [
-        letters(
-          "Huruf baru",
-          [
             {
               character: "ㅡ",
-              cue: 'Mirip "e" di "emas". Bibir datar, seperti senyum tipis.',
+              cue: 'Mirip "e" di "emas", tapi bibir datar seperti senyum tipis.',
               romanization: "eu",
               say: "으",
-              note: "Satu garis datar, ditulis di bawah ㅇ.",
             },
-          ],
-          { showRomanization: true },
-        ),
-        contrast(
-          "ㅡ atau ㅜ?",
-          "Putar tiap pasangan. Lihat bibirmu di cermin saat menirukan.",
-          [
-            {
-              items: [
-                { text: "으", romanization: "eu" },
-                { text: "우", romanization: "u" },
-              ],
-              note: "ㅡ bibir datar. ㅜ bibir bulat.",
-            },
-            {
-              items: [
-                { text: "으", romanization: "eu" },
-                { text: "어", romanization: "eo" },
-              ],
-              note: "ㅡ mulut hampir tertutup. ㅓ lebih terbuka.",
-            },
-          ],
-          { showRomanization: true },
-        ),
-        callout("success", b("Ingat: "), "ㅜ bibir bulat, ㅡ bibir datar."),
-      ],
-    },
-    {
-      type: "material",
-      key: "horizontal-yo-yu",
-      title: "ㅛ ㅠ: tambah garis lagi",
-      description:
-        "Pola yang sama dengan ㅑ ㅕ, lalu semua sepuluh vokal dasar.",
-      minutes: 6,
-      blocks: [
-        rules({
-          title: "Tambah satu garis = tambah y",
-          intro: "Sama seperti ㅏ → ㅑ dan ㅓ → ㅕ di bab 1.",
-          columns: ["Vokal", "Tambah garis", "Dibaca"],
-          rows: [
-            { when: "ㅗ", result: "ㅛ", example: '오 → 요 "yo"' },
-            { when: "ㅜ", result: "ㅠ", example: '우 → 유 "yu"' },
-          ],
-        }),
-        letters(
-          "Huruf baru",
-          [
             {
               character: "ㅛ",
               cue: 'Seperti "yo" di "yoyo". Bibir bulat.',
@@ -230,20 +138,57 @@ export const horizontalVowels: ModuleContent = {
           ],
           { showRomanization: true },
         ),
-        syllableGrid("Sepuluh vokal dasar", ["ㅇ"], BASIC, {
+        rules({
+          title: "Tambah satu garis = tambah y",
+          intro: "Sama seperti ㅏ → ㅑ dan ㅓ → ㅕ di bab 1.",
+          columns: ["Vokal", "Tambah garis", "Dibaca"],
+          rows: [
+            { when: "ㅗ", result: "ㅛ", example: '오 → 요 "yo"' },
+            { when: "ㅜ", result: "ㅠ", example: '우 → 유 "yu"' },
+          ],
+        }),
+        contrast(
+          "Lihat bibirmu",
+          "Pasangan yang paling sering tertukar. Putar, lalu tirukan di depan cermin.",
+          [
+            {
+              items: [
+                { text: "오", romanization: "o" },
+                { text: "어", romanization: "eo" },
+              ],
+              note: "ㅗ bibir bulat. ㅓ bibir santai.",
+            },
+            {
+              items: [
+                { text: "우", romanization: "u" },
+                { text: "으", romanization: "eu" },
+              ],
+              note: "ㅜ bibir bulat. ㅡ bibir datar.",
+            },
+            {
+              items: [
+                { text: "요", romanization: "yo" },
+                { text: "여", romanization: "yeo" },
+              ],
+              note: "ㅛ bibir bulat. ㅕ bibir santai.",
+            },
+          ],
+          { showRomanization: true },
+        ),
+        syllableGrid("Sepuluh vokal dasar dengan ㅇ", ["ㅇ"], BASIC, {
           showRomanization: true,
         }),
         game(
-          "syllable-forge",
+          "stroke-master",
           "horizontal-vowels",
-          "Susun vokal mendatar",
-          "Susun ㅇ dengan vokal baru. Tegak di kanan, mendatar di bawah.",
+          "Kenali vokal mendatar",
+          "Cocokkan bentuk vokal dengan bunyinya, dengan beberapa vokal tegak sebagai ulangan.",
         ),
         game(
-          "word-builder",
+          "syllable-forge",
           "horizontal-vowels",
-          "Susun kata pertamamu",
-          "Susun 우유, 여우, dan 이유 dari suku katanya.",
+          "Coba susun 한글",
+          "Ketik ㅇ lalu vokal mendatar, dan lihat vokalnya pindah ke bawah.",
         ),
       ],
     },

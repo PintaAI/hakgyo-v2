@@ -55,9 +55,9 @@ export const m2CoreConsonants: ModuleContent = {
       blocks: [
         lessonPage({
           theme: "ocean",
-          imageKey: "chapter-2",
-          imageAlt: "Dua teman menyusun balok kayu bersama",
-          chapter: 4,
+          imageKey: "chapter-consonants",
+          imageAlt: "Murid berlatih bicara bersama tutor lewat panggilan video",
+          chapter: 5,
           title: "ㄴ ㅁ ㅅ ㅂ ㄱ ㄷ ㅈ ㅎ ㄹ",
           subtitle: "Konsonan inti",
           question: "어디 가?",
@@ -86,7 +86,7 @@ export const m2CoreConsonants: ModuleContent = {
         }),
         callout(
           "info",
-          "Sekarang ㅇ yang diam diganti konsonan yang berbunyi. ㄴ dan ㅁ ",
+          "Ingat blok di bab 4? Sekarang ㅇ yang diam diganti konsonan yang berbunyi, dan tempat vokalnya tetap sama. ㄴ dan ㅁ ",
           b("bunyinya sama seperti bahasa Indonesia"),
           ".",
         ),
@@ -280,7 +280,7 @@ export const m2CoreConsonants: ModuleContent = {
     {
       type: "vocabulary",
       key: "m2-vocab-nm-sb",
-      title: "Kosakata D: ㄴ ㅁ ㅅ ㅂ",
+      title: "Kosakata E: ㄴ ㅁ ㅅ ㅂ",
       description: "Kata sehari-hari yang memakai konsonan ㄴ, ㅁ, ㅅ, ㅂ.",
       entries: [
         { term: "나", definition: "aku (santai)", romanization: "na" },
@@ -574,7 +574,7 @@ export const m2CoreConsonants: ModuleContent = {
     {
       type: "vocabulary",
       key: "m2-vocab-gdj-hr",
-      title: "Kosakata E: ㄱ ㄷ ㅈ ㅎ ㄹ",
+      title: "Kosakata F: ㄱ ㄷ ㅈ ㅎ ㄹ",
       description:
         "Kata sehari-hari, kata K-pop dan drama, dan kata dasar EPS-TOPIK yang memakai semua konsonan inti.",
       entries: [
@@ -706,7 +706,7 @@ export const m2CoreConsonants: ModuleContent = {
     {
       type: "vocabulary",
       key: "m3-vocab-f",
-      title: "Kosakata F: sapaan dan kata sehari-hari",
+      title: "Kosakata G: sapaan dan kata sehari-hari",
       description:
         "Ungkapan sopan dan kata sehari-hari dengan konsonan inti dan vokal Y, ㅐ, ㅔ.",
       entries: [
@@ -765,7 +765,7 @@ export const m2CoreConsonants: ModuleContent = {
     {
       type: "assessment",
       key: "m2-quiz",
-      title: "Kuis bab 4: konsonan inti",
+      title: "Kuis bab 5: konsonan inti",
       description:
         "15 soal tentang sepuluh konsonan inti, ungkapan sopan, kata-kata baru, dan ulangan vokal.",
       instructions:

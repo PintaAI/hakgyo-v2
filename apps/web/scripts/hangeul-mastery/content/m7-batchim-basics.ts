@@ -60,7 +60,7 @@ export const m7BatchimBasics: ModuleContent = {
           theme: "sunset",
           imageKey: "chapter-7",
           imageAlt: "Murid memperhatikan papan toko di jalan Seoul",
-          chapter: 7,
+          chapter: 8,
           title: "받침",
           subtitle: "Batchim",
           question: "안녕하세요?",
@@ -361,7 +361,7 @@ export const m7BatchimBasics: ModuleContent = {
           ],
           tip: {
             title: "Kenapa ejaannya beda?",
-            text: "Huruf aslinya terdengar lagi kalau setelahnya ada vokal: 옷이 dibaca [오시]. Itu di bab 8.",
+            text: "Huruf aslinya terdengar lagi kalau setelahnya ada vokal: 옷이 dibaca [오시]. Itu di bab 9.",
           },
         }),
         contrast(
@@ -520,7 +520,7 @@ export const m7BatchimBasics: ModuleContent = {
     {
       type: "assessment",
       key: "m7-quiz",
-      title: "Kuis bab 7: batchim",
+      title: "Kuis bab 8: batchim",
       description:
         "16 soal tentang tujuh bunyi batchim, ditambah ulasan bab sebelumnya.",
       instructions:
