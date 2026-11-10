@@ -151,7 +151,9 @@ export type DesiredCourse = {
 export type BuildOptions = {
   /** Asset id of the clip for a Korean text, or undefined when there is none yet. */
   resolveAudio: (text: string) => string | undefined;
-  /** Strip unresolved clips to "" (the player hides) instead of failing. */
+  /** Asset id of a picture by its key (`content/images.ts`), or undefined when it is not made yet. */
+  resolveImage?: (key: string) => string | undefined;
+  /** Strip unresolved clips and pictures to "" (they hide) instead of failing. */
   allowMissingAudio?: boolean;
 };
 
@@ -160,6 +162,8 @@ export type BuildResult = {
   errors: string[];
   /** Texts without a clip (stripped when allowMissingAudio, otherwise also in errors). */
   missingAudio: string[];
+  /** Picture keys without an asset, handled like `missingAudio`. */
+  missingImages: string[];
 };
 
 const isIntegerIn = (value: number, min: number, max: number) =>
@@ -187,6 +191,7 @@ export function buildDesiredCourse(
 ): BuildResult {
   const errors: string[] = [];
   const missingAudio = new Set<string>();
+  const missingImages = new Set<string>();
   const seenModules = new Set<string>();
   const seenItems = new Map<string, string>();
 
@@ -248,6 +253,12 @@ export function buildDesiredCourse(
       replacePlaceholders(value, (placeholder) => {
         if (placeholder.kind === "item") {
           return resolveItem(placeholder.value, from);
+        }
+        if (placeholder.kind === "image") {
+          const assetId = options.resolveImage?.(placeholder.value);
+          if (assetId) return assetId;
+          missingImages.add(placeholder.value);
+          return "";
         }
         const text = normalizeTerm(placeholder.value);
         const assetId = options.resolveAudio(text);
@@ -340,8 +351,18 @@ export function buildDesiredCourse(
       `${list.length} audio clip(s) have no asset: ${list.slice(0, 40).join(", ")}${list.length > 40 ? ", …" : ""}. Run hangeul:audio --execute against this database, or pass --allow-missing-audio.`,
     );
   }
+  if (missingImages.size && !options.allowMissingAudio) {
+    errors.push(
+      `${missingImages.size} picture(s) have no asset: ${[...missingImages].join(", ")}. Run hangeul:images --execute against this database, or pass --allow-missing-audio.`,
+    );
+  }
   errors.push(...readinessErrors(course));
-  return { course, errors, missingAudio: [...missingAudio] };
+  return {
+    course,
+    errors,
+    missingAudio: [...missingAudio],
+    missingImages: [...missingImages],
+  };
 }
 
 function buildMaterial(

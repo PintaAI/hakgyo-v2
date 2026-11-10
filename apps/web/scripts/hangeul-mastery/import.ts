@@ -20,6 +20,7 @@ import {
   HAKGYO_SYSTEM_ORGANIZATION_ID,
   HANGEUL_MASTERY_COURSE_ID,
 } from "../../src/server/foundation/constants";
+import { readImageManifest } from "./image-manifest";
 import { readManifest } from "./audio-manifest";
 import { loadContent } from "./load-content";
 import type { CourseContent } from "./content-types";
@@ -997,6 +998,35 @@ async function writePlan(
 
 // ---------------------------------------------------------------- main
 
+/** Asset ids of the pictures in image-manifest.json that have a confirmed row in this database, by key. */
+async function resolveImageAssets(db: PrismaClient) {
+  const manifest = readImageManifest();
+  const objectKeyByKey = new Map(
+    Object.entries(manifest?.images ?? {}).map(([key, image]) => [
+      key,
+      image.objectKey,
+    ]),
+  );
+  const assets = objectKeyByKey.size
+    ? await db.asset.findMany({
+        where: {
+          organizationId: HAKGYO_SYSTEM_ORGANIZATION_ID,
+          objectKey: { in: [...objectKeyByKey.values()] },
+          confirmedAt: { not: null },
+          deletedAt: null,
+        },
+        select: { id: true, objectKey: true },
+      })
+    : [];
+  const assetByObjectKey = new Map(
+    assets.map((row) => [row.objectKey, row.id]),
+  );
+  return (key: string) => {
+    const objectKey = objectKeyByKey.get(key);
+    return objectKey ? assetByObjectKey.get(objectKey) : undefined;
+  };
+}
+
 async function resolveAudioAssets(db: PrismaClient) {
   const manifest = readManifest();
   const objectKeyByText = new Map(
@@ -1032,9 +1062,13 @@ export async function runImport(input: {
   verbose: boolean;
 }) {
   const { db } = input;
-  const resolveAudio = await resolveAudioAssets(db);
+  const [resolveAudio, resolveImage] = await Promise.all([
+    resolveAudioAssets(db),
+    resolveImageAssets(db),
+  ]);
   const built = buildDesiredCourse(input.content, {
     resolveAudio,
+    resolveImage,
     allowMissingAudio: input.allowMissingAudio,
   });
   const itemCount = built.course.modules.reduce(

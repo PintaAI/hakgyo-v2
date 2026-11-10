@@ -77,6 +77,10 @@ rule cards (`rules()` in `apps/web/scripts/hangeul-mastery/blocks.ts`), which
 leave the Korean fields empty because beginners cannot read them yet. Authors
 still see every field while editing.
 
+## Lesson Page Optional Parts
+
+For learners, `lessonPage` leaves out every part the author left empty: the chapter box (eyebrow and number), the subtitle, the picture, the example question and answer, focus cards without any text and goals without text. So the same block serves as a full chapter opener or as a short one (a title and a picture). Authors still see every field while editing.
+
 ## Material Links
 
 Links between materials are not a block: they are BlockNote `link` inline

@@ -1,15 +1,14 @@
 import {
-  assessmentRef,
   audioClip,
   b,
   callout,
   contrast,
   game,
+  lessonPage,
   letters,
   p,
   rules,
   syllableGrid,
-  vocabularyRef,
 } from "../blocks";
 import type { ModuleContent, QuestionContent } from "../content-types";
 
@@ -52,6 +51,37 @@ export const m4AspiratedTense: ModuleContent = {
       description: "Empat konsonan yang diucapkan dengan hembusan napas kuat.",
       minutes: 7,
       blocks: [
+        lessonPage({
+          theme: "forest",
+          imageKey: "chapter-4",
+          imageAlt: "Teman berlatih dengan tisu di depan mulut",
+          chapter: 4,
+          title: "ㅋ ㅌ ㅍ ㅊ · ㄲ ㄸ ㅃ ㅆ ㅉ",
+          subtitle: "Konsonan berhembus dan tegang",
+          question: "커피 주세요.",
+          answer: "너무 비싸요!",
+          cards: [
+            {
+              label: "Huruf baru",
+              title: "9 konsonan",
+              description: "Berhembus atau tertahan",
+            },
+            {
+              label: "Kosakata",
+              title: "커피 · 토끼 · 오빠",
+              description: "Kata sehari-hari",
+            },
+            {
+              label: "Latihan",
+              title: "Lab tiga serangkai",
+              description: "가 · 카 · 까",
+            },
+          ],
+          goals: [
+            "Membedakan bunyi polos, berhembus, dan tegang.",
+            "Membaca kata serapan seperti 커피 dan 카메라.",
+          ],
+        }),
         callout(
           "info",
           '"k", "t", "p", dan "c" Indonesia diucapkan tanpa hembusan napas. Bahasa Korea juga punya versi yang ',
@@ -152,7 +182,6 @@ export const m4AspiratedTense: ModuleContent = {
         ),
         audioClip("카메라", "카메라 = kamera"),
         audioClip("아파트", "아파트 = apartemen"),
-        vocabularyRef("m4-vocab-g"),
         game(
           "stroke-master",
           "aspirated-tense",
@@ -344,7 +373,6 @@ export const m4AspiratedTense: ModuleContent = {
         p("Untuk belanja: baca dulu, lalu putar."),
         audioClip("너무 비싸요", "너무 비싸요! = Mahal sekali!"),
         audioClip("싸게 해 주세요", "싸게 해 주세요. = Tolong kasih murah."),
-        vocabularyRef("m4-vocab-h"),
         game(
           "syllable-forge",
           "aspirated-tense",
@@ -423,10 +451,6 @@ export const m4AspiratedTense: ModuleContent = {
         "Latih telinga dan mulut untuk membedakan polos, berhembus, dan tegang.",
       minutes: 8,
       blocks: [
-        callout(
-          "info",
-          "Banyak konsonan punya tiga versi: polos, berhembus, dan tegang. Pelajaran ini melatih telinga dan mulutmu untuk membedakannya.",
-        ),
         rules({
           title: "Tiga versi, tiga cara",
           intro:
@@ -514,7 +538,6 @@ export const m4AspiratedTense: ModuleContent = {
           "Susun kata",
           "Susun kata seperti 커피, 토끼, dan 비싸다 dari suku katanya.",
         ),
-        assessmentRef("m4-quiz"),
         callout(
           "success",
           b("Ingat: "),

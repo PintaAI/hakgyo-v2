@@ -8,6 +8,7 @@ import type { HakgyoPartialBlock } from "~/components/editor/block-note-schema";
 import { DynamicLearnerBlockNoteDocument } from "~/components/editor/dynamic-learner-block-note-document";
 import Link from "~/components/link";
 import { buttonVariants } from "~/components/ui/button";
+import { materialPosition } from "@hakgyo/shared/learning";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 import {
@@ -17,6 +18,34 @@ import {
 import { VocabularySetDetail } from "./learner/learn/vocabulary-set-detail";
 
 type CourseItem = NonNullable<RouterOutputs["learning"]["getCourseItem"]>;
+/** What the learner is about to study: the material's place, title and one-line summary. */
+function MaterialHeader({
+  title,
+  description,
+  position,
+}: {
+  title: string;
+  description: string | null;
+  position: ReturnType<typeof materialPosition>;
+}) {
+  return (
+    <header className="border-border space-y-2 border-b pb-6">
+      {position ? (
+        <p className="text-muted-foreground text-xs font-semibold tracking-[0.14em] uppercase">
+          Bab {position.chapter} · Materi {position.index} dari {position.total}
+        </p>
+      ) : null}
+      <h1 className="text-foreground text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl">
+        {title}
+      </h1>
+      {description?.trim() ? (
+        <p className="text-muted-foreground text-base leading-relaxed text-pretty">
+          {description}
+        </p>
+      ) : null}
+    </header>
+  );
+}
 
 export function LearnerCourseItem({
   courseId,
@@ -31,6 +60,9 @@ export function LearnerCourseItem({
   const { resolvedTheme } = useTheme();
   const material = item.material;
   const vocabulary = item.vocabularySet;
+  // Prefetched by the page, so this reads the cache without a request.
+  const outline = api.learning.getCourseOutline.useQuery({ courseId });
+  const position = materialPosition(outline.data, courseItemId);
 
   // Opening an item starts it; completing it happens in the learning footer.
   useEffect(() => {
@@ -95,6 +127,11 @@ export function LearnerCourseItem({
 
       {material ? (
         <>
+          <MaterialHeader
+            title={material.title}
+            description={material.description}
+            position={position}
+          />
           <DynamicLearnerBlockNoteDocument
             content={material.content as HakgyoPartialBlock[]}
             resources={item.embeddedResources}

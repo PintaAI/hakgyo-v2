@@ -1,4 +1,4 @@
-import { assessmentRef, audioClip, b, callout, p } from "../blocks";
+import { audioClip, b, callout, lessonPage, p } from "../blocks";
 import type {
   BlockNoteBlock,
   ModuleContent,
@@ -275,6 +275,37 @@ export const m9FinalExam: ModuleContent = {
       description: "Apa yang diuji dan berapa nilai lulusnya.",
       minutes: 2,
       blocks: [
+        lessonPage({
+          theme: "rose",
+          imageKey: "chapter-9",
+          imageAlt: "Murid menyelesaikan ujian dengan senang",
+          chapter: 9,
+          title: "한글 마스터",
+          subtitle: "Ujian Hangeul Mastery",
+          question: "준비됐어요?",
+          answer: "네, 화이팅!",
+          cards: [
+            {
+              label: "Huruf",
+              title: "Semua huruf",
+              description: "Vokal, konsonan, dan batchim",
+            },
+            {
+              label: "Membaca",
+              title: "Kata dan dengar",
+              description: "Soal dari semua bab",
+            },
+            {
+              label: "Lencana",
+              title: "Hangeul Mastery",
+              description: "Lulus dengan nilai 80",
+            },
+          ],
+          goals: [
+            "Membaca dan mendengar Hangeul dengan yakin.",
+            "Mendapat lencana Hangeul Mastery.",
+          ],
+        }),
         callout(
           "info",
           b("30 soal"),
@@ -282,7 +313,6 @@ export const m9FinalExam: ModuleContent = {
           b("nilai 80"),
           " (24 benar). Tidak ada batas waktu, dan kalau belum lulus kamu bisa mencoba lagi.",
         ),
-        assessmentRef("m9-mastery-exam"),
         callout(
           "success",
           b("Kamu pasti bisa. "),

@@ -23,6 +23,7 @@
     "vocab:generate-audio": "bun scripts/generate-vocabulary-audio.ts",
     "db:studio": "prisma studio",
     "hangeul:audio": "bun scripts/hangeul-mastery/generate-audio.ts",
+    "hangeul:images": "bun scripts/hangeul-mastery/generate-images.ts",
     "hangeul:import": "bun scripts/hangeul-mastery/import.ts",
     "pola:import": "bun scripts/pola-bahasa/import.ts",
     "pola:validate": "bun scripts/pola-bahasa/validate.ts",

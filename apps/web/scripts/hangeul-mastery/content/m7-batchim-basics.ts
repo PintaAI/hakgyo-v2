@@ -1,15 +1,14 @@
 import {
-  assessmentRef,
   audioClip,
   b,
   callout,
   contrast,
   game,
+  lessonPage,
   letters,
   p,
   rules,
   syllableGrid,
-  vocabularyRef,
 } from "../blocks";
 import type {
   BlockNoteBlock,
@@ -57,6 +56,37 @@ export const m7BatchimBasics: ModuleContent = {
         "Lantai bawah blok, tujuh bunyi akhir, dan batchim ㄴ ㅁ ㅇ.",
       minutes: 7,
       blocks: [
+        lessonPage({
+          theme: "sunset",
+          imageKey: "chapter-7",
+          imageAlt: "Murid memperhatikan papan toko di jalan Seoul",
+          chapter: 7,
+          title: "받침",
+          subtitle: "Batchim",
+          question: "안녕하세요?",
+          answer: "네, 물 주세요.",
+          cards: [
+            {
+              label: "Huruf di bawah",
+              title: "7 bunyi akhir",
+              description: "ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅇ",
+            },
+            {
+              label: "Kosakata",
+              title: "한국 · 학교 · 꽃",
+              description: "Kata dengan batchim",
+            },
+            {
+              label: "Latihan",
+              title: "Susun blok 3 lantai",
+              description: "Permainan dan kuis bab",
+            },
+          ],
+          goals: [
+            "Membaca blok dengan huruf di lantai bawah.",
+            "Mengenali tujuh bunyi akhir batchim.",
+          ],
+        }),
         callout(
           "info",
           b("Batchim = huruf di lantai bawah blok."),
@@ -168,12 +198,6 @@ export const m7BatchimBasics: ModuleContent = {
       description: "ㄹ di bawah blok dibaca l, bukan r.",
       minutes: 6,
       blocks: [
-        callout(
-          "info",
-          "ㄹ di awal blok dibaca r ringan. Di bawah blok, ㄹ dibaca ",
-          b("l"),
-          ".",
-        ),
         rules({
           title: "Tiga bunyi ㄹ",
           columns: ["Posisi", "Dibaca", "Contoh"],
@@ -375,7 +399,6 @@ export const m7BatchimBasics: ModuleContent = {
           ["ㅏ", "ㅓ", "ㅗ", "ㅜ", "ㅣ"],
           { final: "ㄱ" },
         ),
-        vocabularyRef("m7-vocab-batchim"),
         game(
           "syllable-forge",
           "batchim",
@@ -388,7 +411,6 @@ export const m7BatchimBasics: ModuleContent = {
           "Susun kata batchim",
           "Susun 한국, 사랑, 선생님, dan kata lain dari huruf-hurufnya.",
         ),
-        assessmentRef("m7-quiz"),
         callout(
           "success",
           b("Ingat: "),

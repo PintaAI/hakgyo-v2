@@ -307,47 +307,61 @@ function LessonPage({ block }: BlockRendererProps) {
   const accent = accentFor(stringProp(block.props, "theme"), "rose");
   const accentForeground = getReadableForeground(accent);
   const assetId = stringProp(block.props, "assetId");
+  const text = (name: string) => stringProp(block.props, name).trim();
+  // Every part the author left empty is left out, so the block also works as a
+  // short opener (a title and a picture).
   const focusCards = [
     {
-      label: stringProp(block.props, "grammarLabel"),
-      title: stringProp(block.props, "grammarTitle"),
-      description: stringProp(block.props, "grammarDescription"),
+      label: text("grammarLabel"),
+      title: text("grammarTitle"),
+      description: text("grammarDescription"),
     },
     {
-      label: stringProp(block.props, "vocabularyLabel"),
-      title: stringProp(block.props, "vocabularyTitle"),
-      description: stringProp(block.props, "vocabularyDescription"),
+      label: text("vocabularyLabel"),
+      title: text("vocabularyTitle"),
+      description: text("vocabularyDescription"),
     },
     {
-      label: stringProp(block.props, "cultureLabel"),
-      title: stringProp(block.props, "cultureTitle"),
-      description: stringProp(block.props, "cultureDescription"),
+      label: text("cultureLabel"),
+      title: text("cultureTitle"),
+      description: text("cultureDescription"),
     },
-  ];
+  ].filter((card) => card.label || card.title || card.description);
+  const chapterNumber = text("chapterNumber");
+  const eyebrow = text("eyebrow");
+  const subtitle = text("subtitle");
+  const question = text("question");
+  const answer = text("answer");
+  const objectives = (["objectiveOne", "objectiveTwo"] as const).flatMap(
+    (name, index) =>
+      text(name) ? [{ number: index + 1, text: text(name) }] : [],
+  );
 
   return (
     <View className="gap-6">
       <View className="gap-4 border-b border-border pb-6">
         <View className="flex-row items-center gap-4">
-          <View
-            className="size-16 items-center justify-center rounded-xl"
-            style={{ backgroundColor: accent }}
-          >
-            <Text
-              className="text-2xl font-black"
-              style={{ color: accentForeground }}
+          {chapterNumber ? (
+            <View
+              className="size-16 items-center justify-center rounded-xl"
+              style={{ backgroundColor: accent }}
             >
-              {stringProp(block.props, "chapterNumber")}
-            </Text>
-          </View>
+              <Text
+                className="text-2xl font-black"
+                style={{ color: accentForeground }}
+              >
+                {chapterNumber}
+              </Text>
+            </View>
+          ) : null}
           <View className="min-w-0 flex-1 gap-1">
-            <Eyebrow size="md">{stringProp(block.props, "eyebrow")}</Eyebrow>
+            {eyebrow ? <Eyebrow size="md">{eyebrow}</Eyebrow> : null}
             <Text className="text-3xl font-black leading-9 tracking-tight text-foreground">
-              {stringProp(block.props, "title")}
+              {text("title")}
             </Text>
-            <Text className="text-sm text-muted-foreground">
-              {stringProp(block.props, "subtitle")}
-            </Text>
+            {subtitle ? (
+              <Text className="text-sm text-muted-foreground">{subtitle}</Text>
+            ) : null}
           </View>
         </View>
         {assetId ? (
@@ -362,55 +376,70 @@ function LessonPage({ block }: BlockRendererProps) {
         ) : null}
       </View>
 
-      <View className="gap-3">
-        <View className="rounded-xl bg-muted/60 p-4">
-          <Eyebrow size="md">Contoh pertanyaan</Eyebrow>
-          <Text className="mt-2 text-base font-bold leading-6 text-foreground">
-            {stringProp(block.props, "question")}
-          </Text>
+      {question || answer ? (
+        <View className="gap-3">
+          {question ? (
+            <View className="rounded-xl bg-muted/60 p-4">
+              <Eyebrow size="md">Contoh pertanyaan</Eyebrow>
+              <Text className="mt-2 text-base font-bold leading-6 text-foreground">
+                {question}
+              </Text>
+            </View>
+          ) : null}
+          {answer ? (
+            <View
+              className="rounded-xl border-l-4 bg-muted/60 p-4"
+              style={{ borderLeftColor: accent }}
+            >
+              <Eyebrow size="md">Contoh jawaban</Eyebrow>
+              <Text className="mt-2 text-base leading-6 text-foreground">
+                {answer}
+              </Text>
+            </View>
+          ) : null}
         </View>
-        <View
-          className="rounded-xl border-l-4 bg-muted/60 p-4"
-          style={{ borderLeftColor: accent }}
-        >
-          <Eyebrow size="md">Contoh jawaban</Eyebrow>
-          <Text className="mt-2 text-base leading-6 text-foreground">
-            {stringProp(block.props, "answer")}
-          </Text>
+      ) : null}
+
+      {focusCards.length ? (
+        <View className="gap-3">
+          <Eyebrow size="md">Fokus materi</Eyebrow>
+          {focusCards.map((card, index) => (
+            <View className="rounded-xl bg-muted/50 p-4" key={index}>
+              {card.label ? (
+                <AccentDot accent={accent} label={card.label} />
+              ) : null}
+              {card.title ? (
+                <Text className="mt-3 text-base font-black text-foreground">
+                  {card.title}
+                </Text>
+              ) : null}
+              {card.description ? (
+                <Text className="mt-1 text-sm leading-5 text-muted-foreground">
+                  {card.description}
+                </Text>
+              ) : null}
+            </View>
+          ))}
         </View>
-      </View>
+      ) : null}
 
-      <View className="gap-3">
-        <Eyebrow size="md">Fokus materi</Eyebrow>
-        {focusCards.map((card, index) => (
-          <View className="rounded-xl bg-muted/50 p-4" key={index}>
-            <AccentDot accent={accent} label={card.label} />
-            <Text className="mt-3 text-base font-black text-foreground">
-              {card.title}
-            </Text>
-            <Text className="mt-1 text-sm leading-5 text-muted-foreground">
-              {card.description}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      <View className="gap-3 rounded-xl bg-muted/35 p-4">
-        <AccentDot
-          accent={accent}
-          label={stringProp(block.props, "objectivesLabel")}
-        />
-        {["objectiveOne", "objectiveTwo"].map((name, index) => (
-          <View className="flex-row gap-3" key={name}>
-            <Text className="font-black" style={{ color: accent }}>
-              {String(index + 1).padStart(2, "0")}
-            </Text>
-            <Text className="min-w-0 flex-1 text-sm leading-6 text-foreground">
-              {stringProp(block.props, name)}
-            </Text>
-          </View>
-        ))}
-      </View>
+      {objectives.length ? (
+        <View className="gap-3 rounded-xl bg-muted/35 p-4">
+          {text("objectivesLabel") ? (
+            <AccentDot accent={accent} label={text("objectivesLabel")} />
+          ) : null}
+          {objectives.map((objective) => (
+            <View className="flex-row gap-3" key={objective.number}>
+              <Text className="font-black" style={{ color: accent }}>
+                {String(objective.number).padStart(2, "0")}
+              </Text>
+              <Text className="min-w-0 flex-1 text-sm leading-6 text-foreground">
+                {objective.text}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }

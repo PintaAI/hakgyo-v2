@@ -1,0 +1,71 @@
+{
+ "version": 1,
+ "images": {
+  "chapter-1": {
+   "objectKey": "hangeul-mastery/images/ab527c87d0a79efb0b8c41dd.webp",
+   "bytes": 1529496,
+   "spec": "33851a7a2565",
+   "alt": "Murid berlatih bentuk mulut di depan cermin kecil"
+  },
+  "chapter-2": {
+   "objectKey": "hangeul-mastery/images/91ec07e3e6a34f0312262273.webp",
+   "bytes": 1458864,
+   "spec": "cb9881e85f2b",
+   "alt": "Dua teman menyusun balok kayu bersama"
+  },
+  "chapter-3": {
+   "objectKey": "hangeul-mastery/images/79c0e33b42b80262bc84b6d1.webp",
+   "bytes": 1597590,
+   "spec": "a9db558d8be5",
+   "alt": "Pembeli memesan di konter kafe"
+  },
+  "chapter-4": {
+   "objectKey": "hangeul-mastery/images/f5d0072fe264e61ebc1959b5.webp",
+   "bytes": 1459702,
+   "spec": "f84f2e5dfb22",
+   "alt": "Teman berlatih dengan tisu di depan mulut"
+  },
+  "chapter-5": {
+   "objectKey": "hangeul-mastery/images/b41bf120d065cb9d1f5acc77.webp",
+   "bytes": 1603582,
+   "spec": "b447f7f00787",
+   "alt": "Teman kagum melihat apel di pasar buah"
+  },
+  "chapter-6": {
+   "objectKey": "hangeul-mastery/images/65bd3f52877f00ff184f23d5.webp",
+   "bytes": 1462516,
+   "spec": "a53a2e43c410",
+   "alt": "Menulis di buku dan mengetik di ponsel"
+  },
+  "chapter-7": {
+   "objectKey": "hangeul-mastery/images/c2afa1c69db305f7621c73ef.webp",
+   "bytes": 1873670,
+   "spec": "35e26f6034e2",
+   "alt": "Murid memperhatikan papan toko di jalan Seoul"
+  },
+  "chapter-8": {
+   "objectKey": "hangeul-mastery/images/04f022b51d85dda53776dc36.webp",
+   "bytes": 1700964,
+   "spec": "b4886980c8da",
+   "alt": "Murid mendengarkan dengan headphone di taman"
+  },
+  "chapter-9": {
+   "objectKey": "hangeul-mastery/images/75c6098f8a89e697260370d7.webp",
+   "bytes": 1581256,
+   "spec": "29ff2aab1e19",
+   "alt": "Murid menyelesaikan ujian dengan senang"
+  },
+  "dialogue-cafe": {
+   "objectKey": "hangeul-mastery/images/746a7e4b8b27b2fe7dcbf5f6.webp",
+   "bytes": 1543704,
+   "spec": "add390857c28",
+   "alt": "Pelayan kafe menyapa pembeli yang menunjuk kue"
+  },
+  "dialogue-thanks": {
+   "objectKey": "hangeul-mastery/images/0675f826d24118d5272323f6.webp",
+   "bytes": 1700538,
+   "spec": "b95a73d660aa",
+   "alt": "Dua teman bertemu dan memberi hadiah di Seoul"
+  }
+ }
+}

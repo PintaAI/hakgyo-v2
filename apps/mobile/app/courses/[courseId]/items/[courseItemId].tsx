@@ -66,6 +66,8 @@ import {
   type LearningPathCourse,
 } from "../../../../src/lib/course-learning-path";
 import { useSidebarIndicators } from "../../../../src/lib/sidebar-indicators";
+import { materialPosition } from "@hakgyo/shared/learning";
+import { MaterialHeader } from "../../../../src/components/learn/material-header";
 import { markContentSeen } from "../../../../src/lib/use-content-changes";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../../../src/providers/MobileSyncProvider";
@@ -683,6 +685,11 @@ function CourseItemContent({
                   aimPendingAnchor();
                 }}
               >
+                <MaterialHeader
+                  title={material.title}
+                  description={material.description}
+                  position={materialPosition(outline.data, courseItemId)}
+                />
                 <NativeContentRenderer
                   content={material.content}
                   courseItemId={courseItemId}

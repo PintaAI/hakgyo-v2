@@ -4,7 +4,7 @@
 
 ## Isi kurikulum
 
-Bab dibuka berurutan: bab berikutnya terbuka setelah semua isi bab sebelumnya selesai. Setiap materi pendek, sekitar 5–8 menit.
+Bab dibuka berurutan: bab berikutnya terbuka setelah semua isi bab sebelumnya selesai. Setiap materi pendek, sekitar 5–8 menit. Setiap bab diawali halaman pembuka: gambar, huruf yang akan dipelajari, dialog pendek yang bisa kamu baca di akhir bab, dan tujuan belajarnya.
 
 | Bab | Yang dipelajari |
 |---|---|

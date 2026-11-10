@@ -204,6 +204,8 @@ function LessonHeroImage({
   );
 }
 
+const filled = (value: string) => value.trim().length > 0;
+
 function LearningCard({
   accent,
   description,
@@ -223,6 +225,9 @@ function LearningCard({
   onTitleChange: (value: string) => void;
   title: string;
 }) {
+  if (!editable && !filled(label) && !filled(title) && !filled(description)) {
+    return null;
+  }
   return (
     <div className="bg-muted/35 ring-foreground/10 min-w-0 rounded-lg p-4 ring-1">
       <div className="mb-4 flex min-w-0 items-start gap-2.5">
@@ -233,6 +238,7 @@ function LearningCard({
         />
         <EditableText
           ariaLabel="Label fokus pelajaran"
+          hideWhenEmpty
           className="w-full text-xs font-semibold tracking-[0.12em] uppercase"
           editable={editable}
           onChange={onLabelChange}
@@ -241,6 +247,7 @@ function LearningCard({
       </div>
       <EditableText
         ariaLabel="Judul fokus pelajaran"
+        hideWhenEmpty
         className="text-foreground w-full text-base leading-snug font-medium"
         editable={editable}
         onChange={onTitleChange}
@@ -248,6 +255,7 @@ function LearningCard({
       />
       <EditableText
         ariaLabel="Deskripsi fokus pelajaran"
+        hideWhenEmpty
         className="text-muted-foreground mt-1.5 w-full text-sm leading-relaxed"
         editable={editable}
         onChange={onDescriptionChange}
@@ -267,6 +275,28 @@ export const lessonPageBlock = createReactBlockSpec(
     render: ({ block, editor }) => {
       const scheme = lessonPageThemeStyles[block.props.theme];
       const editable = editor.isEditable;
+      // For learners every part the author left empty is left out, so the block also works as
+      // a short opener (a title and a picture) without empty boxes.
+      const props = block.props;
+      const showChapter =
+        editable || filled(props.eyebrow) || filled(props.chapterNumber);
+      const showQuestion = editable || filled(props.question);
+      const showAnswer = editable || filled(props.answer);
+      const showFocus =
+        editable ||
+        [
+          props.grammarLabel,
+          props.grammarTitle,
+          props.grammarDescription,
+          props.vocabularyLabel,
+          props.vocabularyTitle,
+          props.vocabularyDescription,
+          props.cultureLabel,
+          props.cultureTitle,
+          props.cultureDescription,
+        ].some(filled);
+      const showObjectiveOne = editable || filled(props.objectiveOne);
+      const showObjectiveTwo = editable || filled(props.objectiveTwo);
 
       return (
         <article
@@ -309,30 +339,37 @@ export const lessonPageBlock = createReactBlockSpec(
               className="absolute top-6 bottom-6 left-0 w-1 rounded-r-full"
               style={{ backgroundColor: scheme.accent }}
             />
-            <div className="grid min-w-0 gap-4 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-6">
-              <div className="bg-muted/50 ring-foreground/10 min-w-0 rounded-lg p-4 text-left ring-1 sm:text-center">
-                <EditableText
-                  ariaLabel="Label seri"
-                  className="w-full text-xs font-semibold tracking-[0.16em] uppercase"
-                  editable={editable}
-                  onChange={(eyebrow) =>
-                    editor.updateBlock(block, { props: { eyebrow } })
-                  }
-                  value={block.props.eyebrow}
-                />
-                <EditableText
-                  ariaLabel="Nomor bab"
-                  className="text-foreground mt-2 w-full text-4xl leading-none font-medium tracking-tight sm:text-center sm:text-5xl"
-                  editable={editable}
-                  onChange={(chapterNumber) =>
-                    editor.updateBlock(block, { props: { chapterNumber } })
-                  }
-                  value={block.props.chapterNumber}
-                />
-              </div>
+            <div
+              className={`grid min-w-0 gap-4 ${showChapter ? "sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-6" : ""}`}
+            >
+              {showChapter ? (
+                <div className="bg-muted/50 ring-foreground/10 min-w-0 rounded-lg p-4 text-left ring-1 sm:text-center">
+                  <EditableText
+                    ariaLabel="Label seri"
+                    hideWhenEmpty
+                    className="w-full text-xs font-semibold tracking-[0.16em] uppercase"
+                    editable={editable}
+                    onChange={(eyebrow) =>
+                      editor.updateBlock(block, { props: { eyebrow } })
+                    }
+                    value={block.props.eyebrow}
+                  />
+                  <EditableText
+                    ariaLabel="Nomor bab"
+                    hideWhenEmpty
+                    className="text-foreground mt-2 w-full text-4xl leading-none font-medium tracking-tight sm:text-center sm:text-5xl"
+                    editable={editable}
+                    onChange={(chapterNumber) =>
+                      editor.updateBlock(block, { props: { chapterNumber } })
+                    }
+                    value={block.props.chapterNumber}
+                  />
+                </div>
+              ) : null}
               <div className="min-w-0">
                 <EditableText
                   ariaLabel="Judul halaman pelajaran"
+                  hideWhenEmpty
                   className="text-foreground w-full text-2xl leading-tight font-medium tracking-tight sm:text-3xl"
                   editable={editable}
                   onChange={(title) =>
@@ -342,6 +379,7 @@ export const lessonPageBlock = createReactBlockSpec(
                 />
                 <EditableText
                   ariaLabel="Subjudul halaman pelajaran"
+                  hideWhenEmpty
                   className="text-muted-foreground mt-1.5 w-full text-sm leading-relaxed sm:text-base"
                   editable={editable}
                   onChange={(subtitle) =>
@@ -365,156 +403,171 @@ export const lessonPageBlock = createReactBlockSpec(
             />
           </div>
 
-          <section className="grid min-w-0 gap-3 px-4 py-5 sm:grid-cols-2 sm:px-6 sm:py-6">
-            <div className="bg-muted/35 ring-foreground/10 min-w-0 rounded-lg p-4 ring-1">
-              <div
-                className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-[0.12em] uppercase"
-                style={{ color: scheme.accent }}
-              >
-                <MessageCircleIcon className="size-3.5" /> Contoh pertanyaan
-              </div>
-              <EditableText
-                ariaLabel="Pertanyaan contoh"
-                className="text-foreground w-full text-sm leading-relaxed font-medium"
-                editable={editable}
-                onChange={(question) =>
-                  editor.updateBlock(block, { props: { question } })
-                }
-                value={block.props.question}
-              />
-            </div>
-            <div
-              className="bg-muted/35 ring-foreground/10 min-w-0 rounded-lg border-l-2 p-4 ring-1"
-              style={{ borderLeftColor: scheme.accent }}
-            >
-              <div className="text-muted-foreground mb-2 text-xs font-semibold tracking-[0.12em] uppercase">
-                Contoh jawaban
-              </div>
-              <EditableText
-                ariaLabel="Jawaban contoh"
-                className="text-foreground w-full text-sm leading-relaxed font-medium"
-                editable={editable}
-                onChange={(answer) =>
-                  editor.updateBlock(block, { props: { answer } })
-                }
-                value={block.props.answer}
-              />
-            </div>
-          </section>
-
-          <section className="border-border min-w-0 border-t px-4 py-6 sm:px-6">
-            <p className="text-muted-foreground mb-4 text-xs font-semibold tracking-[0.14em] uppercase">
-              Fokus pelajaran
-            </p>
-            <div className="grid min-w-0 gap-3 md:grid-cols-3">
-              <LearningCard
-                accent={scheme.accent}
-                description={block.props.grammarDescription}
-                editable={editable}
-                label={block.props.grammarLabel}
-                onDescriptionChange={(grammarDescription) =>
-                  editor.updateBlock(block, { props: { grammarDescription } })
-                }
-                onLabelChange={(grammarLabel) =>
-                  editor.updateBlock(block, { props: { grammarLabel } })
-                }
-                onTitleChange={(grammarTitle) =>
-                  editor.updateBlock(block, { props: { grammarTitle } })
-                }
-                title={block.props.grammarTitle}
-              />
-              <LearningCard
-                accent={scheme.accent}
-                description={block.props.vocabularyDescription}
-                editable={editable}
-                label={block.props.vocabularyLabel}
-                onDescriptionChange={(vocabularyDescription) =>
-                  editor.updateBlock(block, {
-                    props: { vocabularyDescription },
-                  })
-                }
-                onLabelChange={(vocabularyLabel) =>
-                  editor.updateBlock(block, { props: { vocabularyLabel } })
-                }
-                onTitleChange={(vocabularyTitle) =>
-                  editor.updateBlock(block, { props: { vocabularyTitle } })
-                }
-                title={block.props.vocabularyTitle}
-              />
-              <LearningCard
-                accent={scheme.accent}
-                description={block.props.cultureDescription}
-                editable={editable}
-                label={block.props.cultureLabel}
-                onDescriptionChange={(cultureDescription) =>
-                  editor.updateBlock(block, { props: { cultureDescription } })
-                }
-                onLabelChange={(cultureLabel) =>
-                  editor.updateBlock(block, { props: { cultureLabel } })
-                }
-                onTitleChange={(cultureTitle) =>
-                  editor.updateBlock(block, { props: { cultureTitle } })
-                }
-                title={block.props.cultureTitle}
-              />
-            </div>
-          </section>
-
-          <section className="border-border bg-muted/20 min-w-0 border-t px-4 py-6 sm:px-6">
-            <div className="mb-4 flex min-w-0 items-start gap-3">
-              <span
-                className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md text-white"
-                style={{ backgroundColor: scheme.accent }}
-              >
-                <BookOpenIcon className="size-4" />
-              </span>
-              <EditableText
-                ariaLabel="Label tujuan belajar"
-                className="text-foreground w-full text-sm font-semibold tracking-wide"
-                editable={editable}
-                onChange={(objectivesLabel) =>
-                  editor.updateBlock(block, { props: { objectivesLabel } })
-                }
-                value={block.props.objectivesLabel}
-              />
-            </div>
-            <div className="bg-card ring-foreground/10 min-w-0 divide-y rounded-lg px-4 ring-1">
-              <div className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)] gap-3 py-3.5">
-                <span
-                  className="pt-0.5 text-xs font-semibold tabular-nums"
-                  style={{ color: scheme.accent }}
+          {showQuestion || showAnswer ? (
+            <section className="grid min-w-0 gap-3 px-4 py-5 sm:grid-cols-2 sm:px-6 sm:py-6">
+              {showQuestion ? (
+                <div className="bg-muted/35 ring-foreground/10 min-w-0 rounded-lg p-4 ring-1">
+                  <div
+                    className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-[0.12em] uppercase"
+                    style={{ color: scheme.accent }}
+                  >
+                    <MessageCircleIcon className="size-3.5" /> Contoh pertanyaan
+                  </div>
+                  <EditableText
+                    ariaLabel="Pertanyaan contoh"
+                    className="text-foreground w-full text-sm leading-relaxed font-medium"
+                    editable={editable}
+                    onChange={(question) =>
+                      editor.updateBlock(block, { props: { question } })
+                    }
+                    value={block.props.question}
+                  />
+                </div>
+              ) : null}
+              {showAnswer ? (
+                <div
+                  className="bg-muted/35 ring-foreground/10 min-w-0 rounded-lg border-l-2 p-4 ring-1"
+                  style={{ borderLeftColor: scheme.accent }}
                 >
-                  01
-                </span>
-                <EditableText
-                  ariaLabel="Tujuan belajar pertama"
-                  className="text-foreground w-full text-sm leading-relaxed"
+                  <div className="text-muted-foreground mb-2 text-xs font-semibold tracking-[0.12em] uppercase">
+                    Contoh jawaban
+                  </div>
+                  <EditableText
+                    ariaLabel="Jawaban contoh"
+                    className="text-foreground w-full text-sm leading-relaxed font-medium"
+                    editable={editable}
+                    onChange={(answer) =>
+                      editor.updateBlock(block, { props: { answer } })
+                    }
+                    value={block.props.answer}
+                  />
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
+          {showFocus ? (
+            <section className="border-border min-w-0 border-t px-4 py-6 sm:px-6">
+              <p className="text-muted-foreground mb-4 text-xs font-semibold tracking-[0.14em] uppercase">
+                Fokus pelajaran
+              </p>
+              <div className="grid min-w-0 gap-3 md:grid-cols-3">
+                <LearningCard
+                  accent={scheme.accent}
+                  description={block.props.grammarDescription}
                   editable={editable}
-                  onChange={(objectiveOne) =>
-                    editor.updateBlock(block, { props: { objectiveOne } })
+                  label={block.props.grammarLabel}
+                  onDescriptionChange={(grammarDescription) =>
+                    editor.updateBlock(block, { props: { grammarDescription } })
                   }
-                  value={block.props.objectiveOne}
+                  onLabelChange={(grammarLabel) =>
+                    editor.updateBlock(block, { props: { grammarLabel } })
+                  }
+                  onTitleChange={(grammarTitle) =>
+                    editor.updateBlock(block, { props: { grammarTitle } })
+                  }
+                  title={block.props.grammarTitle}
+                />
+                <LearningCard
+                  accent={scheme.accent}
+                  description={block.props.vocabularyDescription}
+                  editable={editable}
+                  label={block.props.vocabularyLabel}
+                  onDescriptionChange={(vocabularyDescription) =>
+                    editor.updateBlock(block, {
+                      props: { vocabularyDescription },
+                    })
+                  }
+                  onLabelChange={(vocabularyLabel) =>
+                    editor.updateBlock(block, { props: { vocabularyLabel } })
+                  }
+                  onTitleChange={(vocabularyTitle) =>
+                    editor.updateBlock(block, { props: { vocabularyTitle } })
+                  }
+                  title={block.props.vocabularyTitle}
+                />
+                <LearningCard
+                  accent={scheme.accent}
+                  description={block.props.cultureDescription}
+                  editable={editable}
+                  label={block.props.cultureLabel}
+                  onDescriptionChange={(cultureDescription) =>
+                    editor.updateBlock(block, { props: { cultureDescription } })
+                  }
+                  onLabelChange={(cultureLabel) =>
+                    editor.updateBlock(block, { props: { cultureLabel } })
+                  }
+                  onTitleChange={(cultureTitle) =>
+                    editor.updateBlock(block, { props: { cultureTitle } })
+                  }
+                  title={block.props.cultureTitle}
                 />
               </div>
-              <div className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)] gap-3 py-3.5">
+            </section>
+          ) : null}
+
+          {showObjectiveOne || showObjectiveTwo ? (
+            <section className="border-border bg-muted/20 min-w-0 border-t px-4 py-6 sm:px-6">
+              <div className="mb-4 flex min-w-0 items-start gap-3">
                 <span
-                  className="pt-0.5 text-xs font-semibold tabular-nums"
-                  style={{ color: scheme.accent }}
+                  className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md text-white"
+                  style={{ backgroundColor: scheme.accent }}
                 >
-                  02
+                  <BookOpenIcon className="size-4" />
                 </span>
                 <EditableText
-                  ariaLabel="Tujuan belajar kedua"
-                  className="text-foreground w-full text-sm leading-relaxed"
+                  ariaLabel="Label tujuan belajar"
+                  hideWhenEmpty
+                  className="text-foreground w-full text-sm font-semibold tracking-wide"
                   editable={editable}
-                  onChange={(objectiveTwo) =>
-                    editor.updateBlock(block, { props: { objectiveTwo } })
+                  onChange={(objectivesLabel) =>
+                    editor.updateBlock(block, { props: { objectivesLabel } })
                   }
-                  value={block.props.objectiveTwo}
+                  value={block.props.objectivesLabel}
                 />
               </div>
-            </div>
-          </section>
+              <div className="bg-card ring-foreground/10 min-w-0 divide-y rounded-lg px-4 ring-1">
+                {showObjectiveOne ? (
+                  <div className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)] gap-3 py-3.5">
+                    <span
+                      className="pt-0.5 text-xs font-semibold tabular-nums"
+                      style={{ color: scheme.accent }}
+                    >
+                      01
+                    </span>
+                    <EditableText
+                      ariaLabel="Tujuan belajar pertama"
+                      className="text-foreground w-full text-sm leading-relaxed"
+                      editable={editable}
+                      onChange={(objectiveOne) =>
+                        editor.updateBlock(block, { props: { objectiveOne } })
+                      }
+                      value={block.props.objectiveOne}
+                    />
+                  </div>
+                ) : null}
+                {showObjectiveTwo ? (
+                  <div className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)] gap-3 py-3.5">
+                    <span
+                      className="pt-0.5 text-xs font-semibold tabular-nums"
+                      style={{ color: scheme.accent }}
+                    >
+                      02
+                    </span>
+                    <EditableText
+                      ariaLabel="Tujuan belajar kedua"
+                      className="text-foreground w-full text-sm leading-relaxed"
+                      editable={editable}
+                      onChange={(objectiveTwo) =>
+                        editor.updateBlock(block, { props: { objectiveTwo } })
+                      }
+                      value={block.props.objectiveTwo}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
         </article>
       );
     },

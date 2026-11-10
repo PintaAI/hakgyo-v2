@@ -1,15 +1,14 @@
 import {
-  assessmentRef,
   audioClip,
   b,
   callout,
   contrast,
   game,
+  lessonPage,
   letters,
   p,
   rules,
   syllableGrid,
-  vocabularyRef,
 } from "../blocks";
 import type { ModuleContent, QuestionContent } from "../content-types";
 
@@ -50,6 +49,37 @@ export const m1BasicVowels: ModuleContent = {
       description: "Cara kerja Hangeul dan cara kursus ini berjalan.",
       minutes: 3,
       blocks: [
+        lessonPage({
+          theme: "rose",
+          imageKey: "chapter-1",
+          imageAlt: "Murid berlatih bentuk mulut di depan cermin kecil",
+          chapter: 1,
+          title: "ㅏ ㅓ ㅗ ㅜ ㅡ ㅣ",
+          subtitle: "Perkenalan dan vokal dasar",
+          question: "아이?",
+          answer: "오, 아이!",
+          cards: [
+            {
+              label: "Huruf baru",
+              title: "ㅇ + 6 vokal",
+              description: "Bunyi dan posisi vokal di blok",
+            },
+            {
+              label: "Kata pertama",
+              title: "아이 · 오이 · 오",
+              description: "Kata yang hanya pakai vokal",
+            },
+            {
+              label: "Latihan",
+              title: "Susun 한글",
+              description: "Permainan dan kuis bab",
+            },
+          ],
+          goals: [
+            "Membaca blok suku kata yang dimulai ㅇ.",
+            "Membedakan ㅓ dari ㅗ, dan ㅡ dari ㅜ.",
+          ],
+        }),
         callout(
           "info",
           b("Hangeul hanya punya 24 huruf dasar."),
@@ -365,14 +395,12 @@ export const m1BasicVowels: ModuleContent = {
         syllableGrid("Semua vokal dasar", ["ㅇ"], VOWELS, {
           showRomanization: true,
         }),
-        vocabularyRef("m1-vocab-a"),
         game(
           "syllable-forge",
           "basic-vowels",
           "Susun blok vokal",
           "Susun ㅇ dengan keenam vokal. Tegak di kanan, datar di bawah.",
         ),
-        assessmentRef("m1-quiz"),
         callout(
           "success",
           b("Ingat: "),

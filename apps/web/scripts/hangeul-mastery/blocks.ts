@@ -10,10 +10,16 @@ import {
   type HangeulGameStageId,
 } from "@hakgyo/shared/hangeul";
 
+import {
+  conversationBlockDefaults,
+  type lessonPageDefaults,
+} from "../../src/lib/blocknote/block-catalog";
 import type { BlockNoteBlock } from "./content-types";
 
 /** Prefix of an audio placeholder; the importer swaps it for an asset id. */
 export const AUDIO_PLACEHOLDER_PREFIX = "hangeul-audio:";
+/** Prefix of a picture placeholder (a key of `content/images.ts`); the importer swaps it for an asset id. */
+export const IMAGE_PLACEHOLDER_PREFIX = "hangeul-image:";
 /** Prefix of a reference to another item of the same module, by key. */
 export const ITEM_REFERENCE_PREFIX = "hangeul-item:";
 
@@ -349,3 +355,114 @@ export const assessmentRef = (key: string): BlockNoteBlock => ({
   type: "assessmentReference",
   props: { assessmentId: `${ITEM_REFERENCE_PREFIX}${key}` },
 });
+
+/** A picture made by `hangeul:images` from its spec in `content/images.ts`, by key. */
+export const image = (key: string) => `${IMAGE_PLACEHOLDER_PREFIX}${key}`;
+
+/**
+ * A chapter opener (the `lessonPage` block): the picture, the chapter's letters as the title with
+ * an Indonesian subtitle, a two-line exchange the chapter teaches to read, three focus cards and
+ * two goals. Every prop is set, because BlockNote fills omitted ones with the block's EPS sample.
+ * Learners cannot read Korean prose yet, so labels and goals are Indonesian only.
+ */
+export function lessonPage(input: {
+  theme: "rose" | "ocean" | "forest" | "sunset";
+  imageKey: string;
+  imageAlt: string;
+  chapter: number;
+  title: string;
+  subtitle: string;
+  question: string;
+  answer: string;
+  cards: [
+    { label: string; title: string; description: string },
+    { label: string; title: string; description: string },
+    { label: string; title: string; description: string },
+  ];
+  goals: [string, string];
+}): BlockNoteBlock {
+  const [first, second, third] = input.cards;
+  const props: Record<keyof typeof lessonPageDefaults, string> = {
+    eyebrow: "Hangeul Mastery",
+    chapterNumber: String(input.chapter).padStart(2, "0"),
+    title: input.title,
+    subtitle: input.subtitle,
+    question: input.question,
+    answer: input.answer,
+    grammarLabel: first.label,
+    grammarTitle: first.title,
+    grammarDescription: first.description,
+    vocabularyLabel: second.label,
+    vocabularyTitle: second.title,
+    vocabularyDescription: second.description,
+    cultureLabel: third.label,
+    cultureTitle: third.title,
+    cultureDescription: third.description,
+    objectivesLabel: "Tujuan belajar",
+    objectiveOne: input.goals[0],
+    objectiveTwo: input.goals[1],
+  };
+  return {
+    type: "lessonPage",
+    props: {
+      theme: input.theme,
+      assetId: image(input.imageKey),
+      fileName: input.imageAlt,
+      contentType: "image/webp",
+      ...props,
+    },
+  };
+}
+
+/** JSON-array props of the conversation block; every other text prop is a plain string. */
+const CONVERSATION_LIST_PROPS = new Set([
+  "lines",
+  "questions",
+  "practiceExpressions",
+  "practiceDialogue",
+  "usefulExpressionDialogue",
+  "pronunciationExamples",
+]);
+
+/**
+ * A short dialogue (the `conversation` block): a picture, the speakers' lines with their Indonesian
+ * translation and up to two comprehension questions. The block has no player, so put the lines'
+ * `audioClip`s after it. Every other part (tip, speaking practice, useful expression,
+ * pronunciation) is left empty, which hides it for learners.
+ */
+export function conversation(input: {
+  imageKey: string;
+  imageAlt: string;
+  eyebrow: string;
+  number: string;
+  lines: Array<{ speaker: string; korean: string; translation: string }>;
+  questions?: Array<{ korean: string; translation: string }>;
+}): BlockNoteBlock {
+  const blank = Object.fromEntries(
+    Object.entries(conversationBlockDefaults).map(([name, value]) => [
+      name,
+      typeof value === "boolean"
+        ? false
+        : CONVERSATION_LIST_PROPS.has(name)
+          ? "[]"
+          : "",
+    ]),
+  );
+  const questions = input.questions ?? [];
+  return {
+    type: "conversation",
+    props: {
+      ...blank,
+      theme: "violet",
+      sectionVariant: "pronunciation",
+      assetId: image(input.imageKey),
+      fileName: input.imageAlt,
+      contentType: "image/webp",
+      eyebrow: input.eyebrow,
+      number: input.number,
+      lines: JSON.stringify(input.lines),
+      questionsLabel: questions.length ? "Jawablah" : "",
+      questions: JSON.stringify(questions),
+    },
+  };
+}
