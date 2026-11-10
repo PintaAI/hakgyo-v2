@@ -28,27 +28,31 @@ describe("Hangeul letter game stages", () => {
 
   test("teaches the letters each stage adds and reviews a few earlier ones", () => {
     const expectedNew: Record<string, string> = {
-      "basic-vowels": "ㅇㅏㅓㅗㅜㅡㅣ",
+      "vertical-vowels": "ㅇㅏㅓㅣㅑㅕ",
+      "horizontal-vowels": "ㅗㅜㅡㅛㅠ",
+      "compound-vowels": "ㅐㅔㅒㅖㅘㅝㅙㅞㅚㅟㅢ",
       "core-consonants": "ㄴㅁㅅㅂㄱㄷㅈㅎㄹ",
-      "y-vowels": "ㅑㅕㅛㅠㅐㅔㅒㅖ",
       "aspirated-tense": "ㅋㅌㅍㅊㄲㄸㅃㅆㅉ",
+      "basic-vowels": "ㅇㅏㅓㅗㅜㅡㅣ",
+      "y-vowels": "ㅑㅕㅛㅠㅐㅔㅒㅖ",
       "w-vowels": "ㅘㅝㅙㅞㅚㅟㅢ",
     };
-    HANGEUL_GAME_STAGES.forEach((stage, index) => {
+    HANGEUL_GAME_STAGES.forEach((stage) => {
       if (stage.batchim) return;
       const plan = hangeulLessonPlan(stage);
       expect(characters(plan.newLetters)).toEqual(
         [...expectedNew[stage.id]!].sort(),
       );
-      const earlier = new Set<string>(
-        HANGEUL_GAME_STAGES[index - 1]?.letters ?? [],
-      );
-      if (index === 0) expect(plan.reviewLetters).toEqual([]);
+      const taught = new Set<string>(stage.teaches);
+      const earlier = stage.letters.filter((letter) => !taught.has(letter));
+      if (!earlier.length) expect(plan.reviewLetters).toEqual([]);
       else {
         expect(plan.reviewLetters.length).toBeGreaterThanOrEqual(2);
         expect(plan.reviewLetters.length).toBeLessThan(plan.newLetters.length);
         expect(
-          plan.reviewLetters.every((letter) => earlier.has(letter.character)),
+          plan.reviewLetters.every((letter) =>
+            earlier.includes(letter.character),
+          ),
         ).toBe(true);
       }
       expect([...plan.quizIds].sort()).toEqual(

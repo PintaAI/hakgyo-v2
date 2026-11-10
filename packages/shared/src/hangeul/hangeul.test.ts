@@ -105,14 +105,32 @@ describe("block prop parsers", () => {
 });
 
 describe("game stages", () => {
-  test("stage ids are unique and every stage grows the previous one", () => {
+  test("stage ids are unique and the course stages grow one another", () => {
     const ids = HANGEUL_GAME_STAGES.map((stage) => stage.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (let index = 1; index < HANGEUL_GAME_STAGES.length; index++) {
-      const previous = new Set(HANGEUL_GAME_STAGES[index - 1]!.letters);
-      const current = new Set(HANGEUL_GAME_STAGES[index]!.letters);
+    const course = HANGEUL_GAME_STAGES.slice(0, ids.indexOf("batchim") + 1);
+    for (let index = 1; index < course.length; index++) {
+      const previous = new Set(course[index - 1]!.letters);
+      const current = new Set(course[index]!.letters);
       for (const letter of previous) expect(current.has(letter)).toBe(true);
     }
+  });
+
+  test("each stage teaches its own letters and reviews the rest", () => {
+    for (const stage of HANGEUL_GAME_STAGES) {
+      const letters = new Set<string>(stage.letters);
+      expect(stage.teaches.every((letter) => letters.has(letter))).toBe(true);
+    }
+    // The course stages teach every letter exactly once.
+    const course = HANGEUL_GAME_STAGES.slice(
+      0,
+      HANGEUL_GAME_STAGES.findIndex((stage) => stage.id === "batchim") + 1,
+    );
+    const taught = course.flatMap((stage) => [...stage.teaches]);
+    expect(new Set(taught).size).toBe(taught.length);
+    expect([...taught].sort()).toEqual(
+      [...new Set<string>(course.at(-1)!.letters)].sort(),
+    );
   });
 
   test("builds in-app paths and deep links", () => {
@@ -125,7 +143,9 @@ describe("game stages", () => {
         stage: "core-consonants",
         courseItemId: "item-1",
       }),
-    ).toBe("/games/syllable-forge?stage=core-consonants&sourceCourseItemId=item-1");
+    ).toBe(
+      "/games/syllable-forge?stage=core-consonants&sourceCourseItemId=item-1",
+    );
     expect(hangeulGamePath({ gameKey: "word-builder", stage: "nope" })).toBe(
       "/games/word-builder",
     );

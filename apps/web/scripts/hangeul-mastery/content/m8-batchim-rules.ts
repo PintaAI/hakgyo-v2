@@ -41,7 +41,7 @@ export const m8BatchimRules: ModuleContent = {
   key: "m8-batchim-rules",
   title: "Batchim ganda dan perubahan bunyi",
   description:
-    "Batchim yang pindah ke blok berikutnya (연음), batchim ganda, dan dua perubahan bunyi: 합니다 [함니다] dan 한국말 [한궁말]. Di akhir modul kamu bisa membaca 감사합니다 sendiri.",
+    "Batchim yang pindah ke blok berikutnya (연음), batchim ganda, dan dua perubahan bunyi: 합니다 [함니다] dan 한국말 [한궁말]. Di akhir bab kamu bisa membaca 감사합니다 sendiri.",
   items: [
     {
       type: "material",
@@ -364,7 +364,7 @@ export const m8BatchimRules: ModuleContent = {
           "word-builder",
           "batchim",
           "Susun kata batchim",
-          "Ulangi semua kata dari modul batchim.",
+          "Ulangi semua kata dari bab batchim.",
         ),
         callout(
           "success",
@@ -376,7 +376,7 @@ export const m8BatchimRules: ModuleContent = {
     {
       type: "assessment",
       key: "m8-quiz",
-      title: "Kuis Modul 8: batchim ganda dan perubahan bunyi",
+      title: "Kuis bab 8: batchim ganda dan perubahan bunyi",
       description:
         "14 soal tentang 연음, batchim ganda, dan perubahan bunyi, ditambah ulasan.",
       instructions:
@@ -452,41 +452,35 @@ export const m8BatchimRules: ModuleContent = {
         ),
         choice(
           "m8-review-hear-bang",
-          hear(
-            "방",
-            "Ulasan Modul 7. Dengarkan, lalu pilih kata yang kamu dengar.",
-          ),
+          hear("방", "Ulasan. Dengarkan, lalu pilih kata yang kamu dengar."),
           "방",
           ["반", "밤", "밥"],
           "방 (kamar) berakhir dengan ng (ㅇ). 반 berakhir n, 밤 berakhir m, 밥 berakhir p yang ditahan.",
         ),
         choice(
           "m8-review-kkot",
-          "Ulasan Modul 7. Bagaimana 꽃 (bunga) dibaca kalau berdiri sendiri?",
+          "Ulasan. Bagaimana 꽃 (bunga) dibaca kalau berdiri sendiri?",
           "[꼳]",
           ["[꼬츠]", "[꼭]", "[꼽]"],
           "ㅊ di posisi batchim dibaca [ㄷ], jadi 꽃 dibaca [꼳]. Kalau diikuti vokal, ㅊ terdengar lagi: 꽃이 [꼬치].",
         ),
         choice(
           "m8-review-read-hakgyo",
-          "Ulasan Modul 7. Apa arti 학교?",
+          "Ulasan. Apa arti 학교?",
           "sekolah",
           ["siswa", "guru", "rumah sakit"],
           "학교 = sekolah, dibaca [학꾜]. Siswa = 학생, guru = 선생님, rumah sakit = 병원.",
         ),
         choice(
           "m8-review-read-uisa",
-          "Ulasan Modul 5. Apa arti 의사?",
+          "Ulasan. Apa arti 의사?",
           "dokter",
           ["kursi", "perusahaan", "rapat"],
           "의사 = dokter. Kursi = 의자, perusahaan = 회사, rapat = 회의.",
         ),
         choice(
           "m8-review-hear-tokki",
-          hear(
-            "토끼",
-            "Ulasan Modul 4. Dengarkan, lalu pilih kata yang kamu dengar.",
-          ),
+          hear("토끼", "Ulasan. Dengarkan, lalu pilih kata yang kamu dengar."),
           "토끼",
           ["도끼", "토기", "또끼"],
           "토끼 (kelinci) diawali ㅌ yang berhembus. 도끼 (kapak) diawali ㄷ polos.",

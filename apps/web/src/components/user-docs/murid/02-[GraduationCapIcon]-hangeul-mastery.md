@@ -4,15 +4,17 @@
 
 ## Isi kurikulum
 
-Bab dibuka berurutan: bab berikutnya terbuka setelah semua isi bab sebelumnya selesai. Setiap materi pendek, sekitar 5–8 menit. Setiap bab diawali halaman pembuka: gambar, huruf yang akan dipelajari, dialog pendek yang bisa kamu baca di akhir bab, dan tujuan belajarnya.
+Bab dibuka berurutan: bab berikutnya terbuka setelah semua isi bab sebelumnya selesai. Setiap materi pendek, sekitar 5–8 menit. Setiap bab diawali halaman pembuka: gambar, huruf yang akan dipelajari, dan tujuan belajarnya. Sebagian bab juga menampilkan dialog pendek yang bisa kamu baca di akhir bab.
+
+Kurikulum ini dimulai dari vokal. Bahasa Indonesia punya 5 huruf vokal (a, i, u, e, o), sedangkan bahasa Korea punya 21. Tapi kebanyakan bunyinya sudah kamu kenal. Yang benar-benar baru hanya dua: ㅓ dan ㅡ. Setelah semua vokal, barulah kamu belajar konsonan.
 
 | Bab | Yang dipelajari |
 |---|---|
-| **Perkenalan dan vokal dasar** | Cara kerja Hangeul, cara huruf disusun menjadi blok, ㅇ yang tidak dibaca, dan vokal ㅏ ㅓ ㅗ ㅜ ㅡ ㅣ |
-| **Konsonan inti** | ㄴ ㅁ ㅅ ㅂ ㄱ ㄷ ㅈ ㅎ ㄹ dan kata pertamamu |
-| **Vokal Y dan ㅐ ㅔ** | ㅑ ㅕ ㅛ ㅠ dan ㅐ ㅔ ㅒ ㅖ |
+| **Vokal tegak** | Cara huruf disusun menjadi blok, ㅇ yang tidak dibaca, dan vokal yang ditulis di kanan: ㅏ ㅣ, ㅓ, ㅑ ㅕ |
+| **Vokal mendatar** | Vokal yang ditulis di bawah: ㅗ (o di *obat*), ㅜ (u di *batu*), ㅡ (mirip e di *emas*), ㅛ ㅠ |
+| **Vokal gabungan** | ㅐ ㅔ (e di *bebek*), ㅒ ㅖ, ㅘ ㅝ ㅙ ㅞ, ㅚ ㅟ ㅢ, dan peta vokal Indonesia ke Hangeul |
+| **Konsonan inti** | ㄴ ㅁ ㅅ ㅂ ㄱ ㄷ ㅈ ㅎ ㄹ, sapaan sopan, dan dialog di kafe |
 | **Konsonan berhembus dan tegang** | Bunyi dengan hembusan napas (ㅋ ㅌ ㅍ ㅊ) dan bunyi tegang (ㄲ ㄸ ㅃ ㅆ ㅉ) |
-| **Vokal W** | ㅘ ㅝ ㅙ ㅞ ㅚ ㅟ ㅢ |
 | **Membaca dan menulis** | Membaca kata nyata, urutan menulis, dan mengetik Hangeul di ponsel |
 | **Batchim** | Konsonan di bagian bawah blok dan tujuh bunyi akhirnya |
 | **Batchim ganda dan perubahan bunyi** | Batchim yang pindah ke blok berikutnya, batchim dua huruf, dan dua perubahan bunyi yang paling sering (합니다, 한국말) |

@@ -360,7 +360,7 @@ const hangeulGameStageList = HANGEUL_GAME_STAGES.map(
 ).join(", ");
 
 export const hakgyoBlockCatalog = {
-  catalogVersion: 15,
+  catalogVersion: 16,
   editor: "BlockNote",
   format: {
     description:
