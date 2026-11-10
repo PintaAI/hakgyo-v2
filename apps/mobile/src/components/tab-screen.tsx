@@ -1,6 +1,6 @@
 import { router, Stack, type Href } from "expo-router";
 import { type ComponentProps, type ReactNode } from "react";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 
 import { useUpdatesBadgeCount } from "../lib/sidebar-indicators";
 import { useDrawer } from "../providers/DrawerProvider";
@@ -32,20 +32,31 @@ function formatBadge(count: number) {
   return count > 99 ? "99+" : String(count);
 }
 
+/**
+ * The updates bell as a toolbar item. A plain function, not a component:
+ * `Stack.Toolbar` keeps only `Stack.Toolbar.*` elements among its direct
+ * children and drops anything wrapped in another component.
+ */
+function updatesToolbarItem(unreadCount: number, openUpdates: () => void) {
+  return (
+    <Stack.Toolbar.Button
+      icon={toolbarIcons.notifications}
+      accessibilityLabel="Buka pembaruan belajar"
+      onPress={openUpdates}
+    >
+      {unreadCount > 0 ? (
+        <Stack.Toolbar.Badge>{formatBadge(unreadCount)}</Stack.Toolbar.Badge>
+      ) : null}
+    </Stack.Toolbar.Button>
+  );
+}
+
 function UpdatesToolbarButton() {
   const { openUpdates } = useDrawer();
   const unreadCount = useUpdatesBadgeCount();
   return (
     <Stack.Toolbar placement="right">
-      <Stack.Toolbar.Button
-        icon={toolbarIcons.notifications}
-        accessibilityLabel="Buka pembaruan belajar"
-        onPress={openUpdates}
-      >
-        {unreadCount > 0 ? (
-          <Stack.Toolbar.Badge>{formatBadge(unreadCount)}</Stack.Toolbar.Badge>
-        ) : null}
-      </Stack.Toolbar.Button>
+      {updatesToolbarItem(unreadCount, openUpdates)}
     </Stack.Toolbar>
   );
 }
@@ -64,32 +75,39 @@ function UpdatesActionButton() {
 }
 
 /**
- * Settings, or the updates bell while there are unread updates: the bell
- * takes the gear's place so new updates are not missed.
+ * Settings, with the updates bell beside it while there are unread updates,
+ * so new updates are not missed and settings stay one tap away. Both buttons
+ * sit in one toolbar: a screen has one toolbar per side. Android shows the
+ * same pair in the content, bell first, gear at the edge.
  */
 function SettingsToolbarButton() {
+  const { openUpdates } = useDrawer();
   const unreadCount = useUpdatesBadgeCount();
-  if (unreadCount > 0) return <UpdatesToolbarButton />;
   return (
+    // UIKit lays out right bar items from the edge inwards, so the gear
+    // stays in the corner and the bell appears to its left.
     <Stack.Toolbar placement="right">
       <Stack.Toolbar.Button
         icon={toolbarIcons.settings}
         accessibilityLabel="Buka pengaturan"
         onPress={openSettings}
       />
+      {unreadCount > 0 ? updatesToolbarItem(unreadCount, openUpdates) : null}
     </Stack.Toolbar>
   );
 }
 
 function SettingsActionButton() {
   const unreadCount = useUpdatesBadgeCount();
-  if (unreadCount > 0) return <UpdatesActionButton />;
   return (
-    <TabActionButton
-      icon="settings"
-      accessibilityLabel="Buka pengaturan"
-      onPress={openSettings}
-    />
+    <View className="flex-row items-center">
+      {unreadCount > 0 ? <UpdatesActionButton /> : null}
+      <TabActionButton
+        icon="settings"
+        accessibilityLabel="Buka pengaturan"
+        onPress={openSettings}
+      />
+    </View>
   );
 }
 
@@ -173,7 +191,7 @@ export function TabScreen({
   titleIcon?: PageTitleIcon;
   /**
    * The header's actions besides the sidebar button: the organization switcher
-   * and settings (which turns into the updates bell while there are unread
+   * and settings (with the updates bell beside it while there are unread
    * updates), or the updates button alone.
    */
   right?: "organization" | "updates";

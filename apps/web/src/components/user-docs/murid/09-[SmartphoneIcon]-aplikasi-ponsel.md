@@ -20,7 +20,7 @@ Gunakan akun yang sama dengan di situs web supaya kelasmu muncul.
 | **Latihan** | Kartu kosakata, permainan Hangeul, serta latihan dan tryout |
 | **Cari** | Pencarian materi, kosakata, dan soal dari semua kurikulummu |
 
-**Profil** berisi XP, pencapaian, pengaturan, dan bantuan. Bukalah dari tombol menu di kiri atas, dari namamu di tab **Hari Ini**, atau dari tombol pengaturan di kanan atas.
+**Profil** berisi XP, pencapaian, pengaturan, dan bantuan. Bukalah dari tombol menu di kiri atas, dari namamu di tab **Hari Ini**, atau dari tombol pengaturan di kanan atas. Saat ada pembaruan yang belum dibaca, tombol lonceng dengan jumlahnya muncul di sebelah tombol pengaturan.
 
 Di tab **Hari Ini**, **Agenda** di bawah streak menampilkan pertemuan kelas dan latihan atau tryout yang perlu kamu kerjakan dalam 7 hari ke depan, yang paling mendesak di atas. Pertemuan yang sedang live bertanda merah; ketuk **Gabung** untuk langsung masuk. Ketuk **Mulai** atau **Lanjutkan** untuk membuka latihan atau tryout. Agenda tidak muncul kalau tidak ada yang akan datang.
 
