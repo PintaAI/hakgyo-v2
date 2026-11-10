@@ -14,7 +14,7 @@ const PAGE_GAP = PAGE_BLEED * 2;
 
 /**
  * Questions one at a time (Home's daily questions, the attempt, the result
- * review): the shared `Pager` with the quiz spacing and next-question arrow.
+ * review): the shared `Pager` with the quiz spacing.
  * The owner decides whether a swipe stands and calls `scrollTo` to put the
  * pager back otherwise; `swipeEnabled` off leaves only the buttons (sections
  * that move forward only or by themselves).

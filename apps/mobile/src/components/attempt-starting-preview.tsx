@@ -1,7 +1,10 @@
-import { orderAssessmentQuestions, shufflesQuestions } from "@hakgyo/shared";
+import {
+  orderAssessmentQuestions,
+  sectionRules,
+  shufflesQuestions,
+} from "@hakgyo/shared";
 import { ActivityIndicator, Text, View } from "react-native";
 
-import { sectionRules } from "../lib/section-rules";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import type { CourseItemAssessment } from "../sync/hooks";
 import { useApiAssetResolver } from "./content-renderer";

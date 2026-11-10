@@ -26,10 +26,10 @@ Setiap kartu menampilkan status:
 
 ## Mengerjakan
 
-1. Buka latihan yang berstatus **Dibuka**. Halaman ini menampilkan jumlah soal, durasi, nilai lulus, dan jadwal tutup.
+1. Buka latihan yang berstatus **Dibuka**. Halaman ini menampilkan jumlah soal, durasi, nilai lulus, jadwal tutup, dan **Contoh soal** (soal pertama, belum bisa dijawab).
 2. Tunggu sampai **Menyiapkan gambar & audio soal** selesai. Langkah ini mengunduh gambar dan suara lebih dulu supaya soal tidak tersendat. Jika ada yang gagal, klik ulangi.
 3. Klik **Mulai tugas berwaktu**. Memulai membutuhkan internet. Di aplikasi ponsel, tekan **Mulai** pada kotak **Mulai tugas berwaktu**. Soal pertama (atau petunjuk bagian pertama) langsung tampil dengan tulisan **Memulai…**, dan bisa dijawab begitu server mencatat waktu mulaimu. Setelah itu kamu bisa lanjut mengerjakan tanpa internet.
-4. Kerjakan seperti tugas biasa, lalu kirim. Di aplikasi ponsel, tekan **Selesaikan latihan** atau **Selesaikan tryout** di kanan atas, lalu **Selesaikan** di konfirmasinya. Tombolnya menampilkan **Mengirim…** selama jawaban dikirim, lalu kamu kembali ke halaman latihan. Di sana tulisan **Memperbarui status dan hasil…** muncul sebentar sampai nilaimu tampil. Lihat [Mengerjakan Tugas](/docs/murid/mengerjakan-tugas).
+4. Kerjakan seperti tugas biasa, lalu tekan **Selesaikan latihan** atau **Selesaikan tryout** di kanan atas, lalu **Selesaikan** di konfirmasinya. Tombolnya menampilkan **Mengirim…** selama jawaban dikirim, lalu kamu kembali ke halaman latihan. Di aplikasi ponsel, tulisan **Memperbarui status dan hasil…** muncul sebentar sampai nilaimu tampil. Lihat [Mengerjakan Tugas](/docs/murid/mengerjakan-tugas).
 
 Waktumu berakhir pada yang lebih dulu tercapai: durasi habis, atau jadwal tutup tiba. Jika mulai 10 menit sebelum tutup, kamu hanya punya 10 menit.
 
@@ -39,7 +39,7 @@ Waktumu berakhir pada yang lebih dulu tercapai: durasi habis, atau jadwal tutup 
 
 ## Melihat nilai dan peringkat
 
-Setelah mengirim, buka lagi halaman latihan untuk melihat nilai dan papan peringkat.
+Setelah mengirim, kamu kembali ke halaman latihan. Di sana ada **Hasil terakhir** (nilaimu), papan peringkat, dan di bawahnya rincian hasil serta review jawaban.
 
 - Papan peringkat memakai nilai terbaikmu. Jika nilainya sama, yang lebih cepat selesai berada di atas.
 - Papan peringkat menampilkan 50 teratas dan posisimu sendiri.
@@ -55,7 +55,7 @@ Jika pengajar memberi label pada soal, hasilmu juga menampilkan **Hasil per tipe
 ## Hal yang perlu diketahui
 
 - Nilai latihan dan tryout tidak menyelesaikan tugas di kurikulummu. Tugas bab tetap harus dikerjakan sendiri.
-- Soal sebagian latihan dan tryout tidak ada di daftar bab kurikulummu. Soalnya baru terlihat saat kamu mulai mengerjakan, dan setelah itu kamu bisa membuka jawabanmu lagi dari halaman latihannya.
+- Soal sebagian latihan dan tryout tidak ada di daftar bab kurikulummu. Soalnya baru terlihat saat latihan dibuka: halaman latihan menampilkan soal pertama sebagai contoh, dan soal lainnya muncul saat kamu mulai mengerjakan. Setelah itu kamu bisa membuka jawabanmu lagi dari halaman latihannya.
 - Pengajar bisa membatalkan hasil seorang peserta, misalnya karena kecurangan. Kamu akan mendapat notifikasi beserta alasannya.
 - Latihan yang sudah selesai tetap bisa dilihat di **Semua event & hasil**.
 - Set soal EPS-TOPIK dari bank soal Hakgyo memakai suara AI untuk audio bagian Mendengar. Keterangannya tertulis di deskripsi tugas.
