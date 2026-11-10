@@ -41,16 +41,16 @@ export const m1BasicVowels: ModuleContent = {
   key: "m1-basic-vowels",
   title: "Vokal tegak",
   description:
-    "Kenalan dengan Hangeul dan isi kursus ini, lalu vokal yang garisnya tegak: ㅏ ㅓ ㅣ ㅑ ㅕ.",
+    "Kenalan dengan Hangeul Mastery, lalu vokal yang garisnya tegak: ㅏ ㅓ ㅣ ㅑ ㅕ.",
   items: [
     // Was the only lesson of the module "Mulai di sini" (m0-welcome); its key
     // stays so learners keep their progress on it.
     {
       type: "material",
       key: "m0-why-hangeul",
-      title: "Kenalan dengan Hangeul",
+      title: "Kenalan dengan Hangeul Mastery",
       description:
-        "Apa itu Hangeul, dan apa saja yang kamu pelajari di kursus ini.",
+        "Apa yang kamu pelajari dari awal sampai akhir, dan apa yang kamu dapat setelah selesai.",
       minutes: 3,
       blocks: [
         lessonPage({
@@ -58,77 +58,94 @@ export const m1BasicVowels: ModuleContent = {
           imageKey: "chapter-1",
           imageAlt: "Murid berlatih bentuk mulut di depan cermin kecil",
           chapter: 1,
-          title: "ㅏ ㅓ ㅣ ㅑ ㅕ",
-          subtitle: "Vokal tegak",
+          title: "한글",
+          subtitle: "Dari nol sampai bisa membaca Hangeul",
           question: "",
           answer: "",
           cards: [
             {
-              label: "Huruf baru",
-              title: "ㅏ ㅓ ㅣ ㅑ ㅕ",
-              description: "Vokal yang garisnya tegak",
+              label: "Yang dipelajari",
+              title: "Vokal → blok → konsonan",
+              description: "Lalu batchim dan ujian akhir",
             },
             {
-              label: "Kosakata",
-              title: "아이 · 아야",
-              description: "Kata pertamamu",
+              label: "Setelah selesai",
+              title: "Baca dan tulis sendiri",
+              description: "Tanpa bantuan huruf Latin",
             },
             {
-              label: "Latihan",
-              title: "Kenali vokal",
-              description: "Permainan dan tugas bab",
+              label: "Hadiahnya",
+              title: "Lencana + kelas lanjutan",
+              description: "Lanjut ke kelas Pola Bahasa",
             },
           ],
           goals: [
-            "Tahu isi kursus Hangeul Mastery.",
-            "Membaca dan membedakan lima vokal tegak.",
+            "Membaca kata Korea apa saja, langsung dari Hangeul.",
+            "Menulis dan mengetik Hangeul sendiri.",
           ],
         }),
         callout(
           "info",
           b("Hangeul adalah huruf Korea."),
-          " Hurufnya sedikit dan bentuknya berpola, jadi cepat dipelajari.",
+          " Di kursus ini kamu belajar membaca dan menulisnya dari nol, lewat 10 bab dengan materi singkat 3–8 menit.",
         ),
         rules({
-          title: "Yang akan kamu pelajari",
-          intro:
-            "Mulai dari vokal, lalu cara menyusun huruf jadi blok, baru konsonan.",
-          columns: ["Bab", "Topik", "Isinya"],
+          title: "Perjalananmu",
+          columns: ["Bab", "Kamu belajar", "Hasilnya"],
           rows: [
             {
               when: "Bab 1–3",
-              result: "Vokal",
-              example: "tegak, mendatar, rangkap",
+              result: "21 vokal",
+              example: "kamu bisa membaca semua vokal",
             },
             {
               when: "Bab 4",
-              result: "Blok",
-              example: "huruf disusun jadi suku kata",
+              result: "Blok suku kata",
+              example: "kamu tahu cara huruf disusun",
             },
             {
-              when: "Bab 5–6",
-              result: "Konsonan",
-              example: "dari bunyi lembut sampai tegang",
-            },
-            {
-              when: "Bab 7",
-              result: "Membaca",
-              example: "kata nyata dan mengetik di ponsel",
+              when: "Bab 5–7",
+              result: "19 konsonan",
+              example: "kamu bisa membaca kata nyata dan mengetik",
             },
             {
               when: "Bab 8–9",
               result: "Batchim",
-              example: "huruf di bagian bawah blok",
+              example: "kamu bisa membaca kata apa saja",
             },
             {
               when: "Bab 10",
-              result: "Ujian",
-              example: "lencana Hangeul Mastery",
+              result: "Ujian akhir",
+              example: "kamu dapat lencana Hangeul Mastery",
+            },
+          ],
+        }),
+        rules({
+          title: "Setelah selesai",
+          intro:
+            "Tujuannya bukan menghafal teori, tapi bisa membaca dan menulis sendiri.",
+          theme: "green",
+          columns: ["Kamu bisa", "Artinya", "Contohnya"],
+          rows: [
+            {
+              when: "Membaca",
+              result: "kata Korea apa saja",
+              example: "menu, papan nama, lirik lagu, nama idol",
+            },
+            {
+              when: "Menulis",
+              result: "tulis tangan dan ketik",
+              example: "keyboard Korea di ponsel",
+            },
+            {
+              when: "Lanjut belajar",
+              result: "kelas Pola Bahasa",
+              example: "terbuka otomatis setelah lulus",
             },
           ],
           tip: {
-            title: "Setiap bab",
-            text: "Materi, lalu kosakata, lalu tugas. Bab berikutnya terbuka setelah tugasnya lulus.",
+            title: "Cara belajarnya",
+            text: "Setiap bab: materi, lalu kosakata, lalu tugas. Bab berikutnya terbuka setelah tugasnya lulus.",
           },
         }),
       ],
