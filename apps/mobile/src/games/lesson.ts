@@ -49,8 +49,10 @@ function shuffled<T>(items: readonly T[], random: () => number) {
 
 /**
  * The lesson's words: new words first in the set's order (the order the
- * teacher wrote them in), then words due for review, then the rest with
- * mastered words last. Words without a term or a meaning are skipped.
+ * teacher wrote them in), then words practised but not yet learned ("Perlu
+ * dihafal": never recalled right, which the set needs to complete), then
+ * words due for review, then the rest with mastered words last. Words
+ * without a term or a meaning are skipped.
  */
 export function pickLessonWords<T extends LessonWord>(
   words: readonly T[],
@@ -63,18 +65,21 @@ export function pickLessonWords<T extends LessonWord>(
       word.term.trim() && word.meanings.some((meaning) => meaning.trim()),
   );
   const fresh = usable.filter((word) => !progress.get(word.id)?.practiced);
-  const due = usable.filter((word) => {
-    const item = progress.get(word.id);
-    return item?.practiced && item.due;
-  });
-  const rest = usable.filter((word) => {
-    const item = progress.get(word.id);
-    return item?.practiced && !item.due;
-  });
+  const practiced = usable.filter((word) => progress.get(word.id)?.practiced);
+  // `learned` is absent from older servers: then nothing counts as unlearned.
+  const unlearned = practiced.filter(
+    (word) => progress.get(word.id)?.learned === false,
+  );
+  const others = practiced.filter(
+    (word) => progress.get(word.id)?.learned !== false,
+  );
+  const due = others.filter((word) => progress.get(word.id)?.due);
+  const rest = others.filter((word) => !progress.get(word.id)?.due);
   const learning = rest.filter((word) => !progress.get(word.id)?.mastered);
   const mastered = rest.filter((word) => progress.get(word.id)?.mastered);
   return [
     ...fresh,
+    ...shuffled(unlearned, random),
     ...shuffled(due, random),
     ...shuffled(learning, random),
     ...shuffled(mastered, random),
