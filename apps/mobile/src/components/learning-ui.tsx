@@ -135,13 +135,16 @@ export function StudyScreen({
     <View
       className={`${fillViewport ? "flex-1" : ""} px-5 pb-12 ${bleedTop ? "pt-0" : "pt-4"} ${contentClassName}`}
       style={
-        bleedTop
-          ? { paddingBottom: Math.max(insets.bottom, 48) }
-          : Platform.OS !== "ios" && !headerShown
-            ? // Without a header nothing else clears the status bar here:
-              // contentInsetAdjustmentBehavior is iOS-only.
-              { paddingTop: insets.top + 16 }
-            : undefined
+        pullToContinue
+          ? // Room under the content for the pull indicator, as on a material.
+            { paddingBottom: Math.max(insets.bottom, 48) + 96 }
+          : bleedTop
+            ? { paddingBottom: Math.max(insets.bottom, 48) }
+            : Platform.OS !== "ios" && !headerShown
+              ? // Without a header nothing else clears the status bar here:
+                // contentInsetAdjustmentBehavior is iOS-only.
+                { paddingTop: insets.top + 16 }
+              : undefined
       }
     >
       {children}

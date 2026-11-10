@@ -344,6 +344,9 @@ function NextUpRow({
       accessible
       accessibilityLabel={`${label} ${path.completedCount} dari ${total} aktivitas di bab ini selesai.`}
       className="flex-row items-center gap-3 rounded-2xl border border-border bg-card p-4"
+      // Locked: dimmed, so what is still to do (the pull indicator under
+      // it) reads first.
+      style={locked ? { opacity: 0.45 } : undefined}
     >
       <View
         className={`size-10 items-center justify-center rounded-full ${locked || !meta ? "bg-muted" : meta.softClass}`}

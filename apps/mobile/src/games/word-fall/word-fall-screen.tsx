@@ -25,6 +25,7 @@ import {
 import Animated, {
   cancelAnimation,
   Easing,
+  FadeIn,
   FadeOut,
   ZoomIn,
   interpolate,
@@ -93,6 +94,8 @@ type FallingWord = {
   comboAtCompletion?: number;
   completed: boolean;
   powerUp?: WordFallPowerUp;
+  /** A word of the warm-up wave: its answer shows in full while it falls. */
+  warmup?: boolean;
 };
 
 type Point = { x: number; y: number };
@@ -121,11 +124,13 @@ const STARTING_HEALTH = 3;
 const LESSON_FALL_MS = 15_000;
 const LESSON_MAX_ACTIVE_WORDS = 2;
 /**
- * In a lesson the answer shows itself letter by letter as the word nears the
- * ship: from this share of the way down, fully shown by the second.
+ * The first wave warms up: its words fall with their answer in full, so the
+ * learner only types it (each letter lights up as it is typed). Later words
+ * show no answer at all. A lesson's wave is the words on screen at once.
  */
-const ASSIST_REVEAL_FROM = 0.4;
-const ASSIST_REVEAL_TO = 0.9;
+const WARMUP_WORDS = 3;
+/** How long a missed word shows its answer beside the ship. */
+const MISSED_ANSWER_MS = 3_000;
 const MAX_HEALTH = 6;
 const FORCE_REWARD_CHARGES = 10;
 const MAX_FORCE_CHARGES = 20;
@@ -190,7 +195,6 @@ const FallingWordView = memo(function FallingWordView({
   mistyped,
   paused,
   revealed,
-  assist = false,
   onImpact,
 }: {
   entity: FallingWord;
@@ -200,8 +204,6 @@ const FallingWordView = memo(function FallingWordView({
   mistyped: string;
   paused: boolean;
   revealed: boolean;
-  /** Show the answer letter by letter as the word comes close (lessons). */
-  assist?: boolean;
   onImpact: (id: string) => void;
 }) {
   const { colors } = useAppTheme();
@@ -346,36 +348,13 @@ const FallingWordView = memo(function FallingWordView({
   const prompt = promptTextForWord(entity.word, mode);
   const answer = entity.answer;
   const answerCharacters = Array.from(answer);
-  const [hinted, setHinted] = useState(0);
-  const answerLength = answerCharacters.length;
-  useAnimatedReaction(
-    () =>
-      assist
-        ? Math.floor(
-            answerLength *
-              Math.max(
-                0,
-                Math.min(
-                  1,
-                  (progress.value - ASSIST_REVEAL_FROM) /
-                    (ASSIST_REVEAL_TO - ASSIST_REVEAL_FROM),
-                ),
-              ),
-          )
-        : 0,
-    (count, previous) => {
-      if (count !== previous) runOnJS(setHinted)(count);
-    },
-  );
   const revealedAnswer = answerCharacters.slice(0, entity.matched).join("");
   const mistypedLength = Array.from(mistyped).length;
   const hiddenStart = entity.matched + mistypedLength;
   const hiddenAnswer = answerCharacters
     .slice(hiddenStart)
     .map((character, offset) =>
-      revealed || character.trim() === "" || hiddenStart + offset < hinted
-        ? character
-        : "•",
+      revealed || entity.warmup || character.trim() === "" ? character : "•",
     )
     .join("");
 
@@ -884,6 +863,14 @@ export function WordFallScreen({
   const reportedWordIdsRef = useRef(new Set<string>());
   /** A lesson round's words that have fallen already; each falls once. */
   const spawnedWordIdsRef = useRef(new Set<string>());
+  /** Words spawned this game, for the warm-up wave. */
+  const spawnCountRef = useRef(0);
+  /** The last word that reached the ship, shown with its answer for a moment. */
+  const [missed, setMissed] = useState<{
+    key: string;
+    prompt: string;
+    answer: string;
+  } | null>(null);
   const pendingReportIdsRef = useRef(new Set<string>());
   const progressSessionIdRef = useRef("");
   const completedSessionIdRef = useRef("");
@@ -1179,6 +1166,17 @@ export function WordFallScreen({
       reportWord(entity.word.id, "INCORRECT");
       mistakeActiveRef.current = false;
       resetCombo();
+      // What the word meant, beside the ship for a moment.
+      setMissed({
+        key: entity.id,
+        prompt: promptTextForWord(entity.word, answerMode),
+        answer: entity.answer,
+      });
+      schedule(
+        () =>
+          setMissed((current) => (current?.key === entity.id ? null : current)),
+        MISSED_ANSWER_MS,
+      );
       if (lesson) return;
       if (shieldRef.current > 0) {
         shieldRef.current -= 1;
@@ -1190,7 +1188,16 @@ export function WordFallScreen({
       setHealth(nextHealth);
       if (nextHealth === 0) endGame();
     },
-    [clearTargetInput, commitEntities, endGame, lesson, reportWord, resetCombo],
+    [
+      answerMode,
+      clearTargetInput,
+      commitEntities,
+      endGame,
+      lesson,
+      reportWord,
+      resetCombo,
+      schedule,
+    ],
   );
 
   const applyPowerUp = useCallback(
@@ -1323,7 +1330,11 @@ export function WordFallScreen({
       knockbackTotal: 0,
       completed: false,
       powerUp: powerUpForRoll(Math.random()),
+      warmup:
+        spawnCountRef.current <
+        (lesson ? LESSON_MAX_ACTIVE_WORDS : WARMUP_WORDS),
     };
+    spawnCountRef.current += 1;
     commitEntities([...current, entity]);
   }, [answerMode, commitEntities, field, lesson, level, usableWords]);
 
@@ -1349,6 +1360,8 @@ export function WordFallScreen({
     mistakeWordIdsRef.current.clear();
     reportedWordIdsRef.current.clear();
     spawnedWordIdsRef.current.clear();
+    spawnCountRef.current = 0;
+    setMissed(null);
     setEntities([]);
     setProjectiles([]);
     setBursts([]);
@@ -1391,8 +1404,12 @@ export function WordFallScreen({
   const [countdown, setCountdown] = useState<number | null>(
     lesson ? 0 : COUNTDOWN_FROM,
   );
+  const fieldMeasured = field.width > 0 && field.height > 0;
   useEffect(() => {
     if (countdown === null) return;
+    // Words fall toward the ship, which needs the field's size: wait for it
+    // (a lesson round starts at once, while the last round's keyboard moves).
+    if (countdown === 0 && !fieldMeasured) return;
     if (countdown > 0) {
       const timer = setTimeout(
         () => setCountdown((current) => (current ? current - 1 : 0)),
@@ -1403,7 +1420,7 @@ export function WordFallScreen({
     setCountdown(null);
     resetGame();
     if (Platform.OS === "ios") focusInput();
-  }, [countdown, focusInput, resetGame]);
+  }, [countdown, fieldMeasured, focusInput, resetGame]);
 
   // It ends once every word has fallen and been shot down or missed, and
   // every answer is saved.
@@ -1721,7 +1738,6 @@ export function WordFallScreen({
             paused={phase !== "running" || frozen || entity.completed}
             playerLift={playerLift}
             revealed={revealed}
-            assist={Boolean(lesson)}
           />
         ))}
         {projectiles.map((projectile) => (
@@ -1735,46 +1751,74 @@ export function WordFallScreen({
           <Burst burst={burst} key={burst.id} onDone={removeBurst} />
         ))}
 
-        <Animated.View
-          accessibilityLabel="Pemain"
-          style={[
-            styles.player,
-            {
-              left: field.width / 2 - PLAYER_SIZE / 2,
-            },
-            playerPositionStyle,
-          ]}
-        >
-          <Animated.Text
-            style={[
-              styles.playerGlyph,
-              { color: colors.primary },
-              playerRotationStyle,
-            ]}
-          >
-            ⧋
-          </Animated.Text>
-          {unmatchedInput ? (
-            <Text
-              numberOfLines={1}
-              style={[styles.unmatchedInput, { color: colors.destructive }]}
-            >
-              {unmatchedInput}
-            </Text>
-          ) : null}
-        </Animated.View>
-        {shield > 0 ? (
+        {/* Centred by layout, not by the measured field, so the ship sits
+            bottom centre even before (or without) a fresh measurement. */}
+        <View pointerEvents="box-none" style={styles.playerRow}>
+          <View pointerEvents="none" style={styles.playerSideLeft}>
+            {missed ? (
+              <Animated.View
+                key={missed.key}
+                entering={FadeIn.duration(160)}
+                exiting={FadeOut.duration(240)}
+                accessibilityLiveRegion="polite"
+                accessibilityLabel={`Terlewat: ${missed.prompt}, ${missed.answer}`}
+                style={[
+                  styles.missedAnswer,
+                  {
+                    backgroundColor: withOpacity(colors.destructive, 0.12),
+                    borderColor: withOpacity(colors.destructive, 0.5),
+                  },
+                ]}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={[styles.missedPrompt, { color: colors.foreground }]}
+                >
+                  {missed.prompt}
+                </Text>
+                <Text
+                  numberOfLines={2}
+                  style={[styles.missedText, { color: colors.destructive }]}
+                >
+                  {missed.answer}
+                </Text>
+              </Animated.View>
+            ) : null}
+          </View>
           <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.playerShield,
-              {
-                borderColor: powerUpColor("shield", colors),
-                left: field.width / 2 - 20,
-              },
-              playerShieldPositionStyle,
-            ]}
-          />
+            accessibilityLabel="Pemain"
+            style={[styles.player, playerPositionStyle]}
+          >
+            <Animated.Text
+              style={[
+                styles.playerGlyph,
+                { color: colors.primary },
+                playerRotationStyle,
+              ]}
+            >
+              ⧋
+            </Animated.Text>
+            {unmatchedInput ? (
+              <Text
+                numberOfLines={1}
+                style={[styles.unmatchedInput, { color: colors.destructive }]}
+              >
+                {unmatchedInput}
+              </Text>
+            ) : null}
+          </Animated.View>
+          <View pointerEvents="none" style={styles.playerSide} />
+        </View>
+        {shield > 0 ? (
+          <View pointerEvents="none" style={styles.playerShieldRow}>
+            <Animated.View
+              style={[
+                styles.playerShield,
+                { borderColor: powerUpColor("shield", colors) },
+                playerShieldPositionStyle,
+              ]}
+            />
+          </View>
         ) : null}
         {revealCharges > 0 && phase === "running" ? (
           <Pressable
@@ -1935,12 +1979,36 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   koreanAnswer: { fontSize: 14, letterSpacing: 0, lineHeight: 18 },
+  // The ship in the middle, with equal sides so it stays centred; the left
+  // side shows a missed word's answer. Bottom-aligned, so the ship stays put.
+  playerRow: {
+    alignItems: "flex-end",
+    bottom: PLAYER_BOTTOM,
+    flexDirection: "row",
+    left: 0,
+    position: "absolute",
+    right: 0,
+  },
+  playerSide: { flex: 1 },
+  playerSideLeft: {
+    alignItems: "flex-end",
+    flex: 1,
+    paddingLeft: 12,
+    paddingRight: 14,
+  },
+  missedAnswer: {
+    borderRadius: 12,
+    borderWidth: 1,
+    maxWidth: "100%",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  missedPrompt: { fontSize: 13, fontWeight: "800" },
+  missedText: { fontSize: 13, fontWeight: "700" },
   player: {
     alignItems: "center",
-    bottom: PLAYER_BOTTOM,
     height: PLAYER_SIZE,
     justifyContent: "center",
-    position: "absolute",
     width: PLAYER_SIZE,
   },
   playerGlyph: {
@@ -1958,12 +2026,18 @@ const styles = StyleSheet.create({
     top: PLAYER_SIZE + 5,
     width: 140,
   },
-  playerShield: {
+  playerShieldRow: {
+    alignItems: "center",
     bottom: PLAYER_BOTTOM - 6,
+    height: 38,
+    left: 0,
+    position: "absolute",
+    right: 0,
+  },
+  playerShield: {
     borderRadius: 20,
     borderWidth: 2,
     height: 38,
-    position: "absolute",
     width: 40,
   },
   projectile: {
