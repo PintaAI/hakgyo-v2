@@ -161,9 +161,9 @@ export function useLearningContinuation({
     }
   }
 
-  /** "Bab selesai", in place of this activity. */
+  /** "Bab selesai", as a sheet over this activity. */
   function openChapterComplete(moduleId: string) {
-    router.replace({
+    router.push({
       pathname: "/courses/[courseId]/chapter-complete",
       params: { courseId, moduleId },
     });

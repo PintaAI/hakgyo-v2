@@ -1751,40 +1751,41 @@ export function WordFallScreen({
           <Burst burst={burst} key={burst.id} onDone={removeBurst} />
         ))}
 
+        {/* Out of the ship's row, so its width never moves the ship. */}
+        <View pointerEvents="none" style={styles.missedSide}>
+          {missed ? (
+            <Animated.View
+              key={missed.key}
+              entering={FadeIn.duration(160)}
+              exiting={FadeOut.duration(240)}
+              accessibilityLiveRegion="polite"
+              accessibilityLabel={`Terlewat: ${missed.prompt}, ${missed.answer}`}
+              style={[
+                styles.missedAnswer,
+                {
+                  backgroundColor: withOpacity(colors.destructive, 0.12),
+                  borderColor: withOpacity(colors.destructive, 0.5),
+                },
+              ]}
+            >
+              <Text
+                numberOfLines={1}
+                style={[styles.missedPrompt, { color: colors.foreground }]}
+              >
+                {missed.prompt}
+              </Text>
+              <Text
+                numberOfLines={2}
+                style={[styles.missedText, { color: colors.destructive }]}
+              >
+                {missed.answer}
+              </Text>
+            </Animated.View>
+          ) : null}
+        </View>
         {/* Centred by layout, not by the measured field, so the ship sits
             bottom centre even before (or without) a fresh measurement. */}
         <View pointerEvents="box-none" style={styles.playerRow}>
-          <View pointerEvents="none" style={styles.playerSideLeft}>
-            {missed ? (
-              <Animated.View
-                key={missed.key}
-                entering={FadeIn.duration(160)}
-                exiting={FadeOut.duration(240)}
-                accessibilityLiveRegion="polite"
-                accessibilityLabel={`Terlewat: ${missed.prompt}, ${missed.answer}`}
-                style={[
-                  styles.missedAnswer,
-                  {
-                    backgroundColor: withOpacity(colors.destructive, 0.12),
-                    borderColor: withOpacity(colors.destructive, 0.5),
-                  },
-                ]}
-              >
-                <Text
-                  numberOfLines={1}
-                  style={[styles.missedPrompt, { color: colors.foreground }]}
-                >
-                  {missed.prompt}
-                </Text>
-                <Text
-                  numberOfLines={2}
-                  style={[styles.missedText, { color: colors.destructive }]}
-                >
-                  {missed.answer}
-                </Text>
-              </Animated.View>
-            ) : null}
-          </View>
           <Animated.View
             accessibilityLabel="Pemain"
             style={[styles.player, playerPositionStyle]}
@@ -1807,7 +1808,6 @@ export function WordFallScreen({
               </Text>
             ) : null}
           </Animated.View>
-          <View pointerEvents="none" style={styles.playerSide} />
         </View>
         {shield > 0 ? (
           <View pointerEvents="none" style={styles.playerShieldRow}>
@@ -1979,22 +1979,21 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   koreanAnswer: { fontSize: 14, letterSpacing: 0, lineHeight: 18 },
-  // The ship in the middle, with equal sides so it stays centred; the left
-  // side shows a missed word's answer. Bottom-aligned, so the ship stays put.
   playerRow: {
-    alignItems: "flex-end",
+    alignItems: "center",
     bottom: PLAYER_BOTTOM,
-    flexDirection: "row",
     left: 0,
     position: "absolute",
     right: 0,
   },
-  playerSide: { flex: 1 },
-  playerSideLeft: {
+  // Left of the ship, right-aligned up to it, bottom-aligned with it.
+  missedSide: {
     alignItems: "flex-end",
-    flex: 1,
-    paddingLeft: 12,
-    paddingRight: 14,
+    bottom: PLAYER_BOTTOM,
+    left: 12,
+    paddingRight: PLAYER_SIZE / 2 + 12,
+    position: "absolute",
+    right: "50%",
   },
   missedAnswer: {
     borderRadius: 12,

@@ -1,7 +1,8 @@
 import { HANGEUL_MASTERY_COURSE_ID } from "@hakgyo/shared/hangeul";
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Platform, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HangeulMasteryBadge } from "../../../src/components/hangeul-mastery-medal";
 import { HeroTile } from "../../../src/components/hero-tile";
@@ -16,7 +17,6 @@ import {
   Eyebrow,
   FullScreenState,
   ProgressBar,
-  StudyScreen,
 } from "../../../src/components/learning-ui";
 import { SymbolIcon } from "../../../src/components/ui/symbol-icon";
 import { authClient } from "../../../src/lib/auth-client";
@@ -68,8 +68,8 @@ function chapterScore(items: readonly OutlineItem[]) {
 }
 
 /**
- * "Bab selesai": where the learner lands when an activity finishes its
- * chapter, in the look of a tugas result. The chapter card with a green
+ * "Bab selesai": a sheet over the activity that finished its chapter, in
+ * the look of a tugas result. The chapter card with a green
  * check (and confetti the first time), what the chapter held, how far the
  * course is, and the chapter it opened. Finishing the last chapter shows the
  * course as done instead, with the Hangeul Mastery badge for that course.
@@ -86,6 +86,7 @@ export default function ChapterCompleteScreen() {
   const { data: session } = authClient.useSession();
   const userId = session?.user.id;
   const hangeulBadge = useHangeulBadgeState();
+  const insets = useSafeAreaInsets();
 
   // The confetti plays the first time this chapter is shown.
   const [celebrate, setCelebrate] = useState(false);
@@ -135,151 +136,147 @@ export default function ChapterCompleteScreen() {
     ? course.modules.findIndex((entry) => entry.id === nextModule.id)
     : -1;
   const resumeItem = getCourseResumeItem(course);
-  const toCourse = () =>
+  // The sheet sits over the activity that finished the chapter: close it,
+  // then put the next place in that activity's stead.
+  const toCourse = () => {
+    router.back();
     router.replace({ pathname: "/courses/[courseId]", params: { courseId } });
+  };
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          headerTitle: "",
-          headerTransparent: Platform.OS === "ios",
-          headerShadowVisible: false,
-          headerTintColor: colors.foreground,
-        }}
-      />
-      <StudyScreen title="" bleedTop contentClassName="gap-4">
-        <HakgyoHero>
-          <View className="items-center">
-            <View style={FAN_BOX}>
-              <CardFan
-                faces={[
-                  <View className="items-center" key="chapter">
-                    <Eyebrow>{courseCompleted ? "Kurikulum" : "Bab"}</Eyebrow>
-                    <Text className="text-4xl font-black tabular-nums tracking-tight text-foreground">
-                      {courseCompleted ? totalModules : moduleIndex + 1}
-                    </Text>
-                  </View>,
-                  <View key="second" />,
-                  <View key="third" />,
-                ]}
-              />
-              <View
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
-                className="absolute size-8 items-center justify-center rounded-full"
-                style={{
-                  left: FAN_BOX.width / 2 + 80 - 18,
-                  top: -4,
-                  backgroundColor: DONE_GREEN,
-                  borderWidth: 3,
-                  borderColor: colors.background,
-                }}
-              >
-                <SymbolIcon
-                  name="checkmark"
-                  size={14}
-                  weight="bold"
-                  tintColor="#ffffff"
-                />
-              </View>
-              <ConfettiBurst
-                fire={celebrate}
-                width={FAN_BOX.width}
-                height={FAN_BOX.height}
-                colors={[
-                  colors.primary,
-                  "#F2C14E",
-                  "#F472B6",
-                  "#34D399",
-                  "#60A5FA",
-                ]}
+    <View
+      className="gap-4 px-5"
+      style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
+    >
+      <HakgyoHero inSheet>
+        <View className="items-center">
+          <View style={FAN_BOX}>
+            <CardFan
+              faces={[
+                <View className="items-center" key="chapter">
+                  <Eyebrow>{courseCompleted ? "Kurikulum" : "Bab"}</Eyebrow>
+                  <Text className="text-4xl font-black tabular-nums tracking-tight text-foreground">
+                    {courseCompleted ? totalModules : moduleIndex + 1}
+                  </Text>
+                </View>,
+                <View key="second" />,
+                <View key="third" />,
+              ]}
+            />
+            <View
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              className="absolute size-8 items-center justify-center rounded-full"
+              style={{
+                left: FAN_BOX.width / 2 + 80 - 18,
+                top: -4,
+                backgroundColor: DONE_GREEN,
+                borderWidth: 3,
+                borderColor: colors.background,
+              }}
+            >
+              <SymbolIcon
+                name="checkmark"
+                size={14}
+                weight="bold"
+                tintColor="#ffffff"
               />
             </View>
-          </View>
-          <View className="items-center gap-2">
-            <Eyebrow size="md" tone="primary">
-              {courseCompleted ? "Kurikulum selesai" : "Bab selesai"}
-            </Eyebrow>
-            <Text
-              accessibilityRole="header"
-              className="text-center font-black tracking-tight text-foreground"
-              numberOfLines={2}
-              style={HERO_TITLE}
-            >
-              {courseCompleted
-                ? "Kamu berhasil!"
-                : `Mantap, Bab ${moduleIndex + 1} selesai!`}
-            </Text>
-            <Text
-              className="text-center text-sm text-muted-foreground"
-              numberOfLines={2}
-            >
-              {courseCompleted ? course.title : module.title}
-            </Text>
-          </View>
-          {!courseCompleted && (contents.length > 0 || score !== null) ? (
-            <View className="flex-row gap-2">
-              {contents.map(([n, label]) => (
-                <Stat key={label} value={String(n)} label={label} />
-              ))}
-              {score !== null ? (
-                <Stat value={`${score}%`} label="nilai tugas" />
-              ) : null}
-            </View>
-          ) : null}
-          <View className="gap-1.5">
-            <View className="flex-row justify-between gap-3">
-              <Text
-                className="flex-1 text-xs text-muted-foreground"
-                numberOfLines={1}
-              >
-                {course.title}
-              </Text>
-              <Text className="text-xs tabular-nums text-muted-foreground">
-                {doneModules} dari {totalModules} bab
-              </Text>
-            </View>
-            <ProgressBar
-              accessibilityLabel={`${doneModules} dari ${totalModules} bab selesai`}
-              max={totalModules}
-              value={doneModules}
+            <ConfettiBurst
+              fire={celebrate}
+              width={FAN_BOX.width}
+              height={FAN_BOX.height}
+              colors={[
+                colors.primary,
+                "#F2C14E",
+                "#F472B6",
+                "#34D399",
+                "#60A5FA",
+              ]}
             />
           </View>
-        </HakgyoHero>
-
-        {courseCompleted && courseId === HANGEUL_MASTERY_COURSE_ID ? (
-          <HangeulMasteryBadge {...hangeulCompletionBadgeCopy(hangeulBadge)} />
+        </View>
+        <View className="items-center gap-2">
+          <Eyebrow size="md" tone="primary">
+            {courseCompleted ? "Kurikulum selesai" : "Bab selesai"}
+          </Eyebrow>
+          <Text
+            accessibilityRole="header"
+            className="text-center font-black tracking-tight text-foreground"
+            numberOfLines={2}
+            style={HERO_TITLE}
+          >
+            {courseCompleted
+              ? "Kamu berhasil!"
+              : `Mantap, Bab ${moduleIndex + 1} selesai!`}
+          </Text>
+          <Text
+            className="text-center text-sm text-muted-foreground"
+            numberOfLines={2}
+          >
+            {courseCompleted ? course.title : module.title}
+          </Text>
+        </View>
+        {!courseCompleted && (contents.length > 0 || score !== null) ? (
+          <View className="flex-row gap-2">
+            {contents.map(([n, label]) => (
+              <Stat key={label} value={String(n)} label={label} />
+            ))}
+            {score !== null ? (
+              <Stat value={`${score}%`} label="nilai tugas" />
+            ) : null}
+          </View>
         ) : null}
-
-        {nextModule ? (
-          <HeroTile
-            eyebrow={`Terbuka · Bab ${nextModuleIndex + 1}`}
-            title={nextModule.title}
-            meta={
-              chapterContents(nextModule.items)
-                .map(([n, label]) => `${n} ${label}`)
-                .join(" · ") || "Bab berikutnya"
-            }
-            pill="Lanjutkan"
-            onPress={() => {
-              const first =
-                nextModule.items.find((item) => !item.isCompleted) ??
-                resumeItem;
-              if (!first) return toCourse();
-              openCourseItem(
-                { courseId, courseItemId: first.id, attempt: first.attempt },
-                { replace: true },
-              );
-            }}
+        <View className="gap-1.5">
+          <View className="flex-row justify-between gap-3">
+            <Text
+              className="flex-1 text-xs text-muted-foreground"
+              numberOfLines={1}
+            >
+              {course.title}
+            </Text>
+            <Text className="text-xs tabular-nums text-muted-foreground">
+              {doneModules} dari {totalModules} bab
+            </Text>
+          </View>
+          <ProgressBar
+            accessibilityLabel={`${doneModules} dari ${totalModules} bab selesai`}
+            max={totalModules}
+            value={doneModules}
           />
-        ) : null}
-        <Action variant={nextModule ? "ghost" : "primary"} onPress={toCourse}>
-          {courseCompleted ? "Lihat kurikulum" : "Kembali ke kurikulum"}
-        </Action>
-      </StudyScreen>
-    </>
+        </View>
+      </HakgyoHero>
+
+      {courseCompleted && courseId === HANGEUL_MASTERY_COURSE_ID ? (
+        <HangeulMasteryBadge {...hangeulCompletionBadgeCopy(hangeulBadge)} />
+      ) : null}
+
+      {nextModule ? (
+        <HeroTile
+          eyebrow={`Terbuka · Bab ${nextModuleIndex + 1}`}
+          title={nextModule.title}
+          meta={
+            chapterContents(nextModule.items)
+              .map(([n, label]) => `${n} ${label}`)
+              .join(" · ") || "Bab berikutnya"
+          }
+          pill="Lanjutkan"
+          onPress={() => {
+            const first =
+              nextModule.items.find((item) => !item.isCompleted) ?? resumeItem;
+            if (!first) return toCourse();
+            router.back();
+            openCourseItem(
+              { courseId, courseItemId: first.id, attempt: first.attempt },
+              { replace: true },
+            );
+          }}
+        />
+      ) : null}
+      <Action variant={nextModule ? "ghost" : "primary"} onPress={toCourse}>
+        {courseCompleted ? "Lihat kurikulum" : "Kembali ke kurikulum"}
+      </Action>
+    </View>
   );
 }
 
