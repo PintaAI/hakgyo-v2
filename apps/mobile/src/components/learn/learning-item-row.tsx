@@ -5,6 +5,7 @@ import {
   type LearningItemType,
 } from "../../lib/learning-item-type";
 import { useAppTheme } from "../../providers/AppThemeProvider";
+import { Badge } from "../ui/badge";
 import { Chevron } from "../learning-ui";
 import { SymbolIcon } from "../ui/symbol-icon";
 
@@ -32,6 +33,7 @@ export function LearningItemRow({
   onPress,
   disabled,
   accessibilityHint,
+  badge,
 }: {
   title: string;
   type: LearningItemType;
@@ -47,6 +49,8 @@ export function LearningItemRow({
   onPress: () => void;
   disabled?: boolean;
   accessibilityHint?: string;
+  /** A red mark beside the title, such as "Diperbarui". */
+  badge?: string;
 }) {
   const { colors } = useAppTheme();
   const meta = getLearningItemTypeMeta(type);
@@ -112,6 +116,11 @@ export function LearningItemRow({
                   : null}
               </Text>
             </View>
+            {badge ? (
+              <Badge tone="destructive" size="sm">
+                {badge}
+              </Badge>
+            ) : null}
             {showChevron ? <Chevron className="pt-0.5" /> : null}
           </View>
         </Pressable>

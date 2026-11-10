@@ -20,7 +20,7 @@ Gunakan akun yang sama dengan di situs web supaya kelasmu muncul.
 | **Latihan** | Kartu kosakata, permainan Hangeul, serta latihan dan tryout |
 | **Cari** | Pencarian materi, kosakata, dan soal dari semua kurikulummu |
 
-**Profil** berisi XP, pencapaian, pengaturan, dan bantuan. Bukalah dari tombol menu di kiri atas, dari namamu di tab **Hari Ini**, atau dari tombol pengaturan di kanan atas.
+**Profil** berisi XP, pencapaian, pengaturan, dan bantuan. Bukalah dari tombol menu di kiri atas, dari namamu di tab **Hari Ini**, atau dari tombol pengaturan di kanan atas. Saat ada pembaruan yang belum dibaca, tombol lonceng dengan jumlahnya muncul di sebelah tombol pengaturan.
 
 Di tab **Hari Ini**, **Agenda** di bawah streak menampilkan pertemuan kelas dan latihan atau tryout yang perlu kamu kerjakan dalam 7 hari ke depan, yang paling mendesak di atas. Pertemuan yang sedang live bertanda merah; ketuk **Gabung** untuk langsung masuk. Ketuk **Mulai** atau **Lanjutkan** untuk membuka latihan atau tryout. Agenda tidak muncul kalau tidak ada yang akan datang.
 
@@ -41,6 +41,8 @@ Sebelum kamu mengetik di tab **Cari**, muncul **Pencarian terakhir** dan **Terak
 Jika kamu ikut lebih dari satu kelas, geser kartu kelas di tab **Belajar** ke kiri atau kanan. Titik-titik di atas menu bawah menunjukkan kelas yang sedang tampil.
 
 Di kartu kelas, **Materi kurikulum** punya dua pilihan. **Belum selesai** hanya menampilkan materi yang belum selesai; bab yang sudah tuntas dilipat menjadi satu baris, misalnya **3 bab selesai**. **Semua** menampilkan seluruh kurikulum per bab, termasuk yang sudah selesai (bertanda centang), untuk mengulang materi. Ketuk baris **3 bab selesai** untuk langsung membuka **Semua**.
+
+Kalau isi kurikulum berubah sejak terakhir kamu membukanya, bab dan materinya diberi tanda merah: **Baru** untuk bab atau materi yang baru ditambahkan, **Diperbarui** untuk materi yang isinya diubah. Tandanya hilang setelah kamu membuka materi itu. Bab yang sudah tuntas dan berubah juga menandai baris **3 bab selesai**. Tanda ini hanya muncul untuk perubahan yang terjadi setelah kursusnya ada di ponselmu.
 
 ## Lencana kurikulum
 

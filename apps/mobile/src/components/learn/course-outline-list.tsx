@@ -34,6 +34,14 @@ import {
 import { ModuleOfflineBadge } from "../offline-download";
 import { LearningItemRow } from "./learning-item-row";
 import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
+import {
+  contentChangeLabel,
+  type ContentChange,
+} from "../../lib/content-changes";
+import {
+  markContentSeen,
+  useCourseContentChanges,
+} from "../../lib/use-content-changes";
 import { SymbolIcon } from "../ui/symbol-icon";
 
 type OutlineModule = CourseOutline["modules"][number];
@@ -143,12 +151,16 @@ export const CourseOutlineList = memo(function CourseOutlineList({
 
   // One stable callback for every row, reading the latest handlers, so the
   // memoized rows survive parents that pass a new `onOpenItem` each render.
-  const handlers = useRef({ markEntitySeen, onOpenItem });
+  const userId = session?.user.id;
+  const handlers = useRef({ markEntitySeen, onOpenItem, userId });
   useLayoutEffect(() => {
-    handlers.current = { markEntitySeen, onOpenItem };
+    handlers.current = { markEntitySeen, onOpenItem, userId };
   });
   const openItem = useCallback<OpenOutlineItem>((moduleId, item, attempt) => {
     handlers.current.markEntitySeen("MODULE", moduleId);
+    // The item screen marks it too; an attempt in progress opens elsewhere.
+    if (handlers.current.userId)
+      markContentSeen(handlers.current.userId, item.id);
     handlers.current.onOpenItem(item, attempt);
   }, []);
 
@@ -174,6 +186,9 @@ export const CourseOutlineList = memo(function CourseOutlineList({
         : undefined,
     [course, focusItemId],
   );
+
+  // Chapters and activities that changed since the learner last opened them.
+  const changes = useCourseContentChanges(courseId, course);
 
   const shownModules = useMemo(
     () =>
@@ -222,6 +237,8 @@ export const CourseOutlineList = memo(function CourseOutlineList({
             separated={position > 0}
             hideCompleted={hideCompleted}
             unread={unreadModuleIds.has(module.id)}
+            change={changes.modules.get(module.id)}
+            itemChanges={changes.items}
             open={
               !collapsible ||
               (module.id === focusModuleId) !== toggledModuleIds.has(module.id)
@@ -247,6 +264,9 @@ export const CourseOutlineList = memo(function CourseOutlineList({
       {course.modules.length > shownModules.length ? (
         <FinishedChaptersRow
           count={course.modules.length - shownModules.length}
+          updated={course.modules.some(
+            (module) => module.isCompleted && changes.modules.has(module.id),
+          )}
           separated={shownModules.length > 0 || !!completionSlot}
           onPress={onShowCompleted}
         />
@@ -258,10 +278,13 @@ export const CourseOutlineList = memo(function CourseOutlineList({
 function FinishedChaptersRow({
   count,
   separated,
+  updated,
   onPress,
 }: {
   count: number;
   separated: boolean;
+  /** A finished chapter changed since the learner opened it. */
+  updated: boolean;
   onPress?: () => void;
 }) {
   const { colors } = useAppTheme();
@@ -284,6 +307,11 @@ function FinishedChaptersRow({
       <Text className="min-w-0 flex-1 text-base font-bold text-foreground">
         {separated ? `${count} bab selesai` : "Semua bab selesai"}
       </Text>
+      {updated ? (
+        <Badge tone="destructive" size="sm">
+          {contentChangeLabel.UPDATED}
+        </Badge>
+      ) : null}
       {onPress ? (
         <SymbolIcon
           name="chevron.right"
@@ -302,6 +330,8 @@ const OutlineModuleSection = memo(function OutlineModuleSection({
   separated,
   hideCompleted,
   unread,
+  change,
+  itemChanges,
   open,
   collapsible,
   onToggle,
@@ -320,6 +350,9 @@ const OutlineModuleSection = memo(function OutlineModuleSection({
   /** Lists only the chapter's unfinished activities. */
   hideCompleted: boolean;
   unread: boolean;
+  /** Activities of the chapter changed since the learner opened them. */
+  change: ContentChange | undefined;
+  itemChanges: ReadonlyMap<string, ContentChange>;
   open: boolean;
   collapsible: boolean;
   onToggle: (moduleId: string) => void;
@@ -373,9 +406,10 @@ const OutlineModuleSection = memo(function OutlineModuleSection({
         ) : null}
       </View>
       <View className={`${hasSubtitle ? "pt-1" : ""} items-end gap-1`}>
-        {unread ? (
+        {/* A locked chapter's changes wait until it opens. */}
+        {unread || (change && !locked) ? (
           <Badge tone="destructive" size="sm">
-            Baru
+            {unread ? "Baru" : contentChangeLabel[change!]}
           </Badge>
         ) : null}
         {locked ? (
@@ -455,6 +489,7 @@ const OutlineModuleSection = memo(function OutlineModuleSection({
               isLast={itemIndex === items.length - 1}
               isCurrent={item.id === currentItemId}
               isNext={item.id === resumeItemId}
+              change={itemChanges.get(item.id)}
               showActiveState={showActiveState}
               onOpenItem={onOpenItem}
             />
@@ -473,6 +508,7 @@ const OutlineItemRow = memo(function OutlineItemRow({
   isLast,
   isCurrent,
   isNext,
+  change,
   showActiveState,
   onOpenItem,
 }: {
@@ -483,6 +519,7 @@ const OutlineItemRow = memo(function OutlineItemRow({
   isLast: boolean;
   isCurrent: boolean;
   isNext: boolean;
+  change: ContentChange | undefined;
   showActiveState: boolean;
   onOpenItem: OpenOutlineItem;
 }) {
@@ -513,6 +550,7 @@ const OutlineItemRow = memo(function OutlineItemRow({
       onPress={() => onOpenItem(moduleId, item, attempt)}
       disabled={locked}
       accessibilityHint={assessmentState?.action}
+      badge={!locked && change ? contentChangeLabel[change] : undefined}
     />
   );
 });

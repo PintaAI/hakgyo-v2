@@ -39,6 +39,18 @@ export function createUserRecordStore<T>(
     const next = { ...read(userId) };
     if (value === undefined) delete next[key];
     else next[key] = value;
+    write(userId, next);
+  }
+
+  /** Replaces every record of the account at once (one storage write). */
+  function update(
+    userId: string,
+    change: (records: Readonly<Record<string, T>>) => Record<string, T>,
+  ) {
+    write(userId, change(read(userId)));
+  }
+
+  function write(userId: string, next: Readonly<Record<string, T>>) {
     cache.set(userId, next);
     try {
       if (Object.keys(next).length === 0)
@@ -64,5 +76,5 @@ export function createUserRecordStore<T>(
     return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   }
 
-  return { set, useRecords };
+  return { set, update, useRecords };
 }
