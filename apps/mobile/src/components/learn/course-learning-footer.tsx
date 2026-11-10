@@ -1,4 +1,3 @@
-import { HANGEUL_MASTERY_COURSE_ID } from "@hakgyo/shared/hangeul";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -14,15 +13,12 @@ import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
 import { openCourseItem } from "../../lib/navigation";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../providers/MobileSyncProvider";
-import { hangeulCompletionBadgeCopy } from "../../lib/hangeul-visibility";
-import { useHangeulBadgeState } from "../../lib/use-cohort-archive";
+import { authClient } from "../../lib/auth-client";
+import { chapterCelebrated } from "../../lib/chapter-celebrations";
 import { readCourseOutline, useCourseOutline } from "../../sync/hooks";
-import { HangeulMasteryBadge } from "../hangeul-mastery-medal";
 import { Action, Eyebrow, ProgressBar } from "../learning-ui";
 import { StudyAction } from "../study-glass";
 import { SymbolIcon } from "../ui/symbol-icon";
-
-type Milestone = NonNullable<ReturnType<typeof getLearningMilestone>>;
 
 /** Whether VoiceOver or TalkBack is on, following changes. */
 function useScreenReaderEnabled() {
@@ -88,6 +84,11 @@ type FooterProps = {
    * "next" row: the screen above already says what to do.
    */
   compact?: boolean;
+  /**
+   * The compact "next" row shows locked and offers no continue: the screen
+   * holds the learner (a vocabulary set with words still to learn).
+   */
+  nextLocked?: boolean;
   onReadAgain?: () => void;
   completionMode?: "manual" | "assessment";
   initialOutline?: LearningPathCourse;
@@ -97,9 +98,10 @@ type FooterProps = {
 
 /**
  * Completing a course item and moving on: marks it done (through the sync
- * outbox), then opens the next item, or holds for a chapter milestone, a
- * required activity or an error. Shared by the footer and by gestures that
- * continue without it, such as pulling past the end of a material.
+ * outbox), then opens the next item ("Bab selesai" first when the chapter
+ * is done), or holds for a required activity or an error. Shared by the
+ * footer and by gestures that continue without it, such as pulling past the
+ * end of a material.
  */
 export function useLearningContinuation({
   courseId,
@@ -122,13 +124,14 @@ export function useLearningContinuation({
   const outline = useCourseOutline(courseId);
   const { activeOrganizationId } = useAppTheme();
   const { completeContent } = useMobileSyncActions();
+  const { data: session } = authClient.useSession();
+  const userId = session?.user.id;
   const baseline = useRef(initialOutline);
   const inFlight = useRef(false);
   const mounted = useRef(true);
   const saved = useRef(false);
   const [busy, setBusy] = useState(false);
   const [issue, setIssue] = useState<FooterIssue>();
-  const [milestone, setMilestone] = useState<Milestone>();
   const path = outline.data && getLearningPath(outline.data, courseItemId);
   const finishingModule =
     path &&
@@ -148,7 +151,6 @@ export function useLearningContinuation({
   }, []);
 
   function navigate(nextItem?: LearningPathItem) {
-    setMilestone(undefined);
     if (nextItem) {
       openCourseItem(
         { courseId, courseItemId: nextItem.id, attempt: nextItem.attempt },
@@ -159,9 +161,27 @@ export function useLearningContinuation({
     }
   }
 
+  /** "Bab selesai", in place of this activity. */
+  function openChapterComplete(moduleId: string) {
+    router.replace({
+      pathname: "/courses/[courseId]/chapter-complete",
+      params: { courseId, moduleId },
+    });
+  }
+
   async function continueLearning() {
     if (path?.item.isCompleted) {
       setIssue(undefined);
+      // A chapter finished by an activity that completes on its own (a
+      // passed tugas, a learned vocabulary set): its page, once.
+      if (
+        path.module.isCompleted &&
+        userId &&
+        !chapterCelebrated(userId, path.module.id)
+      ) {
+        openChapterComplete(path.module.id);
+        return;
+      }
       if (path.nextItem) navigate(path.nextItem);
       else if (path.courseCompleted) navigate();
       else
@@ -240,7 +260,7 @@ export function useLearningContinuation({
           courseItemId,
         );
         baseline.current = after;
-        if (celebration) setMilestone(celebration);
+        if (celebration) openChapterComplete(next.module.id);
         else if (next.nextItem) navigate(next.nextItem);
         else if (next.courseCompleted) navigate();
         else
@@ -282,7 +302,6 @@ export function useLearningContinuation({
     busy,
     issue,
     setIssue,
-    milestone,
     navigate,
     continueLearning,
     finishingModule,
@@ -377,6 +396,7 @@ export function LearningFooterView({
   courseId,
   continueButton = "always",
   compact = false,
+  nextLocked = false,
   onReadAgain,
   completionMode = "manual",
   requirementActions = [],
@@ -399,15 +419,12 @@ export function LearningFooterView({
     busy,
     issue,
     setIssue,
-    milestone,
     navigate,
     continueLearning,
     finishingModule,
     assessmentIncomplete,
     outlineFailed,
   } = learning;
-  // A finished Hangeul Mastery: claim it on Belajar, then Diarsipkan.
-  const hangeulBadge = useHangeulBadgeState();
 
   const continueAction = (
     <StudyAction
@@ -447,12 +464,17 @@ export function LearningFooterView({
 
   // Compact: one "next" row instead of the full footer, where the screen
   // already shows how to go on (a tugas's start button, a material's pull
-  // to continue). Milestones and required activities keep the full footer.
-  if (compact && path && !milestone && issue?.kind !== "requirements") {
+  // to continue). Required activities keep the full footer.
+  if (compact && path && issue?.kind !== "requirements") {
     return (
       <View className="gap-3">
-        <NextUpRow path={path} locked={Boolean(assessmentIncomplete)} />
-        {showContinue && !assessmentIncomplete ? continueAction : null}
+        <NextUpRow
+          path={path}
+          locked={Boolean(assessmentIncomplete) || nextLocked}
+        />
+        {showContinue && !assessmentIncomplete && !nextLocked
+          ? continueAction
+          : null}
         {errorText}
       </View>
     );
@@ -579,55 +601,5 @@ export function LearningFooterView({
     </View>
   );
 
-  if (!milestone) return content;
-
-  return (
-    <View className="gap-6">
-      <View className="items-center gap-2">
-        <Eyebrow tone="primary" className="text-center">
-          {milestone.courseCompleted ? "Kurikulum selesai" : "Bab selesai"}
-        </Eyebrow>
-        <Text
-          accessibilityRole="header"
-          className="text-center text-[28px] font-black leading-8 tracking-tight text-foreground"
-        >
-          {milestone.courseCompleted
-            ? "Kamu berhasil"
-            : "Pertahankan semangatmu"}
-        </Text>
-        <Text className="text-center text-sm leading-5 text-muted-foreground">
-          Kamu menyelesaikan {milestone.moduleTitle}.
-        </Text>
-      </View>
-
-      {milestone.courseCompleted && courseId === HANGEUL_MASTERY_COURSE_ID ? (
-        <HangeulMasteryBadge {...hangeulCompletionBadgeCopy(hangeulBadge)} />
-      ) : null}
-
-      {milestone.unlockedModuleTitle || milestone.nextItem ? (
-        <View className="gap-1 border-t border-border pt-5">
-          <Eyebrow tone="primary">
-            {milestone.unlockedModuleTitle ? "Terbuka" : "Berikutnya"}
-          </Eyebrow>
-          <Text className="text-base font-bold leading-6 text-foreground">
-            {milestone.unlockedModuleTitle ?? milestone.nextItem?.title}
-          </Text>
-        </View>
-      ) : null}
-
-      <View className="gap-2">
-        <StudyAction
-          onPress={() => navigate(milestone.nextItem)}
-          trailingIcon={milestone.nextItem ? "arrow.right" : undefined}
-        >
-          {milestone.nextItem ? "Lanjutkan belajar" : "Lihat progres kurikulum"}
-        </StudyAction>
-        {milestone.nextItem ? (
-          <Action variant="ghost" onPress={() => navigate()}>
-            Kembali ke kurikulum
-          </Action>
-        ) : null}
-      </View>
-    </View>
-  );
+  return content;
 }

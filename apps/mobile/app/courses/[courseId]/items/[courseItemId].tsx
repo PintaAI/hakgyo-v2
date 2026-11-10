@@ -15,6 +15,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import {
   Alert,
@@ -38,11 +39,11 @@ import {
   HERO_TITLE,
 } from "../../../../src/components/learn/hakgyo-hero";
 import {
-  CourseLearningFooter,
   LearningFooterView,
   useLearningContinuation,
 } from "../../../../src/components/learn/course-learning-footer";
 import {
+  PullHoldIndicator,
   PullToContinueIndicator,
   ReadingGuardIndicator,
   usePullToContinue,
@@ -65,10 +66,7 @@ import { useCelebration } from "../../../../src/lib/tugas-celebrations";
 import { authClient } from "../../../../src/lib/auth-client";
 import { userErrorMessage } from "../../../../src/lib/error-message";
 import { api } from "../../../../src/lib/trpc";
-import {
-  getLearningPath,
-  type LearningPathCourse,
-} from "../../../../src/lib/course-learning-path";
+import { getLearningPath } from "../../../../src/lib/course-learning-path";
 import { useSidebarIndicators } from "../../../../src/lib/sidebar-indicators";
 import { materialPosition } from "@hakgyo/shared/learning";
 import { MaterialHeader } from "../../../../src/components/learn/material-header";
@@ -146,28 +144,29 @@ function CourseItemContent({
   });
   const continueFromEnd = useCallback(async () => {
     await learning.continueLearning();
-    // Still here: a milestone, a required activity or an error now shows
+    // Still here: a required activity or an error now shows
     // in the footer, at the end of the content.
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd());
   }, [learning]);
   const pullToContinue = usePullToContinue({ onRelease: continueFromEnd });
+  // A tugas in the course continues the same way, once it is passed.
+  const tugasPull = usePullToContinue({ onRelease: continueFromEnd });
   // The reading guard of an unfinished material holds "next" (see below).
   const readingLocked = useRef(false);
   // Not before every PDF page has been read or the reading time has run,
-  // nor while the footer shows a milestone or a required activity instead.
+  // nor while the footer shows a required activity instead.
   const updatePullEnabled = () => {
     pullToContinue.enabled.value =
       unreadPagedBlocks.current.size === 0 &&
       !readingLocked.current &&
       !learning.busy &&
-      !learning.milestone &&
       learning.issue?.kind !== "requirements";
   };
   const updatePullEnabledRef = useRef(updatePullEnabled);
   updatePullEnabledRef.current = updatePullEnabled;
   useEffect(() => {
     updatePullEnabledRef.current();
-  }, [learning.busy, learning.milestone, learning.issue]);
+  }, [learning.busy, learning.issue]);
   // Content that fits on screen is at its end without scrolling. Content
   // that grew past the screen (images loaded) is not, until a scroll says so.
   const markShortContentAtEnd = () => {
@@ -246,7 +245,6 @@ function CourseItemContent({
   const outline = useCourseOutline(courseId, {
     enabled: Boolean(session && courseId),
   });
-  const initialOutline = useRef<LearningPathCourse>(undefined);
   const resolveAssetUrl = useApiAssetResolver();
   const itemQuery = useCourseItem(courseId || undefined, courseItemId, {
     enabled: Boolean(session),
@@ -285,6 +283,9 @@ function CourseItemContent({
       materialContent === undefined ? 0 : readingGuardSeconds(materialContent),
     [materialContent],
   );
+  useEffect(() => {
+    tugasPull.enabled.value = itemCompleted === true && !learning.busy;
+  }, [itemCompleted, learning.busy, tugasPull.enabled]);
   const readingGuard = useReadingGuard({
     userId: session?.user.id,
     courseItemId,
@@ -334,11 +335,6 @@ function CourseItemContent({
       });
     }
   }, [courseId, courseItemId, isSessionPending, session]);
-
-  useEffect(() => {
-    if (!initialOutline.current && outline.data)
-      initialOutline.current = outline.data;
-  }, [outline.data]);
 
   // Back from the attempt shows the tugas again, not the preview.
   useFocusEffect(
@@ -498,171 +494,205 @@ function CourseItemContent({
             />
           </StudyScreen>
         ) : assessment && latestAttempt?.status === "GRADED" ? (
-          <StudyScreen title="" bleedTop contentClassName="gap-4">
-            <AssessmentResult
-              attemptId={latestAttempt.id}
-              courseItemId={courseItemId}
-              title={assessment.title}
-              attempt={latestAttempt}
-              passingScore={assessment.passingScore}
-              itemCompleted={itemCompleted}
-              canReattempt={assessmentEntry.canReattempt}
-              learning={assessment.event ? undefined : learning}
-              celebrate={celebrate}
-              onReview={(question) =>
-                router.push({
-                  pathname: "/courses/[courseId]/items/[courseItemId]/result",
-                  params: {
-                    courseId,
-                    courseItemId,
-                    attemptId: latestAttempt.id,
-                    ...(question !== undefined
-                      ? { question: String(question) }
-                      : null),
-                  },
-                })
-              }
-              onRetry={() => void beginAssessment()}
-              retryDisabled={
-                assessment.questions.length === 0 ||
-                (assessment.eligibleCohorts.length > 1 && !selectedCohortId)
-              }
-              retryExtras={
-                <>
-                  {assessment.eligibleCohorts.length > 1 ? (
-                    <CohortPicker
-                      cohorts={assessment.eligibleCohorts}
-                      selectedId={selectedCohortId}
-                      onSelect={setSelectedCohortId}
-                    />
-                  ) : null}
-                  {startAssessment.isError ? (
-                    <Text className="text-center text-sm text-destructive">
-                      {userErrorMessage(
-                        startAssessment.error,
-                        "Tugas tidak dapat dimulai.",
-                      )}
-                    </Text>
-                  ) : null}
-                </>
-              }
-            />
-          </StudyScreen>
-        ) : assessment ? (
-          <StudyScreen title="" bleedTop>
-            <HakgyoHero>
-              <CardFan
-                faces={[
-                  <View className="items-center" key="count">
-                    <Text className="text-4xl font-black tabular-nums tracking-tight text-foreground">
-                      {assessment.questions.length}
-                    </Text>
-                    <Eyebrow>soal</Eyebrow>
-                  </View>,
-                  <View key="second" />,
-                  <View key="third" />,
-                ]}
+          <TugasPullFrame
+            pull={assessment.event ? undefined : tugasPull}
+            itemCompleted={itemCompleted}
+            busy={learning.busy}
+            holdLabel="Lulus tugas ini untuk lanjut"
+          >
+            <StudyScreen
+              title=""
+              bleedTop
+              contentClassName="gap-4"
+              pullToContinue={assessment.event ? undefined : tugasPull}
+            >
+              <AssessmentResult
+                attemptId={latestAttempt.id}
+                courseItemId={courseItemId}
+                title={assessment.title}
+                attempt={latestAttempt}
+                passingScore={assessment.passingScore}
+                itemCompleted={itemCompleted}
+                canReattempt={assessmentEntry.canReattempt}
+                learning={assessment.event ? undefined : learning}
+                celebrate={celebrate}
+                onReview={(question) =>
+                  router.push({
+                    pathname: "/courses/[courseId]/items/[courseItemId]/result",
+                    params: {
+                      courseId,
+                      courseItemId,
+                      attemptId: latestAttempt.id,
+                      ...(question !== undefined
+                        ? { question: String(question) }
+                        : null),
+                    },
+                  })
+                }
+                onRetry={() => void beginAssessment()}
+                retryDisabled={
+                  assessment.questions.length === 0 ||
+                  (assessment.eligibleCohorts.length > 1 && !selectedCohortId)
+                }
+                retryExtras={
+                  <>
+                    {assessment.eligibleCohorts.length > 1 ? (
+                      <CohortPicker
+                        cohorts={assessment.eligibleCohorts}
+                        selectedId={selectedCohortId}
+                        onSelect={setSelectedCohortId}
+                      />
+                    ) : null}
+                    {startAssessment.isError ? (
+                      <Text className="text-center text-sm text-destructive">
+                        {userErrorMessage(
+                          startAssessment.error,
+                          "Tugas tidak dapat dimulai.",
+                        )}
+                      </Text>
+                    ) : null}
+                  </>
+                }
               />
-              <View className="items-center gap-2">
-                <Eyebrow size="md" tone="primary">
-                  Tugas
-                </Eyebrow>
-                <Text
-                  accessibilityRole="header"
-                  className="text-center font-black tracking-tight text-foreground"
-                  numberOfLines={2}
-                  style={HERO_TITLE}
-                >
-                  {assessment.title}
-                </Text>
-                {assessment.description ? (
-                  <Text className="text-center text-sm leading-6 text-muted-foreground">
-                    {assessment.description}
+              {!assessment.event ? (
+                <LearningFooterView
+                  courseId={courseId}
+                  courseItemId={courseItemId}
+                  learning={learning}
+                  compact
+                  continueButton="screenReader"
+                  nextLocked={itemCompleted !== true}
+                />
+              ) : null}
+            </StudyScreen>
+          </TugasPullFrame>
+        ) : assessment ? (
+          <TugasPullFrame
+            pull={assessment.event ? undefined : tugasPull}
+            itemCompleted={itemCompleted}
+            busy={learning.busy}
+            holdLabel={
+              latestAttempt?.status === "SUBMITTED" ||
+              latestAttempt?.status === "IN_REVIEW"
+                ? "Tunggu nilainya untuk lanjut"
+                : "Kerjakan tugas ini untuk lanjut"
+            }
+          >
+            <StudyScreen
+              title=""
+              bleedTop
+              pullToContinue={assessment.event ? undefined : tugasPull}
+            >
+              <HakgyoHero>
+                <CardFan
+                  faces={[
+                    <View className="items-center" key="count">
+                      <Text className="text-4xl font-black tabular-nums tracking-tight text-foreground">
+                        {assessment.questions.length}
+                      </Text>
+                      <Eyebrow>soal</Eyebrow>
+                    </View>,
+                    <View key="second" />,
+                    <View key="third" />,
+                  ]}
+                />
+                <View className="items-center gap-2">
+                  <Eyebrow size="md" tone="primary">
+                    Tugas
+                  </Eyebrow>
+                  <Text
+                    accessibilityRole="header"
+                    className="text-center font-black tracking-tight text-foreground"
+                    numberOfLines={2}
+                    style={HERO_TITLE}
+                  >
+                    {assessment.title}
+                  </Text>
+                  {assessment.description ? (
+                    <Text className="text-center text-sm leading-6 text-muted-foreground">
+                      {assessment.description}
+                    </Text>
+                  ) : null}
+                </View>
+                <AssessmentFacts
+                  timeLimitMinutes={assessment.timeLimitMinutes}
+                  passingScore={assessment.passingScore}
+                  maxAttempts={assessment.maxAttempts}
+                  attemptsUsed={assessment.standaloneAttemptCount}
+                />
+                {(assessmentEntry.canStart || assessmentEntry.canReattempt) &&
+                assessment.eligibleCohorts.length > 1 ? (
+                  <CohortPicker
+                    cohorts={assessment.eligibleCohorts}
+                    selectedId={selectedCohortId}
+                    onSelect={setSelectedCohortId}
+                  />
+                ) : null}
+                {assessmentEntry.canStart ||
+                assessmentEntry.canReattempt ||
+                assessmentEntry.destination === "ATTEMPT" ? (
+                  <HeroTile
+                    {...startTileCopy({
+                      resuming: assessmentEntry.destination === "ATTEMPT",
+                      retrying: assessmentEntry.canReattempt,
+                      offline: canStartOnDevice(assessment),
+                      attemptsLeft:
+                        assessment.maxAttempts === null
+                          ? null
+                          : assessment.maxAttempts -
+                            assessment.standaloneAttemptCount,
+                    })}
+                    disabled={
+                      assessment.questions.length === 0 ||
+                      ((assessmentEntry.canStart ||
+                        assessmentEntry.canReattempt) &&
+                        assessment.eligibleCohorts.length > 1 &&
+                        !selectedCohortId)
+                    }
+                    onPress={() => void beginAssessment()}
+                  />
+                ) : null}
+                {startAssessment.isError ? (
+                  <Text className="text-center text-sm text-destructive">
+                    {userErrorMessage(
+                      startAssessment.error,
+                      "Tugas tidak dapat dimulai.",
+                    )}
                   </Text>
                 ) : null}
-              </View>
-              <AssessmentFacts
+              </HakgyoHero>
+              {/* What the task is like before starting: its first question,
+                as it will look, but not answerable here. */}
+              {!latestAttempt && assessment.questions[0] ? (
+                <QuestionPreview
+                  question={assessment.questions[0]}
+                  total={assessment.questions.length}
+                  resolveAssetUrl={resolveAssetUrl}
+                />
+              ) : null}
+              <AssessmentOverview
                 timeLimitMinutes={assessment.timeLimitMinutes}
                 passingScore={assessment.passingScore}
                 maxAttempts={assessment.maxAttempts}
                 attemptsUsed={assessment.standaloneAttemptCount}
+                latestAttempt={latestAttempt}
+                itemCompleted={itemCompleted}
+                canReattempt={assessmentEntry.canReattempt}
+                gatesProgress={!assessment.event}
+                sections={assessment.sections}
               />
-              {(assessmentEntry.canStart || assessmentEntry.canReattempt) &&
-              assessment.eligibleCohorts.length > 1 ? (
-                <CohortPicker
-                  cohorts={assessment.eligibleCohorts}
-                  selectedId={selectedCohortId}
-                  onSelect={setSelectedCohortId}
+              {!assessment.event ? (
+                <LearningFooterView
+                  courseId={courseId}
+                  courseItemId={courseItemId}
+                  learning={learning}
+                  compact
+                  continueButton="screenReader"
+                  nextLocked={itemCompleted !== true}
                 />
               ) : null}
-              {assessmentEntry.canStart ||
-              assessmentEntry.canReattempt ||
-              assessmentEntry.destination === "ATTEMPT" ? (
-                <HeroTile
-                  {...startTileCopy({
-                    resuming: assessmentEntry.destination === "ATTEMPT",
-                    retrying: assessmentEntry.canReattempt,
-                    offline: canStartOnDevice(assessment),
-                    attemptsLeft:
-                      assessment.maxAttempts === null
-                        ? null
-                        : assessment.maxAttempts -
-                          assessment.standaloneAttemptCount,
-                  })}
-                  disabled={
-                    assessment.questions.length === 0 ||
-                    ((assessmentEntry.canStart ||
-                      assessmentEntry.canReattempt) &&
-                      assessment.eligibleCohorts.length > 1 &&
-                      !selectedCohortId)
-                  }
-                  onPress={() => void beginAssessment()}
-                />
-              ) : null}
-              {startAssessment.isError ? (
-                <Text className="text-center text-sm text-destructive">
-                  {userErrorMessage(
-                    startAssessment.error,
-                    "Tugas tidak dapat dimulai.",
-                  )}
-                </Text>
-              ) : null}
-            </HakgyoHero>
-            {/* What the task is like before starting: its first question,
-                as it will look, but not answerable here. */}
-            {!latestAttempt && assessment.questions[0] ? (
-              <QuestionPreview
-                question={assessment.questions[0]}
-                total={assessment.questions.length}
-                resolveAssetUrl={resolveAssetUrl}
-              />
-            ) : null}
-            <AssessmentOverview
-              timeLimitMinutes={assessment.timeLimitMinutes}
-              passingScore={assessment.passingScore}
-              maxAttempts={assessment.maxAttempts}
-              attemptsUsed={assessment.standaloneAttemptCount}
-              latestAttempt={latestAttempt}
-              itemCompleted={itemCompleted}
-              canReattempt={assessmentEntry.canReattempt}
-              gatesProgress={!assessment.event}
-              sections={assessment.sections}
-            />
-            {!assessment.event ? (
-              <CourseLearningFooter
-                key={courseItemId}
-                courseId={courseId}
-                courseItemId={courseItemId}
-                completionMode="assessment"
-                compact
-                assessmentState={{
-                  status: latestAttempt?.status ?? null,
-                  canReattempt: assessmentEntry.canReattempt,
-                }}
-                initialOutline={initialOutline.current}
-              />
-            ) : null}
-          </StudyScreen>
+            </StudyScreen>
+          </TugasPullFrame>
         ) : (
           <FullScreenState
             kind="error"
@@ -785,7 +815,7 @@ function CourseItemContent({
               </View>
             </Animated.ScrollView>
           </GestureDetector>
-          {learning.milestone ? null : readingGuard.locked ? (
+          {readingGuard.locked ? (
             <ReadingGuardIndicator
               atEnd={pullToContinue.atEnd}
               remaining={readingGuard.remaining}
@@ -873,4 +903,43 @@ function startTileCopy({
     meta: connection,
     pill: "Mulai",
   };
+}
+
+/**
+ * A tugas page in a course with pulling past its end to continue: the
+ * arrow once the tugas is passed, otherwise what still holds the learner.
+ * Without `pull` (a latihan or tryout) it adds nothing.
+ */
+function TugasPullFrame({
+  pull,
+  itemCompleted,
+  busy,
+  holdLabel,
+  children,
+}: {
+  pull: ReturnType<typeof usePullToContinue> | undefined;
+  itemCompleted: boolean | undefined;
+  busy: boolean;
+  holdLabel: string;
+  children: ReactNode;
+}) {
+  if (!pull) return <>{children}</>;
+  return (
+    <View className="flex-1">
+      {children}
+      {itemCompleted === true ? (
+        <PullToContinueIndicator
+          pull={pull.pull}
+          locked={pull.locked}
+          releasing={pull.releasing}
+          drop={pull.drop}
+          atEnd={pull.atEnd}
+          enabled={pull.enabled}
+          busy={busy}
+        />
+      ) : itemCompleted === false ? (
+        <PullHoldIndicator label={holdLabel} atEnd={pull.atEnd} />
+      ) : null}
+    </View>
+  );
 }

@@ -21,6 +21,12 @@ import {
   GestureDetector,
   type NativeGesture,
 } from "react-native-gesture-handler";
+import Animated from "react-native-reanimated";
+
+import {
+  usePullShortContent,
+  type usePullToContinue,
+} from "./learn/pull-to-continue";
 import { userErrorMessage } from "../lib/error-message";
 import { TourScrollContext } from "../tour/tour-provider";
 import { useAppTheme } from "../providers/AppThemeProvider";
@@ -80,6 +86,7 @@ export function StudyScreen({
   gameHeader = false,
   contentClassName = "gap-6",
   onScroll,
+  pullToContinue,
 }: {
   title: string;
   children: ReactNode;
@@ -100,6 +107,11 @@ export function StudyScreen({
   contentClassName?: string;
   /** Follows the scroll position (Belajar frosts its header once scrolled). */
   onScroll?: ComponentProps<typeof ScrollView>["onScroll"];
+  /**
+   * Pulling past the end continues (`usePullToContinue`); the screen draws
+   * its indicator over this one. Replaces `onScroll` and `scrollGesture`.
+   */
+  pullToContinue?: ReturnType<typeof usePullToContinue>;
 }) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -109,6 +121,7 @@ export function StudyScreen({
   const scrollRef = scrollViewRef ?? ownScrollRef;
   const [keyboardVerticalOffset, setKeyboardVerticalOffset] = useState(0);
   const behavior = bleedTop ? "never" : contentInsetAdjustmentBehavior;
+  const shortContent = usePullShortContent(pullToContinue?.atEnd);
   // ~44pt native navigation bar on iOS; Android tab roots have no header.
   const refreshOffset = insets.top + (Platform.OS === "ios" ? 44 : 0);
   const measureViewportOffset = useCallback(() => {
@@ -165,11 +178,31 @@ export function StudyScreen({
       {content}
     </ScrollView>
   );
-  const gestureViewport = scrollGesture ? (
-    <GestureDetector gesture={scrollGesture}>{viewport}</GestureDetector>
-  ) : (
-    viewport
-  );
+  const pullViewport = pullToContinue ? (
+    <GestureDetector gesture={pullToContinue.gesture}>
+      <Animated.ScrollView
+        ref={scrollRef}
+        className="flex-1"
+        contentInsetAdjustmentBehavior={behavior}
+        automaticallyAdjustContentInsets={!bleedTop && behavior !== "never"}
+        keyboardShouldPersistTaps="handled"
+        onScroll={pullToContinue.onScroll}
+        scrollEventThrottle={16}
+        onLayout={shortContent.onLayout}
+        onContentSizeChange={shortContent.onContentSizeChange}
+        contentContainerStyle={fillViewport ? { flexGrow: 1 } : undefined}
+      >
+        {content}
+      </Animated.ScrollView>
+    </GestureDetector>
+  ) : null;
+  const gestureViewport =
+    pullViewport ??
+    (scrollGesture ? (
+      <GestureDetector gesture={scrollGesture}>{viewport}</GestureDetector>
+    ) : (
+      viewport
+    ));
   return (
     <TourScrollContext.Provider value={scrollRef}>
       <Stack.Screen

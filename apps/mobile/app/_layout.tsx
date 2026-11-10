@@ -378,20 +378,11 @@ function RootNavigator() {
                     }}
                   />
                   <Stack.Screen
-                    name="courses/[courseId]/items/[courseItemId]/learning-progress"
+                    name="courses/[courseId]/chapter-complete"
                     options={{
-                      headerShown: false,
-                      contentStyle: {
-                        backgroundColor:
-                          Platform.OS === "ios"
-                            ? "transparent"
-                            : colors.background,
-                      },
-                      ...formSheetOptions({
-                        detents: "fitToContents",
-                        grabber: false,
-                        systemCornerRadius: true,
-                      }),
+                      headerShown: true,
+                      headerTitle: "",
+                      animation: transition,
                     }}
                   />
                   <Stack.Screen

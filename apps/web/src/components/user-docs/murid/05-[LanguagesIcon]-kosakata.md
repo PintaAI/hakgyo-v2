@@ -28,6 +28,7 @@ Kumpulan kosakata berisi kata-kata Korea beserta arti, contoh kalimat, gambar, d
 
 - **Dipelajari:** kata itu sudah pernah kamu jawab **benar** saat mengingat, yaitu mengetik atau mengucapkan jawabannya (di aplikasi ponsel juga lewat **Hujan Kata** dan **Susun makna**). Menjawab salah, membuka jawaban, atau sekadar mencocokkan kata di **Cocokkan** belum dihitung.
 - **Selesai:** semua kata di kumpulan itu sudah **dipelajari**. Item kosakata di kurikulum otomatis tercentang, dan tetap tercentang walaupun nanti ada jawaban yang salah.
+- **Lanjut ke aktivitas berikutnya:** di aplikasi ponsel, gulir sampai bawah halaman kosakata, lalu tarik layar ke atas seperti di materi. Selama masih ada kata yang belum dipelajari, lingkaran di bawah layar menunjukkan sisanya, misalnya **Hafalkan 2 kata lagi untuk lanjut**.
 - **Dikuasai:** kata itu sudah kamu jawab benar dua kali, masing-masing saat waktunya diulang.
 
 Hakgyo mengatur kapan sebuah kata muncul lagi:

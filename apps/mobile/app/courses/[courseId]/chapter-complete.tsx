@@ -1,0 +1,295 @@
+import { HANGEUL_MASTERY_COURSE_ID } from "@hakgyo/shared/hangeul";
+import { router, Stack, useLocalSearchParams } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { Platform, Text, View } from "react-native";
+
+import { HangeulMasteryBadge } from "../../../src/components/hangeul-mastery-medal";
+import { HeroTile } from "../../../src/components/hero-tile";
+import { ConfettiBurst } from "../../../src/components/learn/confetti";
+import {
+  CardFan,
+  HakgyoHero,
+  HERO_TITLE,
+} from "../../../src/components/learn/hakgyo-hero";
+import {
+  Action,
+  Eyebrow,
+  FullScreenState,
+  ProgressBar,
+  StudyScreen,
+} from "../../../src/components/learning-ui";
+import { SymbolIcon } from "../../../src/components/ui/symbol-icon";
+import { authClient } from "../../../src/lib/auth-client";
+import {
+  chapterCelebrated,
+  markChapterCelebrated,
+} from "../../../src/lib/chapter-celebrations";
+import { getCourseResumeItem } from "../../../src/lib/course-learning-path";
+import { hangeulCompletionBadgeCopy } from "../../../src/lib/hangeul-visibility";
+import { openCourseItem } from "../../../src/lib/navigation";
+import { firstParam } from "../../../src/lib/route-params";
+import { useHangeulBadgeState } from "../../../src/lib/use-cohort-archive";
+import { useAppTheme } from "../../../src/providers/AppThemeProvider";
+import { useCourseOutline } from "../../../src/sync/hooks";
+
+/** The box the chapter cards sit in, which the confetti bursts from. */
+const FAN_BOX = { width: 220, height: 112 };
+const DONE_GREEN = "#10b981";
+
+type OutlineItem = {
+  type?: "MATERIAL" | "VOCABULARY_SET" | "ASSESSMENT";
+  attempt?: { score: number | null; maxScore: number | null } | null;
+};
+
+/** What a chapter holds, in a short line: "2 materi · 1 kosakata · 1 tugas". */
+function chapterContents(items: readonly OutlineItem[]) {
+  const count = (type: OutlineItem["type"]) =>
+    items.filter((item) => item.type === type).length;
+  return [
+    [count("MATERIAL"), "materi"],
+    [count("VOCABULARY_SET"), "kosakata"],
+    [count("ASSESSMENT"), "tugas"],
+  ].filter(([n]) => (n as number) > 0) as [number, string][];
+}
+
+/** The last graded tugas score of the chapter, as a percentage. */
+function chapterScore(items: readonly OutlineItem[]) {
+  const graded = items
+    .filter((item) => item.type === "ASSESSMENT")
+    .map((item) => item.attempt)
+    .filter(
+      (attempt): attempt is { score: number; maxScore: number } =>
+        attempt?.score != null &&
+        attempt.maxScore != null &&
+        attempt.maxScore > 0,
+    );
+  const last = graded.at(-1);
+  return last ? Math.round((last.score / last.maxScore) * 100) : null;
+}
+
+/**
+ * "Bab selesai": where the learner lands when an activity finishes its
+ * chapter, in the look of a tugas result. The chapter card with a green
+ * check (and confetti the first time), what the chapter held, how far the
+ * course is, and the chapter it opened. Finishing the last chapter shows the
+ * course as done instead, with the Hangeul Mastery badge for that course.
+ */
+export default function ChapterCompleteScreen() {
+  const params = useLocalSearchParams<{
+    courseId: string | string[];
+    moduleId: string | string[];
+  }>();
+  const courseId = firstParam(params.courseId);
+  const moduleId = firstParam(params.moduleId);
+  const { colors } = useAppTheme();
+  const outline = useCourseOutline(courseId);
+  const { data: session } = authClient.useSession();
+  const userId = session?.user.id;
+  const hangeulBadge = useHangeulBadgeState();
+
+  // The confetti plays the first time this chapter is shown.
+  const [celebrate, setCelebrate] = useState(false);
+  const checked = useRef(false);
+  useEffect(() => {
+    if (checked.current || !userId || !moduleId) return;
+    checked.current = true;
+    if (!chapterCelebrated(userId, moduleId)) {
+      markChapterCelebrated(userId, moduleId);
+      setCelebrate(true);
+    }
+  }, [moduleId, userId]);
+
+  const course = outline.data;
+  const moduleIndex =
+    course?.modules.findIndex((module) => module.id === moduleId) ?? -1;
+  const module = course?.modules[moduleIndex];
+  if (!course || !module) {
+    return outline.isPending ? (
+      <FullScreenState kind="loading" message="Memuat bab…" />
+    ) : (
+      <FullScreenState
+        kind="error"
+        title="Bab tidak ditemukan"
+        onBack={() => router.back()}
+      />
+    );
+  }
+
+  const totalModules = course.modules.length;
+  const doneModules = course.modules.filter(
+    (entry) => entry.isCompleted,
+  ).length;
+  const courseCompleted =
+    totalModules > 0 && course.modules.every((entry) => entry.isCompleted);
+  const contents = chapterContents(module.items);
+  const score = chapterScore(module.items);
+  const nextModule = courseCompleted
+    ? undefined
+    : (course.modules
+        .slice(moduleIndex + 1)
+        .find((entry) => entry.access !== "LOCKED" && !entry.isCompleted) ??
+      course.modules.find(
+        (entry) => entry.access !== "LOCKED" && !entry.isCompleted,
+      ));
+  const nextModuleIndex = nextModule
+    ? course.modules.findIndex((entry) => entry.id === nextModule.id)
+    : -1;
+  const resumeItem = getCourseResumeItem(course);
+  const toCourse = () =>
+    router.replace({ pathname: "/courses/[courseId]", params: { courseId } });
+
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTitle: "",
+          headerTransparent: Platform.OS === "ios",
+          headerShadowVisible: false,
+          headerTintColor: colors.foreground,
+        }}
+      />
+      <StudyScreen title="" bleedTop contentClassName="gap-4">
+        <HakgyoHero>
+          <View className="items-center">
+            <View style={FAN_BOX}>
+              <CardFan
+                faces={[
+                  <View className="items-center" key="chapter">
+                    <Eyebrow>{courseCompleted ? "Kurikulum" : "Bab"}</Eyebrow>
+                    <Text className="text-4xl font-black tabular-nums tracking-tight text-foreground">
+                      {courseCompleted ? totalModules : moduleIndex + 1}
+                    </Text>
+                  </View>,
+                  <View key="second" />,
+                  <View key="third" />,
+                ]}
+              />
+              <View
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                className="absolute size-8 items-center justify-center rounded-full"
+                style={{
+                  left: FAN_BOX.width / 2 + 80 - 18,
+                  top: -4,
+                  backgroundColor: DONE_GREEN,
+                  borderWidth: 3,
+                  borderColor: colors.background,
+                }}
+              >
+                <SymbolIcon
+                  name="checkmark"
+                  size={14}
+                  weight="bold"
+                  tintColor="#ffffff"
+                />
+              </View>
+              <ConfettiBurst
+                fire={celebrate}
+                width={FAN_BOX.width}
+                height={FAN_BOX.height}
+                colors={[
+                  colors.primary,
+                  "#F2C14E",
+                  "#F472B6",
+                  "#34D399",
+                  "#60A5FA",
+                ]}
+              />
+            </View>
+          </View>
+          <View className="items-center gap-2">
+            <Eyebrow size="md" tone="primary">
+              {courseCompleted ? "Kurikulum selesai" : "Bab selesai"}
+            </Eyebrow>
+            <Text
+              accessibilityRole="header"
+              className="text-center font-black tracking-tight text-foreground"
+              numberOfLines={2}
+              style={HERO_TITLE}
+            >
+              {courseCompleted
+                ? "Kamu berhasil!"
+                : `Mantap, Bab ${moduleIndex + 1} selesai!`}
+            </Text>
+            <Text
+              className="text-center text-sm text-muted-foreground"
+              numberOfLines={2}
+            >
+              {courseCompleted ? course.title : module.title}
+            </Text>
+          </View>
+          {!courseCompleted && (contents.length > 0 || score !== null) ? (
+            <View className="flex-row gap-2">
+              {contents.map(([n, label]) => (
+                <Stat key={label} value={String(n)} label={label} />
+              ))}
+              {score !== null ? (
+                <Stat value={`${score}%`} label="nilai tugas" />
+              ) : null}
+            </View>
+          ) : null}
+          <View className="gap-1.5">
+            <View className="flex-row justify-between gap-3">
+              <Text
+                className="flex-1 text-xs text-muted-foreground"
+                numberOfLines={1}
+              >
+                {course.title}
+              </Text>
+              <Text className="text-xs tabular-nums text-muted-foreground">
+                {doneModules} dari {totalModules} bab
+              </Text>
+            </View>
+            <ProgressBar
+              accessibilityLabel={`${doneModules} dari ${totalModules} bab selesai`}
+              max={totalModules}
+              value={doneModules}
+            />
+          </View>
+        </HakgyoHero>
+
+        {courseCompleted && courseId === HANGEUL_MASTERY_COURSE_ID ? (
+          <HangeulMasteryBadge {...hangeulCompletionBadgeCopy(hangeulBadge)} />
+        ) : null}
+
+        {nextModule ? (
+          <HeroTile
+            eyebrow={`Terbuka · Bab ${nextModuleIndex + 1}`}
+            title={nextModule.title}
+            meta={
+              chapterContents(nextModule.items)
+                .map(([n, label]) => `${n} ${label}`)
+                .join(" · ") || "Bab berikutnya"
+            }
+            pill="Lanjutkan"
+            onPress={() => {
+              const first =
+                nextModule.items.find((item) => !item.isCompleted) ??
+                resumeItem;
+              if (!first) return toCourse();
+              openCourseItem(
+                { courseId, courseItemId: first.id, attempt: first.attempt },
+                { replace: true },
+              );
+            }}
+          />
+        ) : null}
+        <Action variant={nextModule ? "ghost" : "primary"} onPress={toCourse}>
+          {courseCompleted ? "Lihat kurikulum" : "Kembali ke kurikulum"}
+        </Action>
+      </StudyScreen>
+    </>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <View className="flex-1 items-center rounded-2xl border border-border bg-card px-1 py-2.5">
+      <Text className="text-base font-black tabular-nums text-foreground">
+        {value}
+      </Text>
+      <Text className="text-[11px] text-muted-foreground">{label}</Text>
+    </View>
+  );
+}
