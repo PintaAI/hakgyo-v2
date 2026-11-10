@@ -31,6 +31,50 @@ describe("pickLessonWords", () => {
     ).toEqual(["new", "due", "learning", "mastered"]);
   });
 
+  test("puts words still to learn before due and learned ones", () => {
+    const words = ["learned-due", "unlearned", "learned", "new"].map((id) =>
+      word(id),
+    );
+    const progress = new Map([
+      [
+        "learned-due",
+        { practiced: true, due: true, mastered: false, learned: true },
+      ],
+      [
+        "unlearned",
+        { practiced: true, due: false, mastered: false, learned: false },
+      ],
+      [
+        "learned",
+        { practiced: true, due: false, mastered: false, learned: true },
+      ],
+    ]);
+    expect(
+      pickLessonWords(words, progress, firstRandom).map((item) => item.id),
+    ).toEqual(["new", "unlearned", "learned-due", "learned"]);
+  });
+
+  test("a set of five with two words left keeps both in the lesson", () => {
+    const words = ["a", "b", "c", "d", "e", "f", "g"].map((id) => word(id));
+    const progress = new Map(
+      words.map((item) => [
+        item.id,
+        {
+          practiced: true,
+          due: true,
+          mastered: false,
+          learned: !["f", "g"].includes(item.id),
+        },
+      ]),
+    );
+    expect(
+      pickLessonWords(words, progress, firstRandom)
+        .slice(0, 2)
+        .map((item) => item.id)
+        .sort(),
+    ).toEqual(["f", "g"]);
+  });
+
   test("skips words without a term or a meaning", () => {
     const words = [
       word("a"),
