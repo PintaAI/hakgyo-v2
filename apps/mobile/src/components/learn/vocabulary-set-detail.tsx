@@ -3,7 +3,9 @@ import { router, useFocusEffect } from "expo-router";
 import Storage from "expo-sqlite/kv-store";
 import { Image } from "expo-image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Platform, Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
+import { GestureDetector } from "react-native-gesture-handler";
+import Animated from "react-native-reanimated";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useApiAssetResolver } from "../content-renderer";
@@ -19,7 +21,16 @@ import {
 } from "../../lib/vocabulary-word-status";
 import { VocabularyWordStatusChip } from "../vocabulary-word-status-chip";
 import { CardFan, HakgyoHero, HERO_TITLE } from "./hakgyo-hero";
-import { StudyAction } from "../study-glass";
+import {
+  LearningFooterView,
+  useLearningContinuation,
+} from "./course-learning-footer";
+import {
+  PullHoldIndicator,
+  PullToContinueIndicator,
+  usePullShortContent,
+  usePullToContinue,
+} from "./pull-to-continue";
 import { VocabularyAudioButton } from "../vocabulary-audio-button";
 import { SymbolIcon } from "../ui/symbol-icon";
 
@@ -287,6 +298,23 @@ export function VocabularySetDetail({
     ? vocabularySetProgress(vocabulary.entries.map(statusOf))
     : undefined;
 
+  // In a course, pulling past the end goes on, like a material, once every
+  // word is learned (the set completes then).
+  const inCourse = Boolean(courseId && courseItemId);
+  const learning = useLearningContinuation({
+    courseId: courseId ?? "",
+    courseItemId: courseItemId ?? "",
+  });
+  const learned = Boolean(
+    learning.path?.item.isCompleted || setProgress?.complete,
+  );
+  const wordsLeft = setProgress ? setProgress.total - setProgress.learned : 0;
+  const pull = usePullToContinue({ onRelease: learning.continueLearning });
+  const shortContent = usePullShortContent(inCourse ? pull.atEnd : undefined);
+  useEffect(() => {
+    pull.enabled.value = inCourse && learned && !learning.busy;
+  }, [inCourse, learned, learning.busy, pull.enabled]);
+
   const setViewMode = useCallback((mode: "list" | "grid") => {
     setViewModeState(mode);
     try {
@@ -366,9 +394,13 @@ export function VocabularySetDetail({
     [openEntry, speakingId, statusById, statusOf, total, viewMode],
   );
 
-  return (
-    <FlatList<VocabularySetEntry>
+  const list = (
+    <Animated.FlatList<VocabularySetEntry>
       key={viewMode}
+      onScroll={inCourse ? pull.onScroll : undefined}
+      scrollEventThrottle={16}
+      onLayout={shortContent.onLayout}
+      onContentSizeChange={shortContent.onContentSizeChange}
       className="flex-1 bg-background"
       contentContainerStyle={{
         paddingBottom: 56,
@@ -388,18 +420,16 @@ export function VocabularySetDetail({
       }
       ListFooterComponent={
         courseId && courseItemId ? (
-          <View className="mt-5">
-            <StudyAction
-              onPress={() =>
-                router.push({
-                  pathname:
-                    "/courses/[courseId]/items/[courseItemId]/learning-progress",
-                  params: { courseId, courseItemId },
-                })
-              }
-            >
-              Lanjutkan
-            </StudyAction>
+          // Room under the "next" row for the pull indicator.
+          <View className="mb-20 mt-5">
+            <LearningFooterView
+              courseId={courseId}
+              courseItemId={courseItemId}
+              learning={learning}
+              compact
+              continueButton="screenReader"
+              nextLocked={!learned}
+            />
           </View>
         ) : null
       }
@@ -549,5 +579,31 @@ export function VocabularySetDetail({
       removeClippedSubviews
       windowSize={7}
     />
+  );
+  if (!inCourse) return list;
+  return (
+    <View className="flex-1">
+      <GestureDetector gesture={pull.gesture}>{list}</GestureDetector>
+      {learned ? (
+        <PullToContinueIndicator
+          pull={pull.pull}
+          locked={pull.locked}
+          releasing={pull.releasing}
+          drop={pull.drop}
+          atEnd={pull.atEnd}
+          enabled={pull.enabled}
+          busy={learning.busy}
+        />
+      ) : setProgress ? (
+        <PullHoldIndicator
+          label={`Hafalkan ${wordsLeft} kata lagi untuk lanjut`}
+          progress={
+            setProgress.total > 0 ? setProgress.learned / setProgress.total : 0
+          }
+          icon="character.book.closed.fill"
+          atEnd={pull.atEnd}
+        />
+      ) : null}
+    </View>
   );
 }

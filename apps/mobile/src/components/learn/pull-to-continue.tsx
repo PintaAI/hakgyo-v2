@@ -25,6 +25,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { formatCountdown } from "../../lib/reading-time";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { SymbolIcon } from "../ui/symbol-icon";
+import type { SymbolName } from "../ui/symbol-names";
 
 /**
  * Letting go: the indicator falls back down and fades out, a little
@@ -544,17 +545,22 @@ export function PullToContinueIndicator({
 }
 
 /**
- * In place of the pull arrow while the reading guard holds "next": a ring
- * that fills as the reading time runs, and how long is left. Shows once
- * the end is reached, like the arrow it stands in for.
+ * In place of the pull arrow while the screen holds "next": a ring that
+ * fills with `progress` (or a lock without it) and a short line saying what
+ * is left. Shows once the end is reached, like the arrow it stands in for.
  */
-export function ReadingGuardIndicator({
-  remaining,
-  required,
+export function PullHoldIndicator({
+  label,
+  accessibilityLabel,
+  progress,
+  icon = "lock.fill",
   atEnd,
 }: {
-  remaining: number;
-  required: number;
+  label: string;
+  accessibilityLabel?: string;
+  /** 0 to 1, filling the ring; without it the ring stays empty. */
+  progress?: number;
+  icon?: SymbolName;
   atEnd: SharedValue<boolean>;
 }) {
   const { colors } = useAppTheme();
@@ -565,12 +571,13 @@ export function ReadingGuardIndicator({
       { translateY: withTiming(atEnd.value ? HINT_Y : HIDDEN_Y, HINT_RETURN) },
     ],
   }));
-  const done = required > 0 ? 1 - remaining / required : 1;
-  const ticks = Math.round(done * RING_TICKS);
+  const ticks = Math.round(
+    Math.min(1, Math.max(0, progress ?? 0)) * RING_TICKS,
+  );
   return (
     <Animated.View
       accessibilityLiveRegion="polite"
-      accessibilityLabel={`Baca dulu, ${formatCountdown(remaining)} lagi sebelum lanjut`}
+      accessibilityLabel={accessibilityLabel ?? label}
       pointerEvents="none"
       className="absolute left-0 right-0 items-center gap-1.5"
       style={[{ bottom: Math.max(insets.bottom, 12) + 4 }, shown]}
@@ -592,17 +599,72 @@ export function ReadingGuardIndicator({
           />
         ))}
         <SymbolIcon
-          name="book.closed"
+          name={icon}
           size={16}
           weight="semibold"
           tintColor={colors.mutedForeground}
         />
       </View>
       <Text className="text-xs font-semibold tabular-nums text-muted-foreground">
-        Baca dulu · {formatCountdown(remaining)}
+        {label}
       </Text>
     </Animated.View>
   );
+}
+
+/** While the reading guard holds "next": how long is left to read. */
+export function ReadingGuardIndicator({
+  remaining,
+  required,
+  atEnd,
+}: {
+  remaining: number;
+  required: number;
+  atEnd: SharedValue<boolean>;
+}) {
+  return (
+    <PullHoldIndicator
+      label={`Baca dulu · ${formatCountdown(remaining)}`}
+      accessibilityLabel={`Baca dulu, ${formatCountdown(remaining)} lagi sebelum lanjut`}
+      progress={required > 0 ? 1 - remaining / required : 1}
+      icon="book.closed"
+      atEnd={atEnd}
+    />
+  );
+}
+
+/**
+ * Short content is at its end without scrolling: give the scroll view's
+ * `onLayout` and `onContentSizeChange` to this, and `atEnd` follows. Content
+ * that grows past the screen (images loading) leaves it to the scroll.
+ */
+export function usePullShortContent(atEnd: SharedValue<boolean> | undefined) {
+  const content = useRef(0);
+  const viewport = useRef(0);
+  const wasLong = useRef(false);
+  const check = useCallback(() => {
+    if (!atEnd || content.current <= 0 || viewport.current <= 0) return;
+    const fits = content.current <= viewport.current + 32;
+    if (fits) atEnd.value = true;
+    else if (atEnd.value && !wasLong.current) atEnd.value = false;
+    wasLong.current = !fits;
+  }, [atEnd]);
+  return {
+    onLayout: useCallback(
+      (event: { nativeEvent: { layout: { height: number } } }) => {
+        viewport.current = event.nativeEvent.layout.height;
+        check();
+      },
+      [check],
+    ),
+    onContentSizeChange: useCallback(
+      (_width: number, height: number) => {
+        content.current = height;
+        check();
+      },
+      [check],
+    ),
+  };
 }
 
 /** Ticks around the reading-guard ring. */

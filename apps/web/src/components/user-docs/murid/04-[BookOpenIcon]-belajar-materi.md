@@ -38,7 +38,11 @@ Di aplikasi ponsel, tidak ada tombol **Selesai & lanjutkan**. Setelah sampai di 
 
 Materi yang belum selesai perlu dibaca dulu sebentar sebelum bisa dilanjutkan. Lama waktunya sekitar separuh perkiraan waktu baca materi itu (paling sedikit 10 detik, paling lama 3 menit). Selama waktunya belum habis, di bawah materi muncul lingkaran dengan tulisan **Baca dulu** dan sisa waktunya. Waktu hanya berjalan saat halaman materi terbuka, dan tetap tersimpan kalau kamu keluar lalu kembali lagi. Materi yang sudah selesai bisa dibuka ulang dan dilanjutkan kapan saja tanpa menunggu.
 
-Di item terakhir sebuah bab, tombolnya menjadi **Selesaikan bab**. Di item terakhir kurikulum, tombolnya **Selesaikan kurikulum**. Kamu akan melihat layar perayaan setiap menyelesaikan bab atau kurikulum.
+Di item terakhir sebuah bab, tombolnya menjadi **Selesaikan bab**. Di item terakhir kurikulum, tombolnya **Selesaikan kurikulum**.
+
+Di aplikasi ponsel, cara **Tarik untuk lanjut** yang sama juga dipakai di halaman kosakata dan tugas di kurikulum. Di bawahnya ada baris **Berikutnya** yang menunjukkan aktivitas selanjutnya. Selama aktivitasnya belum selesai, baris itu terkunci dan lingkaran di bawah layar menjelaskan apa yang masih perlu dilakukan, misalnya **Hafalkan 2 kata lagi untuk lanjut** atau **Lulus tugas ini untuk lanjut**.
+
+Setiap kali sebuah bab selesai, di aplikasi ponsel muncul halaman **Bab selesai**. Isinya nomor bab dengan centang hijau (beserta confetti saat pertama kali), isi bab itu (misalnya **2 materi**, **1 kosakata**, dan nilai tugasnya), progres kurikulum seperti **1 dari 10 bab**, lalu kotak bab berikutnya yang baru terbuka. Tekan **Lanjutkan** untuk mulai bab itu, atau **Kembali ke kurikulum**. Setelah bab terakhir, halamannya menjadi **Kurikulum selesai**.
 
 Item yang sudah selesai akan tetap selesai, walaupun kamu membukanya lagi.
 

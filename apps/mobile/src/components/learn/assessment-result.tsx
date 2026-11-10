@@ -2,7 +2,6 @@ import { formatScore, formatScoreOutOf } from "@hakgyo/shared";
 import { useState, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { getLearningItemTypeMeta } from "../../lib/learning-item-type";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { useLearnerAttempt } from "../../sync/hooks";
 import { withOpacity } from "../../theme/colors";
@@ -34,9 +33,10 @@ const PREVIEW_MAX_HEIGHT = 420;
 
 /**
  * A graded tugas, where the learner lands after finishing it: the score is
- * the hero, then one main tile (continue once the tugas is passed, retry
- * while it still holds the learner), an optional retry, and a preview of the
- * answers that opens the full review.
+ * the hero, then a retry (a main tile while the tugas still holds the
+ * learner, a plain button otherwise) and a preview of the answers that
+ * opens the full review. Going on is the screen's: the "next" row under
+ * this and pulling past the end, like a material.
  */
 export function AssessmentResult({
   attemptId,
@@ -89,13 +89,11 @@ export function AssessmentResult({
   const path = learning?.path;
   const next = path?.nextItem;
 
-  // Continue once the course item is done; retry while it holds the learner.
-  const primary: "continue" | "retry" | null =
-    gatesProgress && itemCompleted === true && path
-      ? "continue"
-      : gatesProgress && itemCompleted === false && !passed && canReattempt
-        ? "retry"
-        : null;
+  // Retry is the main action while the tugas holds the learner.
+  const primary: "retry" | null =
+    gatesProgress && itemCompleted === false && !passed && canReattempt
+      ? "retry"
+      : null;
   // Retrying after a pass (or in a latihan or tryout) is optional: a plain
   // button under the main tile.
   const secondaryRetry = canReattempt && primary !== "retry";
@@ -118,7 +116,6 @@ export function AssessmentResult({
       : null;
   const headline =
     passed && passingScore !== null ? "Mantap, kamu lulus!" : title;
-  const nextMeta = next ? getLearningItemTypeMeta(next.type) : null;
 
   return (
     <>
@@ -231,28 +228,7 @@ export function AssessmentResult({
         ) : null}
       </HakgyoHero>
 
-      {primary === "continue" && path ? (
-        <HeroTile
-          eyebrow={
-            next && nextMeta
-              ? `Berikutnya · ${nextMeta.label}`
-              : path.courseCompleted
-                ? "Kurikulum selesai"
-                : `Bab ${path.moduleIndex + 1}`
-          }
-          title={
-            next
-              ? next.title
-              : path.courseCompleted
-                ? "Kembali ke kurikulum"
-                : path.module.title
-          }
-          meta={`Bab ${path.moduleIndex + 1} · ${path.completedCount}/${path.module.items.length} selesai`}
-          pill={next ? "Lanjutkan" : "Buka"}
-          loading={learning?.busy}
-          onPress={() => void learning?.continueLearning()}
-        />
-      ) : primary === "retry" ? (
+      {primary === "retry" ? (
         <HeroTile
           eyebrow="Coba lagi"
           title="Kerjakan ulang tugas"
@@ -279,14 +255,6 @@ export function AssessmentResult({
         </Action>
       ) : null}
       {canReattempt ? retryExtras : null}
-      {learning?.issue?.kind === "error" ? (
-        <Text
-          accessibilityRole="alert"
-          className="text-sm leading-5 text-destructive"
-        >
-          {learning.issue.message}
-        </Text>
-      ) : null}
       {learning?.outlineFailed && !path ? (
         <Text
           accessibilityRole="alert"

@@ -76,5 +76,10 @@ export function createUserRecordStore<T>(
     return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   }
 
-  return { set, update, useRecords };
+  /** The record under `key`, read once (not following changes). */
+  function get(userId: string, key: string): T | undefined {
+    return read(userId)[key];
+  }
+
+  return { get, set, update, useRecords };
 }
