@@ -5,7 +5,7 @@ import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { requireAssessmentManagement } from "~/server/assessment/access";
 import { requireOrganizationMembership } from "~/server/authorization";
-import { orderAssessmentQuestions } from "~/server/assessment/order";
+import { orderAssessmentQuestions } from "@hakgyo/shared";
 import { isUniqueConstraintError } from "~/server/db-retry";
 import { env } from "~/env";
 import {

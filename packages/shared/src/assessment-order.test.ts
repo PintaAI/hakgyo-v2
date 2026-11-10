@@ -4,7 +4,7 @@ import {
   orderAssessmentQuestions,
   shuffleForAttempt,
   shufflesQuestions,
-} from "./order";
+} from "./assessment-order";
 
 const questions = [
   {

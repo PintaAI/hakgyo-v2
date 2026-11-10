@@ -1,16 +1,14 @@
 import {
+  orderAssessmentQuestions,
   readScoreBands,
   ruleSectionsFor,
   ruleStateFrom,
+  shufflesQuestions,
   timedSectionsSeconds,
 } from "@hakgyo/shared";
 
 import type { Prisma } from "../../../generated/prisma/client";
 import { activeEnrollmentStatuses } from "~/server/authorization";
-import {
-  orderAssessmentQuestions,
-  shufflesQuestions,
-} from "~/server/assessment/order";
 import { shouldRevealAssessmentAnswers } from "~/server/assessment/result-policy";
 import { attemptDeadline } from "~/server/assessment/timing";
 import { liveClassCohortWhere } from "~/server/enrollment/cohort-access";

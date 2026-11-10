@@ -9,6 +9,7 @@ import {
   useAssessmentMediaPrefetch,
 } from "../../src/components/assessment-media";
 import { AttemptStartingPreview } from "../../src/components/attempt-starting-preview";
+import { randomUuid } from "../../src/lib/random-uuid";
 import { AttemptResultDetails } from "../../src/components/attempt-result-details";
 import { useApiAssetResolver } from "../../src/components/content-renderer";
 import {
@@ -58,6 +59,7 @@ export default function AssessmentEventScreen() {
   // screen already shows the attempt's first screen from the course bundle
   // (optimistic); answering waits for the server to register the start.
   const [starting, setStarting] = useState(false);
+  const [startingSeed, setStartingSeed] = useState<string>();
   // Only a pull shows the refresh spinner. The refresh every open makes runs
   // quietly: a spinner set from code as the screen appears can stay stuck on
   // iOS, with nothing saying what it waits for.
@@ -112,10 +114,14 @@ export default function AssessmentEventScreen() {
 
   async function begin() {
     if (!event || invalidated || starting) return;
+    // Made here so the preview shows the attempt's own order at once.
+    const shuffleSeed = randomUuid();
+    setStartingSeed(shuffleSeed);
     setStarting(true);
     try {
       const result = await start.mutateAsync({
         eventId,
+        shuffleSeed,
         protocol: SYNC_PROTOCOL,
         runtimeVersion: RUNTIME_VERSION,
       });
@@ -208,6 +214,7 @@ export default function AssessmentEventScreen() {
           <AttemptStartingPreview
             assessment={bundled.data}
             shuffleQuestions={bundled.data?.shuffleQuestions ?? true}
+            shuffleSeed={startingSeed}
           />
         </StudyScreen>
       ) : !event ? (

@@ -1,3 +1,4 @@
+import { orderAssessmentQuestions, shufflesQuestions } from "@hakgyo/shared";
 import { ActivityIndicator, Text, View } from "react-native";
 
 import { sectionRules } from "../lib/section-rules";
@@ -47,25 +48,39 @@ function typicalOptionCount(
  * The attempt's first screen, drawn from the course bundle on the device while
  * the server registers the start, so "Mulai" opens the assessment at once:
  * the first section's intro, or the first question in the attempt's own
- * `QuizQuestion`. The app does not get an event's own shuffle setting, so it
- * follows the assessment's; an event set to "Acak" on an unshuffled
- * assessment can swap the question once the attempt opens. What the server
- * still has to order shows as grey placeholders in its final place: the
- * question when questions shuffle, the option text when options shuffle.
- * Nothing can be answered until the attempt exists.
+ * `QuizQuestion`. With the start's `shuffleSeed` (made on the device) the
+ * question and its options show in the attempt's own order. The app does
+ * not get an event's own shuffle setting, so it follows the assessment's; an
+ * event set to "Acak" on an unshuffled assessment can swap the question once
+ * the attempt opens. Without a seed, what the server still has to order
+ * shows as grey placeholders in its final place: the question when
+ * questions shuffle, the option text when options shuffle. Nothing can be
+ * answered until the attempt exists.
  */
 export function AttemptStartingPreview({
   assessment,
   shuffleQuestions,
+  shuffleSeed,
 }: {
   assessment: CourseItemAssessment | undefined;
   shuffleQuestions: boolean;
+  /** The seed the device sent with the start, when it made one. */
+  shuffleSeed?: string;
 }) {
   const resolveAssetUrl = useApiAssetResolver();
   if (!assessment) return <StartingStatus />;
-  const questions = [...assessment.questions].sort(
+  const byPosition = [...assessment.questions].sort(
     (first, second) => first.position - second.position,
   );
+  const questions = shuffleSeed
+    ? orderAssessmentQuestions(
+        byPosition,
+        shuffleSeed,
+        shufflesQuestions(shuffleQuestions),
+        assessment.shuffleOptions,
+        { sections: assessment.sections },
+      )
+    : byPosition;
   const firstSection = [...assessment.sections].sort(
     (first, second) => first.position - second.position,
   )[0];
@@ -94,7 +109,7 @@ export function AttemptStartingPreview({
     );
   }
 
-  const first = shuffleQuestions ? undefined : questions[0];
+  const first = shuffleQuestions && !shuffleSeed ? undefined : questions[0];
   const group = first?.groupId
     ? assessment.groups.find((candidate) => candidate.id === first.groupId)
     : undefined;
@@ -128,7 +143,11 @@ export function AttemptStartingPreview({
             : null
         }
         hidden={
-          !first ? "prompt" : assessment.shuffleOptions ? "options" : undefined
+          !first
+            ? "prompt"
+            : assessment.shuffleOptions && !shuffleSeed
+              ? "options"
+              : undefined
         }
         disabled
         resolveAssetUrl={resolveAssetUrl}

@@ -210,7 +210,7 @@ export type MobileSyncEngineState = {
 };
 
 export type LearnerStatePatch = Partial<
-  Pick<LearnerState, "contentProgress">
+  Pick<LearnerState, "contentProgress" | "standaloneAttempts">
 > & {
   practicedVocabularySetIds?: string[];
 };

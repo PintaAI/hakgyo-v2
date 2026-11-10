@@ -89,8 +89,9 @@ Kamu juga bisa menyimpan per bab dengan tombol kecil di samping setiap bab. Tomb
 |---|---|
 | Membaca materi yang sudah tersimpan | Masuk ke akun |
 | Menyelesaikan materi | Mengambil materi baru |
-| Latihan kartu kosakata | Memulai tugas, latihan, atau tryout |
-| Melanjutkan tugas yang sudah dimulai | Melihat papan peringkat |
+| Latihan kartu kosakata | Memulai tugas berwaktu atau berbatas percobaan, latihan, atau tryout |
+| Memulai tugas tanpa batas waktu dan percobaan (misalnya kuis Hangeul) | Melihat papan peringkat |
+| Melanjutkan tugas yang sudah dimulai | |
 | | Bergabung dan membayar kelas (di situs web) |
 
 Gambar dan suara hanya tersedia tanpa internet jika materinya sudah disimpan offline. Jika muncul **Materi ini belum tersimpan di perangkat**, sambungkan ke internet lalu jalankan sinkronisasi (lihat di bawah).

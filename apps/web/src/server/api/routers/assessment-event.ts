@@ -11,6 +11,7 @@ import { Prisma } from "../../../../generated/prisma/client";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { userSearchWhere } from "~/server/api/user-search";
 import { lockAttemptStart } from "~/server/assessment/attempt";
+import { shuffleSeedInput } from "~/server/assessment/inputs";
 import {
   countLatestAssessmentEventAttemptStatuses,
   getAssessmentEventLeaderboard,
@@ -650,7 +651,13 @@ export const assessmentEventRouter = createTRPCRouter({
     ),
 
   startAttempt: protectedProcedure
-    .input(z.object({ eventId: id }))
+    .input(
+      z.object({
+        eventId: id,
+        /** Made by the device so it can order the questions itself. */
+        shuffleSeed: shuffleSeedInput.optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const now = new Date();
       // A scheduled event that is due opens on the first start instead of waiting for the cron.
@@ -850,7 +857,7 @@ export const assessmentEventRouter = createTRPCRouter({
                 cohortId: attemptCohortId,
                 userId: ctx.actorUserId,
                 attemptNumber,
-                shuffleSeed: crypto.randomUUID(),
+                shuffleSeed: input.shuffleSeed ?? crypto.randomUUID(),
                 runtimeVersion: RUNTIME_VERSION,
                 assessmentEventId: event.id,
               },

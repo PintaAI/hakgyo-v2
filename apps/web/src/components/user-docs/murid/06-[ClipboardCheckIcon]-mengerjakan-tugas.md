@@ -77,7 +77,8 @@ Setelah dinilai, buka **Review jawaban kamu** untuk melihat mana yang **Benar**,
 
 - Halaman awal tugas merangkum **Waktu**, **Nilai lulus**, dan **Percobaan** dalam satu baris.
 - Setelah kamu mengirim, kamu kembali ke halaman tugas (atau halaman latihan dan tryout). Bagian **Hasil terakhir** menampilkan nilaimu dalam persen, status **Lulus** atau **Belum lulus**, dan garis batas nilai lulus. Di halaman tugas, tekan **Review jawaban kamu** di bawah tombol tugas untuk membuka rincian nilai (per bagian dan per tipe soal) dan review jawabanmu, jika pembahasannya sudah dibuka. Di halaman latihan dan tryout, rincian itu langsung ada di bawahnya.
-- Memulai tugas membutuhkan internet. Setelah mulai, kamu bisa melanjutkan tanpa internet.
+- Tugas tanpa batas waktu dan tanpa batas percobaan, seperti kuis Hangeul Mastery, langsung terbuka saat kamu menekan **Mulai tugas**, juga tanpa internet. Ponselmu mencatatnya ke Hakgyo begitu tersambung.
+- Tugas berwaktu, tugas dengan batas percobaan, latihan, dan tryout perlu internet untuk mulai. Setelah mulai, kamu bisa melanjutkan tanpa internet.
 - Jawabanmu disimpan di ponsel bersama waktu kamu menjawab. Saat ada internet, jawaban ikut terkirim sedikit demi sedikit sambil kamu mengerjakan.
 - Saat waktu habis, tugas **terkirim otomatis**, sama seperti di situs web. Jika saat itu ponsel tidak ada internet, tugasmu menunggu di ponsel dan terkirim sendiri begitu internet tersambung.
 - Yang dinilai adalah jawaban yang kamu isi **sebelum waktu habis**, walaupun baru terkirim belakangan. Jawaban yang diubah setelah waktu habis tidak dihitung.

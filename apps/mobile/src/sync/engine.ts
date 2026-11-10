@@ -502,6 +502,10 @@ export function createMobileSyncEngine({
           ...entry.index.learner.contentProgress,
           ...(patch.contentProgress ?? {}),
         },
+        standaloneAttempts: {
+          ...entry.index.learner.standaloneAttempts,
+          ...(patch.standaloneAttempts ?? {}),
+        },
         practicedVocabularySetIds: [
           ...new Set([
             ...entry.index.learner.practicedVocabularySetIds,

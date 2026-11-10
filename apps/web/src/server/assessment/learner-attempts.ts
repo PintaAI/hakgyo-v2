@@ -1,4 +1,4 @@
-import { RUNTIME_VERSION } from "@hakgyo/shared";
+import { RUNTIME_VERSION, startsOnDevice } from "@hakgyo/shared";
 import { TRPCError } from "@trpc/server";
 
 import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
@@ -132,13 +132,84 @@ export async function getLearnerAssessment(
   });
 }
 
+type AttemptTransaction = Prisma.TransactionClient;
+
+/**
+ * The study group a new standalone attempt counts for: the chosen one, which the learner must be
+ * actively enrolled in, or their only eligible one. Several eligible groups need a choice.
+ */
+async function resolveAttemptCohort(
+  tx: AttemptTransaction,
+  userId: string,
+  courseId: string,
+  chosenCohortId: string | undefined,
+) {
+  const eligibleWhere = eligibleCohortEnrollmentWhere(
+    userId,
+    { courseId },
+    new Date(),
+  );
+  const cohortEnrollments = await tx.cohortEnrollment.findMany({
+    where: {
+      ...eligibleWhere,
+      cohort: {
+        ...eligibleWhere.cohort,
+        ...(chosenCohortId ? { id: chosenCohortId } : {}),
+      },
+    },
+    orderBy: { enrolledAt: "desc" },
+    select: { cohortId: true },
+    take: chosenCohortId ? 1 : 2,
+  });
+  if (chosenCohortId && cohortEnrollments.length === 0) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Kamu tidak terdaftar aktif di kelas ini.",
+    });
+  }
+  if (!chosenCohortId && cohortEnrollments.length > 1) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Pilih kelas sebelum memulai tugas ini.",
+    });
+  }
+  return chosenCohortId ?? cohortEnrollments[0]?.cohortId ?? null;
+}
+
+/**
+ * The learner's standalone attempt count on an item (for `maxAttempts`) and the highest attempt
+ * number across standalone and event attempts, from one grouped query.
+ */
+async function attemptNumbers(
+  tx: AttemptTransaction,
+  userId: string,
+  courseItemId: string,
+) {
+  const attemptGroups = await tx.assessmentAttempt.groupBy({
+    by: ["assessmentEventId"],
+    where: { courseItemId, userId },
+    _count: { _all: true },
+    _max: { attemptNumber: true },
+  });
+  return {
+    standaloneCount:
+      attemptGroups.find((group) => group.assessmentEventId === null)?._count
+        ._all ?? 0,
+    lastAttemptNumber: attemptGroups.reduce(
+      (max, group) => Math.max(max, group._max.attemptNumber ?? 0),
+      0,
+    ),
+  };
+}
+
 /**
  * Resumes the learner's in-progress standalone attempt or starts the next one, attributed to
- * the chosen (or only) eligible study group.
+ * the chosen (or only) eligible study group. `shuffleSeed` is the device's, so the app orders
+ * the questions itself; without one the server makes it.
  */
 export async function startAttempt(
   db: PrismaClient,
-  input: { courseItemId: string; cohortId?: string },
+  input: { courseItemId: string; cohortId?: string; shuffleSeed?: string },
   userId: string,
 ) {
   await requireCourseItemAccess({
@@ -166,37 +237,12 @@ export async function startAttempt(
             message: "Tugas ini tidak tersedia.",
           });
         }
-        const eligibleWhere = eligibleCohortEnrollmentWhere(
+        const cohortId = await resolveAttemptCohort(
+          tx,
           userId,
-          { courseId: item.module.courseId },
-          new Date(),
+          item.module.courseId,
+          input.cohortId,
         );
-        const cohortEnrollments = await tx.cohortEnrollment.findMany({
-          where: {
-            ...eligibleWhere,
-            cohort: {
-              ...eligibleWhere.cohort,
-              ...(input.cohortId ? { id: input.cohortId } : {}),
-            },
-          },
-          orderBy: { enrolledAt: "desc" },
-          select: { cohortId: true },
-          take: input.cohortId ? 1 : 2,
-        });
-        if (input.cohortId && cohortEnrollments.length === 0) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Kamu tidak terdaftar aktif di kelas ini.",
-          });
-        }
-        if (!input.cohortId && cohortEnrollments.length > 1) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Pilih kelas sebelum memulai tugas ini.",
-          });
-        }
-        const cohortId =
-          input.cohortId ?? cohortEnrollments[0]?.cohortId ?? null;
         const current = await tx.assessmentAttempt.findFirst({
           where: {
             courseItemId: input.courseItemId,
@@ -221,24 +267,14 @@ export async function startAttempt(
           }
           return current;
         }
-        // One grouped query yields both the standalone attempt count (for maxAttempts) and the
-        // highest attempt number across standalone and event attempts of this item.
-        const attemptGroups = await tx.assessmentAttempt.groupBy({
-          by: ["assessmentEventId"],
-          where: { courseItemId: input.courseItemId, userId },
-          _count: { _all: true },
-          _max: { attemptNumber: true },
-        });
-        const count =
-          attemptGroups.find((group) => group.assessmentEventId === null)
-            ?._count._all ?? 0;
-        const lastAttemptNumber = attemptGroups.reduce(
-          (max, group) => Math.max(max, group._max.attemptNumber ?? 0),
-          0,
+        const { standaloneCount, lastAttemptNumber } = await attemptNumbers(
+          tx,
+          userId,
+          input.courseItemId,
         );
         if (
           item.assessment.maxAttempts !== null &&
-          count >= item.assessment.maxAttempts
+          standaloneCount >= item.assessment.maxAttempts
         ) {
           throw new TRPCError({
             code: "FORBIDDEN",
@@ -260,8 +296,121 @@ export async function startAttempt(
             cohortId,
             userId,
             attemptNumber: lastAttemptNumber + 1,
-            shuffleSeed: crypto.randomUUID(),
+            shuffleSeed: input.shuffleSeed ?? crypto.randomUUID(),
             runtimeVersion: RUNTIME_VERSION,
+          },
+        });
+      }),
+    { shouldRetry: isUniqueConstraintError },
+  );
+}
+
+/**
+ * Records a standalone attempt the app started on its own (`ASSESSMENT_STARTED`), with the id,
+ * shuffle seed and start time the device chose, so it can be answered before (or without) a
+ * connection. Only assessments that `startsOnDevice` allows: the server has nothing to decide
+ * at their start. A replay of the same operation returns the recorded attempt. An attempt the
+ * learner left in progress elsewhere stays as it is; this one simply comes after it.
+ */
+export async function recordDeviceStartedAttempt(
+  db: PrismaClient,
+  input: {
+    attemptId: string;
+    courseItemId: string;
+    cohortId?: string;
+    shuffleSeed: string;
+    startedAt: Date;
+    runtimeVersion?: number;
+  },
+  userId: string,
+) {
+  await requireCourseItemAccess({
+    courseItemId: input.courseItemId,
+    userId,
+  });
+  return withTransactionRetry(
+    () =>
+      db.$transaction(async (tx) => {
+        await lockAttemptStart(tx, userId, input.courseItemId);
+        const recorded = await tx.assessmentAttempt.findUnique({
+          where: { id: input.attemptId },
+        });
+        if (recorded) {
+          if (
+            recorded.userId !== userId ||
+            recorded.courseItemId !== input.courseItemId
+          ) {
+            throw new TRPCError({ code: "CONFLICT" });
+          }
+          return recorded;
+        }
+        const item = await tx.courseItem.findUnique({
+          where: { id: input.courseItemId },
+          select: {
+            organizationId: true,
+            module: { select: { courseId: true } },
+            assessment: {
+              select: {
+                id: true,
+                maxAttempts: true,
+                timeLimitMinutes: true,
+                _count: { select: { sections: true } },
+              },
+            },
+          },
+        });
+        if (!item?.assessment) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Tugas ini tidak tersedia.",
+          });
+        }
+        if (
+          !startsOnDevice({
+            timeLimitMinutes: item.assessment.timeLimitMinutes,
+            maxAttempts: item.assessment.maxAttempts,
+            sectionCount: item.assessment._count.sections,
+          })
+        ) {
+          // The assessment gained a time limit, an attempt limit or sections after the bundle
+          // the device started from: it has to start online.
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Tugas ini harus dimulai saat online.",
+          });
+        }
+        const cohortId = await resolveAttemptCohort(
+          tx,
+          userId,
+          item.module.courseId,
+          input.cohortId,
+        );
+        const { lastAttemptNumber } = await attemptNumbers(
+          tx,
+          userId,
+          input.courseItemId,
+        );
+        await tx.contentProgress.upsert({
+          where: {
+            courseItemId_userId: { courseItemId: input.courseItemId, userId },
+          },
+          create: { courseItemId: input.courseItemId, userId },
+          update: {},
+        });
+        const now = new Date();
+        return tx.assessmentAttempt.create({
+          data: {
+            id: input.attemptId,
+            assessmentId: item.assessment.id,
+            courseItemId: input.courseItemId,
+            organizationId: item.organizationId,
+            cohortId,
+            userId,
+            attemptNumber: lastAttemptNumber + 1,
+            shuffleSeed: input.shuffleSeed,
+            // A device clock ahead of the server never dates a start in the future.
+            startedAt: input.startedAt > now ? now : input.startedAt,
+            runtimeVersion: input.runtimeVersion ?? RUNTIME_VERSION,
           },
         });
       }),

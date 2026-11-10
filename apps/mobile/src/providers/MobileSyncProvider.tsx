@@ -1,5 +1,6 @@
 import {
   maintenanceFromError,
+  type LearnerState,
   type MaintenanceState,
 } from "@hakgyo/shared/mobile-sync";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
@@ -19,7 +20,7 @@ import {
   type ReactNode,
 } from "react";
 
-import type { AttemptLogEntry } from "@hakgyo/shared";
+import { RUNTIME_VERSION, type AttemptLogEntry } from "@hakgyo/shared";
 
 import { supportsTabBarAccessory } from "../components/sync-activity/supports-accessory";
 import { apiUrl } from "../config";
@@ -145,6 +146,20 @@ type MobileSyncActionsValue = {
     entries?: AttemptLogEntry[];
     organizationId?: string;
   }) => Promise<SyncCheckpointResult>;
+  /**
+   * Queues an attempt started on this device (`startAttemptOnDevice`) for the server to record,
+   * ahead of its progress and completion, and shows it in the local learner state at once, so
+   * the tugas offers to resume it. Syncs in the background; offline it waits in the outbox.
+   */
+  queueAssessmentStart: (input: {
+    attemptId: string;
+    courseItemId: string;
+    cohortId?: string;
+    shuffleSeed: string;
+    startedAt: Date;
+    standalone: LearnerState["standaloneAttempts"][string];
+    organizationId?: string;
+  }) => Promise<void>;
   /**
    * Queues the progress log of an attempt being taken (one pending operation per attempt) and
    * syncs it at most every 30 seconds, so the server has the answers before an event closes.
@@ -735,6 +750,35 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
           ...(entries?.length ? { entries } : {}),
         });
         return checkpoint(organizationId);
+      },
+      queueAssessmentStart: async ({
+        attemptId,
+        courseItemId,
+        cohortId,
+        shuffleSeed,
+        startedAt,
+        standalone,
+        organizationId,
+      }) => {
+        const current = engineRef.current;
+        if (!current) throw new Error("Sinkronisasi belum siap.");
+        await current.putOperation({
+          id: `assessment-start:${attemptId}`,
+          kind: "ASSESSMENT_STARTED",
+          attemptId,
+          courseItemId,
+          ...(cohortId ? { cohortId } : {}),
+          shuffleSeed,
+          startedAt: startedAt.toISOString(),
+          runtimeVersion: RUNTIME_VERSION,
+        });
+        await localData
+          ?.patchLearnerState(indexScope(organizationId), {
+            standaloneAttempts: { [courseItemId]: standalone },
+          })
+          .catch(() => undefined);
+        // Not awaited: the learner is already answering.
+        void checkpoint(organizationId).catch(() => undefined);
       },
       queueAssessmentProgress: async ({
         attemptId,

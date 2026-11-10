@@ -13,7 +13,11 @@ import {
   inTimeEntryAnswers,
   recordAttemptProgress,
 } from "~/server/assessment/attempt-progress";
-import { submitAttempt } from "~/server/assessment/learner-attempts";
+import { shuffleSeedInput } from "~/server/assessment/inputs";
+import {
+  recordDeviceStartedAttempt,
+  submitAttempt,
+} from "~/server/assessment/learner-attempts";
 import { assessmentEventRouter } from "~/server/api/routers/assessment-event";
 import {
   learningRouter,
@@ -255,6 +259,24 @@ export async function applySyncOperations(
         continue;
       }
 
+      if (operation.kind === "ASSESSMENT_STARTED") {
+        await recordDeviceStartedAttempt(
+          ctx.db,
+          {
+            attemptId: operation.attemptId,
+            courseItemId: operation.courseItemId,
+            cohortId: operation.cohortId,
+            shuffleSeed: operation.shuffleSeed,
+            startedAt: new Date(operation.startedAt),
+            runtimeVersion: operation.runtimeVersion,
+          },
+          ctx.actorUserId,
+        );
+        affectedCourseItemIds.add(operation.courseItemId);
+        results.push({ id: operation.id, kind: operation.kind });
+        continue;
+      }
+
       if (operation.kind === "ASSESSMENT_PROGRESS") {
         try {
           await recordAttemptProgress(
@@ -487,6 +509,8 @@ export async function applySyncOperations(
 export const startAssessmentInput = z.object({
   courseItemId: z.string().min(1),
   cohortId: z.string().min(1).optional(),
+  /** Made by the device so it orders the questions itself (absent from older apps). */
+  shuffleSeed: shuffleSeedInput.optional(),
   /** `RUNTIME_VERSION` of the app's attempt rules; absent before sections existed. */
   runtimeVersion: z.number().int().positive().optional(),
 });
@@ -558,6 +582,7 @@ export async function startAssessmentForLearner(
   const started = await assessment.startAttempt({
     courseItemId: input.courseItemId,
     cohortId: input.cohortId,
+    shuffleSeed: input.shuffleSeed,
   });
   const [attempt, assessmentDetail] = await Promise.all([
     assessment.getMyAttempt({ attemptId: started.id }),
@@ -572,6 +597,8 @@ export async function startAssessmentForLearner(
 
 export const startEventAssessmentInput = z.object({
   eventId: z.string().min(1),
+  /** Made by the device so it orders the questions itself (absent from older apps). */
+  shuffleSeed: shuffleSeedInput.optional(),
   runtimeVersion: z.number().int().positive().optional(),
 });
 
@@ -591,6 +618,7 @@ export async function startEventAssessmentForLearner(
   }
   const started = await assessmentEvent.startAttempt({
     eventId: input.eventId,
+    shuffleSeed: input.shuffleSeed,
   });
   const attempt = await assessment.getMyAttempt({ attemptId: started.id });
   const assessmentDetail = await assessment.getForCourseItem({
