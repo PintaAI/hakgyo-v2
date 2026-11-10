@@ -109,6 +109,7 @@ export function useLearningContinuation({
   completionMode = "manual",
   initialOutline,
   pendingRequirements,
+  chapterSheet = true,
 }: Pick<
   FooterProps,
   "courseId" | "courseItemId" | "completionMode" | "initialOutline"
@@ -119,6 +120,12 @@ export function useLearningContinuation({
    * left, the footer asks for them instead of saving.
    */
   pendingRequirements?: () => number;
+  /**
+   * Opens "Bab selesai" when the chapter is done. Off where a sheet cannot
+   * show, such as over a game's finish modal (a React Native modal covers
+   * every screen pushed after it): the next activity opens instead.
+   */
+  chapterSheet?: boolean;
 }) {
   const queryClient = useQueryClient();
   const outline = useCourseOutline(courseId);
@@ -175,6 +182,7 @@ export function useLearningContinuation({
       // A chapter finished by an activity that completes on its own (a
       // passed tugas, a learned vocabulary set): its page, once.
       if (
+        chapterSheet &&
         path.module.isCompleted &&
         userId &&
         !chapterCelebrated(userId, path.module.id)
@@ -260,7 +268,7 @@ export function useLearningContinuation({
           courseItemId,
         );
         baseline.current = after;
-        if (celebration) openChapterComplete(next.module.id);
+        if (celebration && chapterSheet) openChapterComplete(next.module.id);
         else if (next.nextItem) navigate(next.nextItem);
         else if (next.courseCompleted) navigate();
         else
