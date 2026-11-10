@@ -9,7 +9,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CourseLearningFooter } from "../components/learn/course-learning-footer";
+import { HeroTile } from "../components/hero-tile";
+import {
+  LearningFooterView,
+  useLearningContinuation,
+} from "../components/learn/course-learning-footer";
+import { getLearningItemTypeMeta } from "../lib/learning-item-type";
 import { GlassBox } from "../components/GlassBox";
 import { StudyAction } from "../components/study-glass";
 import { useAppTheme } from "../providers/AppThemeProvider";
@@ -347,32 +352,93 @@ function NativeGameModal({
   );
 }
 
+/**
+ * Where the course goes after a game opened from one of its activities, in
+ * the app's pattern: a `HeroTile` to the next activity once this one is done,
+ * or the locked "Berikutnya" row while a vocabulary set still has words to
+ * learn. A game opened from a material leads back to it (pulling there goes
+ * on), so it shows nothing until the material is done.
+ */
 export function GameJourneyFooter({
   courseId,
   courseItemId,
-  scrollable = true,
 }: {
   courseId?: string;
   courseItemId?: string;
+  /** Kept for callers; the footer no longer scrolls on its own. */
   scrollable?: boolean;
 }) {
   if (!courseId || !courseItemId) return null;
-  const footer = (
-    <CourseLearningFooter courseId={courseId} courseItemId={courseItemId} />
-  );
-  if (!scrollable) return footer;
+  return <CourseNextStep courseId={courseId} courseItemId={courseItemId} />;
+}
+
+function CourseNextStep({
+  courseId,
+  courseItemId,
+}: {
+  courseId: string;
+  courseItemId: string;
+}) {
+  const { colors } = useAppTheme();
+  const learning = useLearningContinuation({
+    courseId,
+    courseItemId,
+    chapterSheet: false,
+  });
+  const path = learning.path;
+  if (!path) return null;
+  if (!path.item.isCompleted) {
+    if (path.item.type !== "VOCABULARY_SET") return null;
+    return (
+      <View style={styles.nextStep}>
+        <LearningFooterView
+          courseId={courseId}
+          courseItemId={courseItemId}
+          learning={learning}
+          compact
+          continueButton="screenReader"
+          nextLocked
+        />
+        <Text style={[styles.nextHint, { color: colors.mutedForeground }]}>
+          Lanjut setelah semua kata di set ini dijawab benar tanpa melihat
+          jawabannya.
+        </Text>
+      </View>
+    );
+  }
+  const next = path.nextItem;
+  const meta = next ? getLearningItemTypeMeta(next.type) : null;
   return (
-    <ScrollView
-      style={styles.finishFooter}
-      contentContainerStyle={styles.finishFooterContent}
-      showsVerticalScrollIndicator={false}
-    >
-      {footer}
-    </ScrollView>
+    <View style={styles.nextStep}>
+      <HeroTile
+        eyebrow={
+          next && meta
+            ? `Berikutnya · ${meta.label}`
+            : path.courseCompleted
+              ? "Kurikulum selesai"
+              : `Bab ${path.moduleIndex + 1}`
+        }
+        title={next ? next.title : "Kembali ke kurikulum"}
+        meta={`Bab ${path.moduleIndex + 1} · ${path.completedCount}/${path.module.items.length} selesai`}
+        pill={next ? "Lanjutkan" : "Buka"}
+        loading={learning.busy}
+        onPress={() => void learning.continueLearning()}
+      />
+      {learning.issue?.kind === "error" ? (
+        <Text
+          accessibilityRole="alert"
+          style={[styles.nextHint, { color: colors.destructive }]}
+        >
+          {learning.issue.message}
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  nextStep: { gap: 10 },
+  nextHint: { fontSize: 13, lineHeight: 18 },
   modal: { flex: 1 },
   modalContent: {
     flexGrow: 1,
@@ -442,9 +508,4 @@ const styles = StyleSheet.create({
   menuActionLabel: { fontSize: 15, fontWeight: "600" },
   menuActionDetail: { fontSize: 14 },
   menuContent: { paddingTop: 4 },
-  finishFooter: {
-    alignSelf: "stretch",
-    maxHeight: 320,
-  },
-  finishFooterContent: { paddingBottom: 4 },
 });
