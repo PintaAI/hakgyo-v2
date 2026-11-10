@@ -124,11 +124,13 @@ const STARTING_HEALTH = 3;
 const LESSON_FALL_MS = 15_000;
 const LESSON_MAX_ACTIVE_WORDS = 2;
 /**
- * The first wave warms up: its words fall with their answer in full, so the
- * learner only types it (each letter lights up as it is typed). Later words
- * show no answer at all. A lesson's wave is the words on screen at once.
+ * Warm-up: a word's first fall shows its answer in full, so the learner only
+ * types it (each letter lights up as it is typed); every later fall hides it.
+ * A lesson round drops each word twice, warm-up first, and a game in Latihan
+ * warms up each word the first time it falls. A word missed or mistyped while
+ * hidden falls again, ahead of the others, at most this many more times.
  */
-const WARMUP_WORDS = 3;
+const MAX_RETRIES = 3;
 /** How long a missed word shows its answer beside the ship. */
 const MISSED_ANSWER_MS = 3_000;
 const MAX_HEALTH = 6;
@@ -136,6 +138,15 @@ const FORCE_REWARD_CHARGES = 10;
 const MAX_FORCE_CHARGES = 20;
 const REVEAL_DURATION_MS = 6_000;
 const MAX_REVEAL_CHARGES = 5;
+
+function shuffledWords<T>(items: readonly T[]) {
+  const copy = [...items];
+  for (let index = copy.length - 1; index > 0; index--) {
+    const swap = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swap]] = [copy[swap]!, copy[index]!];
+  }
+  return copy;
+}
 
 function powerUpForRoll(roll: number): WordFallPowerUp | undefined {
   if (roll >= 0.15) return undefined;
@@ -860,11 +871,15 @@ export function WordFallScreen({
   const comboRef = useRef(0);
   const mistakeActiveRef = useRef(false);
   const mistakeWordIdsRef = useRef(new Set<string>());
-  const reportedWordIdsRef = useRef(new Set<string>());
-  /** A lesson round's words that have fallen already; each falls once. */
-  const spawnedWordIdsRef = useRef(new Set<string>());
-  /** Words spawned this game, for the warm-up wave. */
-  const spawnCountRef = useRef(0);
+  /** Words that have fallen with their answer shown (warmed up). */
+  const introducedIdsRef = useRef(new Set<string>());
+  /** Words to drop again hidden after a miss or a typo, oldest first. */
+  const retryIdsRef = useRef<string[]>([]);
+  /** How often each word has been dropped again. */
+  const retryCountsRef = useRef(new Map<string, number>());
+  /** A lesson round's falls still to come: each word warm, then hidden. */
+  const lessonQueueRef = useRef<{ wordId: string; warmup: boolean }[]>([]);
+  const revealedRef = useRef(false);
   /** The last word that reached the ship, shown with its answer for a moment. */
   const [missed, setMissed] = useState<{
     key: string;
@@ -1123,19 +1138,34 @@ export function WordFallScreen({
     Keyboard.dismiss();
   }, []);
 
+  /**
+   * One attempt per fall. A fall with its answer showing (warm-up, Reveal)
+   * counts as recognising the word, not recalling it, so it never makes the
+   * word learned on its own.
+   */
   const reportWord = useCallback(
-    (entryId: string, result: "CORRECT" | "INCORRECT") => {
-      if (reportedWordIdsRef.current.has(entryId)) return;
-      reportedWordIdsRef.current.add(entryId);
+    (
+      entity: FallingWord,
+      result: "CORRECT" | "INCORRECT",
+      answerShown: boolean,
+    ) => {
+      const entryId = entity.word.id;
       const sessionId = progressSessionIdRef.current;
       const delivery = {
-        attemptId: `${sessionId}:${entryId}`,
+        attemptId: `${sessionId}:${entryId}:${entity.id}`,
         sessionId,
       };
       pendingReportIdsRef.current.add(delivery.attemptId);
       setPendingReportCount(pendingReportIdsRef.current.size);
       function send() {
-        void onAttempt({ entryId, evidence: "RECALL", result }, delivery)
+        void onAttempt(
+          {
+            entryId,
+            evidence: answerShown ? "RECOGNITION" : "RECALL",
+            result,
+          },
+          delivery,
+        )
           .then(() => {
             pendingReportIdsRef.current.delete(delivery.attemptId);
             if (mountedRef.current)
@@ -1154,6 +1184,18 @@ export function WordFallScreen({
     [onAttempt, schedule],
   );
 
+  const queueRetry = useCallback(
+    (wordId: string) => {
+      const count = retryCountsRef.current.get(wordId) ?? 0;
+      if (count >= MAX_RETRIES) return;
+      retryCountsRef.current.set(wordId, count + 1);
+      if (lesson) lessonQueueRef.current.push({ wordId, warmup: false });
+      else if (!retryIdsRef.current.includes(wordId))
+        retryIdsRef.current.push(wordId);
+    },
+    [lesson],
+  );
+
   const handleImpact = useCallback(
     (id: string) => {
       const entity = entitiesRef.current.find((item) => item.id === id);
@@ -1163,7 +1205,9 @@ export function WordFallScreen({
       setReviewItems((current) =>
         addWordFallReviewItem(current, entity.word, "missed"),
       );
-      reportWord(entity.word.id, "INCORRECT");
+      const answerShown = Boolean(entity.warmup) || revealedRef.current;
+      reportWord(entity, "INCORRECT", answerShown);
+      if (!entity.warmup) queueRetry(entity.word.id);
       mistakeActiveRef.current = false;
       resetCombo();
       // What the word meant, beside the ship for a moment.
@@ -1194,6 +1238,7 @@ export function WordFallScreen({
       commitEntities,
       endGame,
       lesson,
+      queueRetry,
       reportWord,
       resetCombo,
       schedule,
@@ -1244,7 +1289,11 @@ export function WordFallScreen({
     revealChargesRef.current -= 1;
     setRevealCharges(revealChargesRef.current);
     setRevealed(true);
-    schedule(() => setRevealed(false), REVEAL_DURATION_MS);
+    revealedRef.current = true;
+    schedule(() => {
+      setRevealed(false);
+      revealedRef.current = false;
+    }, REVEAL_DURATION_MS);
     focusInput();
   }, [focusInput, phase, revealed, schedule]);
 
@@ -1269,10 +1318,16 @@ export function WordFallScreen({
           ),
       );
       setDestroyed((current) => current + 1);
-      reportWord(
-        entity.word.id,
-        wordFallResult(mistakeWordIdsRef.current.has(entity.word.id)),
+      const result = wordFallResult(
+        mistakeWordIdsRef.current.has(entity.word.id),
       );
+      const answerShown = Boolean(entity.warmup) || revealedRef.current;
+      reportWord(entity, result, answerShown);
+      if (result === "INCORRECT" && !entity.warmup) queueRetry(entity.word.id);
+      else if (result === "CORRECT" && !answerShown)
+        retryIdsRef.current = retryIdsRef.current.filter(
+          (id) => id !== entity.word.id,
+        );
       applyPowerUp(entity.powerUp);
     },
     [
@@ -1284,6 +1339,7 @@ export function WordFallScreen({
       field,
       level,
       playerLift,
+      queueRetry,
       reportWord,
     ],
   );
@@ -1296,15 +1352,41 @@ export function WordFallScreen({
       (lesson ? LESSON_MAX_ACTIVE_WORDS : maximumActiveWords(level))
     )
       return;
-    const unused = usableWords.filter(
-      (word) =>
-        !current.some((entity) => entity.word.id === word.id) &&
-        !(lesson && spawnedWordIdsRef.current.has(word.id)),
-    );
-    const pool = unused.length > 0 || lesson ? unused : usableWords;
-    const word = pool[Math.floor(Math.random() * pool.length)];
+    const onScreen = (wordId: string) =>
+      current.some((entity) => entity.word.id === wordId);
+    const byId = (wordId: string) =>
+      usableWords.find((candidate) => candidate.id === wordId);
+    let word: WordFallWord | undefined;
+    let warmup: boolean;
+    if (lesson) {
+      // The next fall in line whose word is not on screen already.
+      const queue = lessonQueueRef.current;
+      const index = queue.findIndex((fall) => !onScreen(fall.wordId));
+      if (index < 0) return;
+      const [fall] = queue.splice(index, 1);
+      word = byId(fall!.wordId);
+      warmup = fall!.warmup;
+    } else {
+      // A word to try again first, then any word not on screen.
+      const retryId = retryIdsRef.current.find((id) => !onScreen(id));
+      if (retryId) {
+        retryIdsRef.current = retryIdsRef.current.filter(
+          (id) => id !== retryId,
+        );
+        word = byId(retryId);
+      } else {
+        const unused = usableWords.filter(
+          (candidate) => !onScreen(candidate.id),
+        );
+        const pool = unused.length > 0 ? unused : usableWords;
+        word = pool[Math.floor(Math.random() * pool.length)];
+      }
+      warmup = Boolean(word && !introducedIdsRef.current.has(word.id));
+    }
     if (!word) return;
-    if (lesson) spawnedWordIdsRef.current.add(word.id);
+    if (warmup) introducedIdsRef.current.add(word.id);
+    // A fresh fall: a typo on an earlier fall of this word no longer counts.
+    mistakeWordIdsRef.current.delete(word.id);
     const duration = lesson ? LESSON_FALL_MS : fallDurationForLevel(level);
     const prompt = promptTextForWord(word, answerMode);
     const answer = answerTextForWord(word, answerMode);
@@ -1330,11 +1412,8 @@ export function WordFallScreen({
       knockbackTotal: 0,
       completed: false,
       powerUp: powerUpForRoll(Math.random()),
-      warmup:
-        spawnCountRef.current <
-        (lesson ? LESSON_MAX_ACTIVE_WORDS : WARMUP_WORDS),
+      warmup,
     };
-    spawnCountRef.current += 1;
     commitEntities([...current, entity]);
   }, [answerMode, commitEntities, field, lesson, level, usableWords]);
 
@@ -1358,9 +1437,20 @@ export function WordFallScreen({
     comboRef.current = 0;
     mistakeActiveRef.current = false;
     mistakeWordIdsRef.current.clear();
-    reportedWordIdsRef.current.clear();
-    spawnedWordIdsRef.current.clear();
-    spawnCountRef.current = 0;
+    introducedIdsRef.current.clear();
+    retryIdsRef.current = [];
+    retryCountsRef.current.clear();
+    revealedRef.current = false;
+    // A lesson drops every word with its answer first, then each hidden.
+    lessonQueueRef.current = lesson
+      ? [
+          ...usableWords.map((word) => ({ wordId: word.id, warmup: true })),
+          ...shuffledWords(usableWords).map((word) => ({
+            wordId: word.id,
+            warmup: false,
+          })),
+        ]
+      : [];
     setMissed(null);
     setEntities([]);
     setProjectiles([]);
@@ -1383,9 +1473,11 @@ export function WordFallScreen({
   }, [
     clearTimers,
     focusInputOnAndroid,
+    lesson,
     onSessionStart,
     playerRecoil,
     startLevel,
+    usableWords,
   ]);
 
   const pauseGame = useCallback(() => {
@@ -1430,7 +1522,7 @@ export function WordFallScreen({
       !lesson ||
       lessonDone.current ||
       phase !== "running" ||
-      spawnedWordIdsRef.current.size < usableWords.length ||
+      lessonQueueRef.current.length > 0 ||
       entities.length > 0 ||
       pendingReportCount > 0
     )
@@ -1439,14 +1531,7 @@ export function WordFallScreen({
     Keyboard.dismiss();
     void onComplete();
     lesson.onRoundComplete();
-  }, [
-    entities.length,
-    lesson,
-    onComplete,
-    pendingReportCount,
-    phase,
-    usableWords.length,
-  ]);
+  }, [entities.length, lesson, onComplete, pendingReportCount, phase]);
 
   const handleInput = useCallback(
     (value: string) => {
