@@ -1,4 +1,9 @@
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import {
+  router,
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+} from "expo-router";
 import { HeaderHeightContext } from "expo-router/react-navigation";
 import { resolveAssessmentEntry, RUNTIME_VERSION } from "@hakgyo/shared";
 import type { MaterialLinkTarget } from "@hakgyo/shared/material-links";
@@ -301,6 +306,13 @@ function CourseItemContent({
       initialOutline.current = outline.data;
   }, [outline.data]);
 
+  // Back from the attempt shows the tugas again, not the preview.
+  useFocusEffect(
+    useCallback(() => {
+      setStartingAssessment(false);
+    }, []),
+  );
+
   async function beginAssessment() {
     if (!assessment || startingAssessment) return;
     if (latestAttempt?.status === "IN_PROGRESS") {
@@ -331,8 +343,9 @@ function CourseItemContent({
             "/courses/[courseId]/items/[courseItemId]/attempts/[attemptId]",
           params: { courseId, courseItemId, attemptId: result.attempt.id },
         });
-        // Back from the attempt shows the tugas again, not the preview.
-        setStartingAssessment(false);
+        // The preview stays while the attempt fades in over it: switching
+        // back to the tugas here flashed it under the fade. It goes when
+        // this screen is focused again (below).
       });
     } catch {
       // The mutation error is shown next to the action.
