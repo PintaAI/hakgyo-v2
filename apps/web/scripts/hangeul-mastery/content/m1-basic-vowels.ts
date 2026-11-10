@@ -463,10 +463,10 @@ export const m1BasicVowels: ModuleContent = {
         ),
         single(
           "position-a",
-          "Di blok 아, di mana vokal ㅏ ditulis?",
-          ["Di bawah ㅇ", "Di kanan ㅇ", "Di atas ㅇ", "Di kiri ㅇ"],
+          "Di blok 아, vokal ㅏ ditulis di sebelah mana konsonannya?",
+          ["Bawah", "Kanan", "Atas", "Kiri"],
           1,
-          "Vokal tegak (ㅏ ㅓ ㅣ) selalu ditulis di kanan konsonan.",
+          "Vokal tegak (ㅏ ㅓ ㅣ) selalu ditulis di kanan konsonan, jadi di 아 huruf ㅏ ada di kanan ㅇ.",
         ),
         single(
           "read-oi",
