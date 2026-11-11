@@ -5,7 +5,12 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { closesLabel } from "../src/components/learn/cohort-card";
 import { HeroTile } from "../src/components/hero-tile";
-import { HakgyoHero, HERO_TITLE } from "../src/components/learn/hakgyo-hero";
+import { HakgyoHero } from "../src/components/learn/hakgyo-hero";
+import {
+  FactChip,
+  FactChips,
+  HeroTitle,
+} from "../src/components/learn/hero-parts";
 import { LearningItemRow } from "../src/components/learn/learning-item-row";
 import { AppSegmentedControl } from "../src/components/app-segmented-control";
 import { Eyebrow, QueryState } from "../src/components/learning-ui";
@@ -21,7 +26,6 @@ import {
   type PracticeFilter,
 } from "../src/components/practice-hub";
 import { SymbolIcon } from "../src/components/ui/symbol-icon";
-import type { SymbolName } from "../src/components/ui/symbol-names";
 import { isGameKey, type GameKey } from "../src/games/catalog";
 import { gameHeroAssets } from "../src/games/game-modals";
 import { LevelSelector } from "../src/games/word-fall/word-fall-screen";
@@ -56,70 +60,6 @@ const howToPlay: Partial<Record<GameKey, string>> = {
 };
 
 /**
- * A fact about the game under the hero title, in the chip style of a tugas's
- * facts (time, attempts). Tappable chips change a setting.
- */
-function FactChip({
-  icon,
-  text,
-  onPress,
-  accessibilityHint,
-  active = false,
-}: {
-  icon: SymbolName;
-  text: string;
-  onPress?: () => void;
-  accessibilityHint?: string;
-  active?: boolean;
-}) {
-  const { colors } = useAppTheme();
-  const body = (
-    <View
-      className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5"
-      style={{
-        backgroundColor: active
-          ? withOpacity(colors.primary, 0.14)
-          : colors.muted,
-      }}
-    >
-      <SymbolIcon
-        name={icon}
-        size={13}
-        tintColor={onPress ? colors.primary : colors.mutedForeground}
-        weight="semibold"
-      />
-      <Text className="text-sm font-semibold text-foreground">{text}</Text>
-      {onPress ? (
-        <SymbolIcon
-          name="chevron.down"
-          size={10}
-          tintColor={colors.mutedForeground}
-          weight="bold"
-        />
-      ) : null}
-    </View>
-  );
-  if (!onPress) {
-    return (
-      <View accessible accessibilityLabel={text}>
-        {body}
-      </View>
-    );
-  }
-  return (
-    <Pressable
-      accessibilityHint={accessibilityHint}
-      accessibilityLabel={text}
-      accessibilityRole="button"
-      className="active:opacity-60"
-      onPress={onPress}
-    >
-      {body}
-    </Pressable>
-  );
-}
-
-/**
  * Hujan Kata's settings as chips under the title: the answer language
  * toggles on tap, the level opens a picker. Saved on the phone.
  */
@@ -128,7 +68,7 @@ function WordFallFacts() {
   const [showLevels, setShowLevels] = useState(false);
   return (
     <View className="w-full gap-3">
-      <View className="flex-row flex-wrap justify-center gap-2">
+      <FactChips>
         <FactChip
           accessibilityHint="Ganti bahasa jawaban"
           icon="keyboard.fill"
@@ -146,7 +86,7 @@ function WordFallFacts() {
           onPress={() => setShowLevels((open) => !open)}
           text={`Level ${settings.startLevel}`}
         />
-      </View>
+      </FactChips>
       <Text className="text-center text-xs leading-4 text-muted-foreground">
         {settings.answerMode === "ID"
           ? "Lihat kata Korea, ketik artinya."
@@ -399,28 +339,19 @@ export default function PracticeSourceSheet() {
             <GameIcon size={72} tool={tool} />
           </View>
         )}
-        <View className="items-center gap-2">
-          <Eyebrow size="md" tone="primary">
-            {isQuiz ? "Latihan soal" : "Game kosakata"}
-          </Eyebrow>
-          <Text
-            accessibilityRole="header"
-            className="text-center font-black tracking-tight text-foreground"
-            numberOfLines={2}
-            style={HERO_TITLE}
-          >
-            {tool.title}
-          </Text>
-          <Text className="text-center text-sm leading-6 text-muted-foreground">
-            {gameKey
+        <HeroTitle
+          eyebrow={isQuiz ? "Latihan soal" : "Game kosakata"}
+          title={tool.title}
+          description={
+            gameKey
               ? (howToPlay[gameKey] ?? tool.subtitle)
-              : "Kerjakan latihan dan tryout kelas, atau quiz dari kurikulummu."}
-          </Text>
-        </View>
+              : "Kerjakan latihan dan tryout kelas, atau quiz dari kurikulummu."
+          }
+        />
         {gameKey === "word-fall" ? (
           <WordFallFacts />
         ) : (
-          <View className="flex-row flex-wrap justify-center gap-2">
+          <FactChips>
             <FactChip
               icon={isQuiz ? "doc.text" : "rectangle.stack.fill"}
               text={isQuiz ? `${items.length} quiz` : `${items.length} set`}
@@ -428,7 +359,7 @@ export default function PracticeSourceSheet() {
             {isQuiz && events.length > 0 ? (
               <FactChip icon="calendar" text={`${events.length} tugas kelas`} />
             ) : null}
-          </View>
+          </FactChips>
         )}
         {mainPick ? <HeroPick pick={mainPick} /> : null}
       </HakgyoHero>

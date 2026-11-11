@@ -28,14 +28,22 @@ import {
 } from "./onboarding-deck-tutorial";
 import { VocabularyModeSwitch } from "./vocabulary-mode-switch";
 import { api } from "../lib/trpc";
-import { GameModal, GameJourneyFooter } from "../games/game-modals";
+import { GameResult } from "../games/game-result";
 import { GameBackToolbar } from "../games/game-screens";
 import { useGameExitGuard } from "../games/game-navigation";
 import type { GameLesson } from "../games/lesson";
 import { useVocabularyProgressReporter } from "../lib/use-vocabulary-progress";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { toolbarIcons } from "../theme/toolbar-icons";
-import { Action, Card, Empty, QueryState, Spinner } from "./learning-ui";
+import {
+  Action,
+  Card,
+  Empty,
+  Eyebrow,
+  QueryState,
+  Spinner,
+} from "./learning-ui";
+import type { VocabularyAttemptResult } from "../lib/use-vocabulary-progress";
 import {
   VocabularyPracticeDeck,
   type VocabularyPracticeDeckCard,
@@ -106,6 +114,12 @@ export function VocabularySession({
     saved: boolean;
   }>();
   const [roundActive, setRoundActive] = useState(false);
+  // What happened to each word of the round, kept on the phone: the result
+  // page shows it at once, whether or not the answers have synced yet.
+  const [roundResults, setRoundResults] = useState<
+    Readonly<Record<string, VocabularyAttemptResult>>
+  >({});
+  const [roundDone, setRoundDone] = useState(false);
   const [sessionError, setSessionError] = useState<string>();
   const [moving, setMoving] = useState(false);
   const [mode, setMode] = useState<VocabularySpeechMode>("KR");
@@ -124,22 +138,15 @@ export function VocabularySession({
     [evidence?.items],
   );
   // Memoized so the preview deck keeps stable cards while the learner types.
-  const { reviewDueWords, readyWords } = useMemo(() => {
+  const readyWords = useMemo(() => {
+    // A lesson already picked its words.
+    if (lesson) return usableWords;
     const unpracticed = usableWords.filter(
       (word) => !progressByEntry.get(word.id)?.practiced,
     );
-    const reviewDue = usableWords.filter(
-      (word) => progressByEntry.get(word.id)?.due,
-    );
-    return {
-      reviewDueWords: reviewDue,
-      // A lesson already picked its words.
-      readyWords: lesson
-        ? usableWords
-        : unpracticed.length
-          ? unpracticed
-          : reviewDue,
-    };
+    return unpracticed.length
+      ? unpracticed
+      : usableWords.filter((word) => progressByEntry.get(word.id)?.due);
   }, [lesson, progressByEntry, usableWords]);
   const { practicedCount, masteredCount } = useMemo(() => {
     let practiced = 0;
@@ -222,11 +229,13 @@ export function VocabularySession({
     answerClaim.current = "unanswered";
   }
 
-  function beginRound() {
-    if (!readyWords.length || busy) return;
+  function beginRound(roundWords: readonly Word[] = readyWords) {
+    if (!roundWords.length || busy) return;
     stopSession();
     reporter.startSession();
-    const nextQueue = [...readyWords];
+    setRoundResults({});
+    setRoundDone(false);
+    const nextQueue = [...roundWords];
     setQueue(nextQueue);
     setIndex(0);
     setRoundKey((value) => value + 1);
@@ -265,7 +274,12 @@ export function VocabularySession({
     await saveAnswer(correct);
   }
 
+  function noteResult(entryId: string, result: VocabularyAttemptResult) {
+    setRoundResults((current) => ({ ...current, [entryId]: result }));
+  }
+
   async function saveAnswer(correct: boolean) {
+    noteResult(currentWord.id, correct ? "CORRECT" : "INCORRECT");
     reporter.reset();
     setSessionError(undefined);
     try {
@@ -302,6 +316,7 @@ export function VocabularySession({
       lesson.onRoundComplete();
       return;
     }
+    setRoundDone(true);
     const synced = await reporter.finishSession();
     const set = synced?.sets.find(
       (item) => item.vocabularySetId === vocabularySetId,
@@ -334,6 +349,7 @@ export function VocabularySession({
 
   async function saveReveal() {
     if (!currentWord) return;
+    noteResult(currentWord.id, "REVEALED");
     reporter.reset();
     setSessionError(undefined);
     try {
@@ -453,13 +469,10 @@ export function VocabularySession({
     return <Empty>Set ini belum memiliki kata yang siap dilatih.</Empty>;
   }
 
-  const showFinish = !lesson && Boolean(evidence?.practiced) && !roundActive;
-  const finishTitle = evidence?.mastered
-    ? "Kosakata dikuasai"
-    : "Latihan selesai";
-  const finishDetail = evidence?.mastered
-    ? "Semua kata berhasil diingat. Jawaban kamu tersimpan di perangkat ini dan disinkronkan di akhir ronde."
-    : `Kamu sudah melatih setiap kata sekali. ${masteredCount} dari ${usableWords.length} kata sudah dikuasai, dan kamu bisa mengulanginya nanti.`;
+  // The result page: after a round, or when the set has nothing to practise
+  // now. It does not wait for the server.
+  const showFinish =
+    !lesson && !roundActive && (roundDone || readyWords.length === 0);
 
   function exitGame() {
     void onComplete().catch(() => undefined);
@@ -471,9 +484,7 @@ export function VocabularySession({
   // How to answer is taught once by the deck tutorial and the input's
   // placeholder; this line only reports what happened to an answer.
   const status = !roundActive
-    ? showFinish
-      ? "Jawaban kamu tersimpan. Muat ulang untuk memuat kata yang tersisa."
-      : null
+    ? null
     : !feedback
       ? null
       : !feedback.saved && !isStudyMode
@@ -485,6 +496,113 @@ export function VocabularySession({
           : isStudyMode
             ? "Disimpan untuk diulang."
             : "Disimpan untuk diulang lebih cepat.";
+
+  if (showFinish) {
+    const played = queue.filter((word) => roundResults[word.id]);
+    const correct = played.filter(
+      (word) => roundResults[word.id] === "CORRECT",
+    ).length;
+    const retryWords = played.filter(
+      (word) => roundResults[word.id] !== "CORRECT",
+    );
+    const allCorrect = roundDone && played.length > 0 && !retryWords.length;
+    const again = retryWords.length ? retryWords : roundDone ? readyWords : [];
+    return (
+      <View className="min-h-0 flex-1">
+        <GameBackToolbar onPress={exit} />
+        <Stack.Screen
+          options={{
+            // The round is over: swiping back leaves like the button does.
+            gestureEnabled: true,
+            headerBackButtonDisplayMode: "minimal",
+            headerBackVisible: false,
+            headerShadowVisible: false,
+            headerShown: true,
+            title: "",
+          }}
+        />
+        <GameResult
+          scroll={false}
+          courseId={courseId}
+          courseItemId={sourceCourseItemId}
+          eyebrow="Kartu"
+          title={
+            !roundDone
+              ? evidence?.mastered
+                ? "Kosakata dikuasai"
+                : "Belum ada kata untuk diulang"
+              : allCorrect
+                ? "Mantap, semua benar!"
+                : "Ronde selesai"
+          }
+          description={
+            !roundDone
+              ? "Semua kata di set ini sudah kamu latih. Kata yang perlu diulang muncul lagi nanti."
+              : latestEvidence
+                ? `${masteredCount} dari ${usableWords.length} kata di set ini sudah dikuasai.`
+                : "Jawabanmu tersimpan di perangkat dan disinkronkan saat tersambung."
+          }
+          mark={
+            roundDone
+              ? { value: `${correct}/${played.length}`, label: "benar" }
+              : {
+                  value: `${practicedCount}/${usableWords.length}`,
+                  label: "dilatih",
+                }
+          }
+          done={allCorrect || (!roundDone && Boolean(evidence?.mastered))}
+          celebrate={allCorrect}
+          facts={
+            roundDone
+              ? [
+                  { icon: "checkmark.seal.fill", text: `${correct} benar` },
+                  ...(retryWords.length
+                    ? [
+                        {
+                          icon: "arrow.clockwise" as const,
+                          text: `${retryWords.length} perlu diulang`,
+                        },
+                      ]
+                    : []),
+                ]
+              : undefined
+          }
+          primary={
+            again.length
+              ? {
+                  eyebrow: retryWords.length ? "Ulangi" : "Main lagi",
+                  title: retryWords.length
+                    ? `${retryWords.length} kata yang belum tepat`
+                    : `${again.length} kata`,
+                  meta: retryWords.length
+                    ? "Kata yang salah atau kamu buka jawabannya"
+                    : "Ronde baru dengan kata yang siap dilatih",
+                  pill: "Mulai",
+                  onPress: () => beginRound(again),
+                }
+              : undefined
+          }
+          secondary={{ label: "Selesai", onPress: exit }}
+        >
+          {retryWords.length ? (
+            <Card className="gap-3 p-4">
+              <Eyebrow size="xs">Perlu diulang</Eyebrow>
+              {retryWords.map((word) => (
+                <View key={word.id} className="gap-0.5">
+                  <Text className="text-base font-bold text-foreground">
+                    {word.term}
+                  </Text>
+                  <Text className="text-sm text-muted-foreground">
+                    {displayMeanings(word.meanings)}
+                  </Text>
+                </View>
+              ))}
+            </Card>
+          ) : null}
+        </GameResult>
+      </View>
+    );
+  }
 
   return (
     <View className="min-h-0 flex-1">
@@ -648,56 +766,33 @@ export function VocabularySession({
             {speech.speechError}
           </Text>
         ) : null}
-        {visibleCards.length === 0 ? (
-          <Card className="items-center gap-4 p-6">
-            <Text className="text-3xl">🌱</Text>
-            <View className="items-center gap-2">
-              <Text className="text-xl font-black text-foreground">
-                Kerja bagus untuk sekarang
-              </Text>
-              <Text className="text-center text-sm leading-6 text-muted-foreground">
-                Jawaban kamu tersimpan. Muat ulang untuk memuat kata yang
-                tersisa.
-              </Text>
-            </View>
-            <Action
-              variant="secondary"
-              onPress={() => void progressQuery.refetch()}
-            >
-              Periksa lagi
-            </Action>
-          </Card>
-        ) : (
-          <View>
-            <VocabularyPracticeDeck
-              key={roundActive ? roundKey : "preview"}
-              ref={deckRef}
-              cards={visibleCards}
-              index={visibleIndex}
-              correct={feedback?.correct}
-              revealed={roundActive && revealed}
-              onReveal={() => {
-                tutorial.onReveal();
-                revealAnswer();
-              }}
-              scrollGesture={scrollGesture}
-              disabled={
-                !roundActive || requestBusy || (revealed && !revealSaved)
-              }
-              onInteractionChange={(busy) => {
-                tutorial.onInteractionChange(busy);
-                handleInteractionChange(busy);
-              }}
-              onAdvanceComplete={() => {
-                tutorial.onAdvance();
-                finishAdvance();
-              }}
-            />
-            {tutorial.showHand && roundActive && !moving ? (
-              <DeckTutorialOverlay step={tutorial.step} />
-            ) : null}
-          </View>
-        )}
+        <View>
+          <VocabularyPracticeDeck
+            key={roundActive ? roundKey : "preview"}
+            ref={deckRef}
+            cards={visibleCards}
+            index={visibleIndex}
+            correct={feedback?.correct}
+            revealed={roundActive && revealed}
+            onReveal={() => {
+              tutorial.onReveal();
+              revealAnswer();
+            }}
+            scrollGesture={scrollGesture}
+            disabled={!roundActive || requestBusy || (revealed && !revealSaved)}
+            onInteractionChange={(busy) => {
+              tutorial.onInteractionChange(busy);
+              handleInteractionChange(busy);
+            }}
+            onAdvanceComplete={() => {
+              tutorial.onAdvance();
+              finishAdvance();
+            }}
+          />
+          {tutorial.showHand && roundActive && !moving ? (
+            <DeckTutorialOverlay step={tutorial.step} />
+          ) : null}
+        </View>
       </View>
 
       {sessionError ? (
@@ -725,31 +820,6 @@ export function VocabularySession({
           ) : null}
         </Card>
       ) : null}
-
-      <GameModal
-        content={
-          courseId ? (
-            <GameJourneyFooter
-              courseId={courseId}
-              courseItemId={sourceCourseItemId}
-              scrollable={false}
-            />
-          ) : undefined
-        }
-        detail={finishDetail}
-        eyebrow="Kartu"
-        gameKey="cards"
-        onPrimary={reviewDueWords.length ? beginRound : () => void exitGame()}
-        onSecondary={reviewDueWords.length ? exit : undefined}
-        primaryLabel={
-          reviewDueWords.length
-            ? `Ulangi lagi · ${reviewDueWords.length} kata`
-            : "Kembali ke latihan"
-        }
-        secondaryLabel={reviewDueWords.length ? "Keluar" : undefined}
-        title={finishTitle}
-        visible={showFinish}
-      />
     </View>
   );
 }
