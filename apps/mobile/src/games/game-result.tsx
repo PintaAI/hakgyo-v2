@@ -120,7 +120,7 @@ export function GameResult({
           disabled={primary.disabled}
           onPress={primary.onPress}
         >
-          {primary.title}
+          {`${primary.eyebrow} · ${primary.title}`}
         </Action>
       ) : null}
       {secondary ? (

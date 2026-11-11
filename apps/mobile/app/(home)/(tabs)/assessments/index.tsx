@@ -1,4 +1,4 @@
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 import { PracticeHub } from "../../../../src/components/practice-hub";
 import { TabScreen } from "../../../../src/components/tab-screen";
@@ -8,30 +8,12 @@ import { usePushNotifications } from "../../../../src/providers/PushNotification
 import { useSyncIndex } from "../../../../src/sync/hooks";
 import { useAutoTour } from "../../../../src/tour/tour-provider";
 import { useOpenEventMediaPrefetch } from "../../../../src/components/assessment-media";
-import { firstParam } from "../../../../src/lib/route-params";
 import { isHangeulMastered } from "../../../../src/lib/hangeul-visibility";
 import { useHangeulArchived } from "../../../../src/lib/use-cohort-archive";
 import { useUserRefresh } from "../../../../src/lib/use-user-refresh";
 
 export default function PracticeTab() {
   const { activeOrganizationId } = useAppTheme();
-  const incoming = useLocalSearchParams<{
-    courseId?: string | string[];
-    sourceCourseItemId?: string | string[];
-    vocabularySetId?: string | string[];
-    vocabularyTitle?: string | string[];
-  }>();
-  const preselectedCourseId = firstParam(incoming.courseId);
-  const preselectedSourceCourseItemId = firstParam(incoming.sourceCourseItemId);
-  const preselectedSource =
-    preselectedCourseId && preselectedSourceCourseItemId
-      ? {
-          courseId: preselectedCourseId,
-          sourceCourseItemId: preselectedSourceCourseItemId,
-          vocabularySetId: firstParam(incoming.vocabularySetId) || undefined,
-          title: firstParam(incoming.vocabularyTitle) || undefined,
-        }
-      : undefined;
   const dashboard = useSyncIndex(activeOrganizationId);
   const hangeulArchived = useHangeulArchived(isHangeulMastered(dashboard.data));
   useAutoTour("practice", Boolean(dashboard.data));
@@ -65,7 +47,6 @@ export default function PracticeTab() {
         coursesPending={dashboard.isPending}
         hangeulHidden={hangeulArchived}
         onRetryCourses={() => void dashboard.refetch()}
-        preselectedSource={preselectedSource}
       />
     </TabScreen>
   );

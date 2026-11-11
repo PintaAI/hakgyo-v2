@@ -2,7 +2,6 @@ import { displayMeanings, entryMeanings } from "@hakgyo/shared";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Text, View } from "react-native";
-import { Gesture } from "react-native-gesture-handler";
 
 import {
   Action,
@@ -10,9 +9,9 @@ import {
   Empty,
   Eyebrow,
   FullScreenState,
-  StudyScreen,
 } from "../../../src/components/learning-ui";
-import { VocabularySession } from "../../../src/components/vocabulary-session";
+import { CardsScreen } from "../../../src/games/cards-screen";
+import { GameResult } from "../../../src/games/game-result";
 import { GameBackToolbar, GamePage } from "../../../src/games/game-screens";
 import {
   lessonRounds,
@@ -167,6 +166,8 @@ export default function VocabularyLessonScreen() {
         rounds={plan.rounds.length}
         before={plan.before}
         evidence={evidence}
+        courseId={courseId}
+        courseItemId={sourceCourseItemId}
         onAgain={() => {
           completedRound.current = -1;
           setEvidence(undefined);
@@ -191,13 +192,20 @@ export default function VocabularyLessonScreen() {
   );
 }
 
-function LessonHeader({ title }: { title: string }) {
+function LessonHeader({
+  title,
+  finished = false,
+}: {
+  title: string;
+  /** The lesson is over: swiping back leaves like the button does. */
+  finished?: boolean;
+}) {
   return (
     <>
       <GameBackToolbar accessibilityLabel="Tutup latihan" onPress={leave} />
       <Stack.Screen
         options={{
-          gestureEnabled: false,
+          gestureEnabled: finished,
           headerBackButtonDisplayMode: "minimal",
           headerBackVisible: false,
           headerShadowVisible: false,
@@ -233,8 +241,6 @@ function LessonRoundScreen({
     sourceCourseItemId,
     vocabularySetId,
   });
-  const [scrollGesture] = useState(() => Gesture.Native());
-  const [roundActive, setRoundActive] = useState(false);
   const game = {
     courseId,
     sourceCourseItemId,
@@ -261,34 +267,7 @@ function LessonRoundScreen({
   if (kind === "match") return <VocabularyMatchScreen {...game} />;
   if (kind === "sentences") return <SentenceBuilderScreen {...game} />;
   if (kind === "word-fall") return <WordFallScreen {...game} />;
-  // Kartu keeps its own reporter and saved progress, like in Latihan.
-  return (
-    <StudyScreen
-      fillViewport
-      gameHeader
-      keyboardAvoiding
-      scrollable={!roundActive}
-      scrollGesture={scrollGesture}
-      title={lesson.title}
-    >
-      <VocabularySession
-        courseId={courseId}
-        lesson={lesson}
-        onComplete={async () => leave()}
-        onRoundActiveChange={setRoundActive}
-        scrollGesture={scrollGesture}
-        sourceCourseItemId={sourceCourseItemId}
-        vocabularySetId={vocabularySetId}
-        words={words.map((word) => ({
-          id: word.id,
-          term: word.term,
-          meanings: word.meanings,
-          examples: word.examples,
-          imageAssetId: word.imageAsset?.id,
-        }))}
-      />
-    </StudyScreen>
-  );
+  return <CardsScreen {...game} vocabularySetId={vocabularySetId} />;
 }
 
 /**
@@ -300,6 +279,8 @@ function LessonSummary({
   rounds,
   before,
   evidence,
+  courseId,
+  courseItemId,
   onAgain,
 }: {
   words: LessonWord[];
@@ -307,6 +288,8 @@ function LessonSummary({
   before: ReadonlyMap<string, VocabularyWordStatus>;
   /** Absent until a round has synced (offline). */
   evidence?: SetEvidence;
+  courseId: string;
+  courseItemId: string;
   onAgain: () => void;
 }) {
   const after = evidence
@@ -320,34 +303,58 @@ function LessonSummary({
   const setProgress = after ? vocabularySetProgress([...after.values()]) : null;
   const known = (status?: VocabularyWordStatus) =>
     status === "LEARNED" || status === "MASTERED";
+  const movedUp = (wordId: string) => {
+    const status = after?.get(wordId);
+    const previous = before.get(wordId);
+    return status === "MASTERED"
+      ? previous !== "MASTERED"
+      : known(status) && !known(previous);
+  };
+  const risen = words.filter((word) => movedUp(word.id)).length;
   return (
     <View className="flex-1 bg-background">
-      <LessonHeader title="" />
-      <GamePage>
-        <View className="items-center gap-2">
-          <Eyebrow size="md" tone="primary">
-            Latihan selesai
-          </Eyebrow>
-          <Text className="text-center text-3xl font-black tracking-tight text-foreground">
-            {words.length} kata, {rounds} babak
-          </Text>
-          <Text className="text-center text-sm leading-6 text-muted-foreground">
-            {setProgress
-              ? setProgress.complete
-                ? "Semua kata di set ini sudah dipelajari. Kosakata ini selesai di kelasmu."
-                : `${setProgress.learned} dari ${setProgress.total} kata di set ini sudah dipelajari.`
-              : "Jawabanmu tersimpan di perangkat. Status kata diperbarui setelah tersambung ke internet."}
-          </Text>
-        </View>
+      <LessonHeader title="" finished />
+      <GameResult
+        courseId={courseId}
+        courseItemId={courseItemId}
+        eyebrow="Latihan selesai"
+        title={`${words.length} kata, ${rounds} babak`}
+        description={
+          setProgress
+            ? setProgress.complete
+              ? "Semua kata di set ini sudah dipelajari. Kosakata ini selesai di kelasmu."
+              : "Kata yang belum dipelajari muncul lebih dulu di latihan berikutnya."
+            : "Jawabanmu tersimpan di perangkat. Status kata diperbarui setelah tersambung ke internet."
+        }
+        mark={
+          setProgress
+            ? {
+                value: `${setProgress.learned}/${setProgress.total}`,
+                label: "dipelajari",
+              }
+            : { value: String(words.length), label: "kata" }
+        }
+        done={Boolean(setProgress?.complete)}
+        celebrate={Boolean(setProgress?.complete)}
+        facts={[
+          { icon: "checkmark.seal.fill", text: `${rounds} babak selesai` },
+          ...(risen
+            ? [{ icon: "flame.fill" as const, text: `${risen} kata naik` }]
+            : []),
+        ]}
+        primary={{
+          eyebrow: "Latihan lagi",
+          title: "Kata berikutnya",
+          meta: "Kata baru dan yang perlu dihafal lebih dulu",
+          pill: "Mulai",
+          onPress: onAgain,
+        }}
+        secondary={{ label: "Selesai", onPress: leave }}
+      >
         <Card className="gap-3 p-4">
           <Eyebrow size="xs">Kata yang dilatih</Eyebrow>
           {words.map((word) => {
             const status = after?.get(word.id);
-            const previous = before.get(word.id);
-            const movedUp =
-              status === "MASTERED"
-                ? previous !== "MASTERED"
-                : known(status) && !known(previous);
             return (
               <View key={word.id} className="flex-row items-center gap-3">
                 <View className="min-w-0 flex-1 gap-0.5">
@@ -364,7 +371,7 @@ function LessonSummary({
                 {status ? (
                   <View className="items-end gap-0.5">
                     <VocabularyWordStatusChip status={status} />
-                    {movedUp ? (
+                    {movedUp(word.id) ? (
                       <Text className="text-[11px] font-bold text-primary">
                         Naik!
                       </Text>
@@ -375,17 +382,7 @@ function LessonSummary({
             );
           })}
         </Card>
-        <View className="gap-3">
-          <Action onPress={leave}>Selesai</Action>
-          <Action
-            variant="secondary"
-            leadingIcon="arrow.clockwise"
-            onPress={onAgain}
-          >
-            Latihan lagi
-          </Action>
-        </View>
-      </GamePage>
+      </GameResult>
     </View>
   );
 }

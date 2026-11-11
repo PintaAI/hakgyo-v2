@@ -207,10 +207,23 @@ function screenHarness(kind: "today" | "course") {
       HandsFreeAnswerField: "HandsFreeAnswerField",
     },
     "./GlassBox": { GlassBox: "GlassBox" },
-    "../games/game-modals": {
-      GameJourneyFooter: "GameJourneyFooter",
-      GameModal: "GameModal",
-      GameStartModal: "GameStartModal",
+    "../games/game-result": { GameResult: "GameResult" },
+    "./source-link": { SourceLink: "SourceLink" },
+    "../lib/use-deck-tutorial": {
+      useDeckTutorial: () => ({
+        visible: false,
+        showHand: false,
+        highlightLanguage: false,
+        step: "done",
+        onReveal() {},
+        onAdvance() {},
+        onInteractionChange() {},
+        onLanguageChange() {},
+      }),
+    },
+    "./onboarding-deck-tutorial": {
+      DeckTutorialCoach: "DeckTutorialCoach",
+      DeckTutorialOverlay: "DeckTutorialOverlay",
     },
     "../games/game-screens": { GameBackToolbar: "GameBackToolbar" },
     "../games/game-navigation": {
@@ -330,7 +343,6 @@ for (const kind of ["today", "course"] as const) {
     const answerField = kind === "today" ? "HandsFreeAnswerField" : "TextInput";
     async function setup() {
       const screen = screenHarness(kind);
-      if (kind === "course") screen.find("GameStartModal").props.onPrimary();
       await screen.flush();
       screen
         .find(answerField)
@@ -394,7 +406,7 @@ for (const kind of ["today", "course"] as const) {
       expect(screen.recordedResult(1)).toBe("REVEALED");
       expect(screen.complete).not.toHaveBeenCalled();
 
-      if (kind === "course") screen.find("GameStartModal").props.onPrimary();
+      if (kind === "course") screen.find("GameResult").props.primary.onPress();
       else screen.find("Action").props.onPress();
       await screen.flush();
       expect(screen.find("Deck").props.index).toBe(0);

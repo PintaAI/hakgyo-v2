@@ -29,18 +29,10 @@ export type Event = RouterOutputs["assessmentEvent"]["listForLearner"][number];
 type CourseOutline = RouterOutputs["learning"]["getCourseOutline"];
 export type PracticeFilter = "VOCABULARY_SET" | "ASSESSMENT";
 
-export type PreselectedVocabularySource = {
-  courseId: string;
-  sourceCourseItemId: string;
-  vocabularySetId?: string;
-  title?: string;
-};
-
 type HubProps = {
   coursesPending: boolean;
   coursesError?: { message: string } | null;
   onRetryCourses: () => void;
-  preselectedSource?: PreselectedVocabularySource;
   /** Leaves out the "Penguasaan Hangeul" games while Hangeul is archived. */
   hangeulHidden?: boolean;
 };
@@ -57,9 +49,6 @@ export type Tool = {
   textIcon?: boolean;
   resource: PracticeFilter;
   available: boolean;
-  // Contextual disable, distinct from available=false ("Soon", not built).
-  // The tile keeps its source badge but is not interactive while set.
-  disabledHint?: string;
 };
 
 export const tools: Tool[] = [
@@ -208,7 +197,7 @@ function GameTile({
   const badgeLabel = tool.available
     ? tool.sourceLabel
     : (tool.unavailableLabel ?? "Segera");
-  const disabled = !tool.available || !!tool.disabledHint;
+  const disabled = !tool.available;
   const badge = (
     <View
       className={`rounded-full px-2 py-1 ${selected ? "bg-primary" : "bg-muted"}`}
@@ -224,7 +213,6 @@ function GameTile({
     <Pressable
       accessibilityRole={disabled ? undefined : "button"}
       accessibilityState={{ disabled, selected }}
-      accessibilityHint={tool.disabledHint}
       className="active:scale-[0.98] active:opacity-80"
       disabled={disabled}
       onPress={() => onSelect(tool.key)}
@@ -671,64 +659,13 @@ export function ResourceLibrary({
 }
 
 export function PracticeHub(props: HubProps) {
-  const { colors } = useAppTheme();
-  const [sourceDismissed, setSourceDismissed] = useState(false);
-  const preselectedKey = props.preselectedSource
-    ? `${props.preselectedSource.courseId}:${props.preselectedSource.sourceCourseItemId}`
-    : null;
-  useEffect(() => {
-    setSourceDismissed(false);
-  }, [preselectedKey]);
-  const activeSource =
-    !sourceDismissed && preselectedKey ? props.preselectedSource : undefined;
-  // While a vocab set is preselected, Quiz has nothing to run on, so it
-  // reads disabled (keeping its "Tugas" badge) instead of dropping context
-  // into the generic assessment list.
-  const displayTools = useMemo(
-    () =>
-      activeSource
-        ? tools.map((candidate) =>
-            candidate.resource === "ASSESSMENT"
-              ? {
-                  ...candidate,
-                  disabledHint:
-                    "Quiz membutuhkan tugas kelas dan tidak bisa memakai set ini",
-                }
-              : candidate,
-          )
-        : tools,
-    [activeSource],
-  );
-
-  const handleSelect = useCallback(
-    (key: string) => {
-      const nextTool =
-        displayTools.find((candidate) => candidate.key === key) ??
-        selectedTool(key);
-      if (!nextTool || nextTool.disabledHint || !nextTool.available) return;
-      // Deep link: a vocab set arrived with context, so choosing a vocab
-      // game launches it immediately instead of asking for a source again.
-      if (
-        activeSource &&
-        nextTool.resource === "VOCABULARY_SET" &&
-        isGameKey(nextTool.key)
-      ) {
-        router.push({
-          pathname: "/games/[gameKey]",
-          params: {
-            gameKey: nextTool.key,
-            courseId: activeSource.courseId,
-            sourceCourseItemId: activeSource.sourceCourseItemId,
-          },
-        });
-        return;
-      }
-      // Otherwise the source (a vocabulary set or a tugas) is picked in a
-      // sheet, which keeps Latihan a short menu.
-      router.push({ pathname: "/practice-source", params: { tool: key } });
-    },
-    [activeSource, displayTools],
-  );
+  const handleSelect = useCallback((key: string) => {
+    const nextTool = selectedTool(key);
+    if (!nextTool?.available) return;
+    // The source (a vocabulary set or a tugas) is picked in a sheet, which
+    // keeps Latihan a short menu.
+    router.push({ pathname: "/practice-source", params: { tool: key } });
+  }, []);
 
   return (
     <>
@@ -755,69 +692,13 @@ export function PracticeHub(props: HubProps) {
       />
       {!props.coursesPending && !props.coursesError ? (
         <>
-          {activeSource ? (
-            <StudyGlass
-              bordered={false}
-              contentClassName="flex-row items-center gap-2 p-4"
-              radius={SURFACE_RADIUS}
-            >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Buka detail ${activeSource.title ?? "set kosakata"}`}
-                accessibilityHint="Membuka layar detail set kosakata"
-                className="min-w-0 flex-1 active:opacity-70"
-                onPress={() =>
-                  openCourseItem({
-                    courseId: activeSource.courseId,
-                    courseItemId: activeSource.sourceCourseItemId,
-                  })
-                }
-              >
-                <View className="gap-0.5">
-                  <Eyebrow tone="primary">Sedang dilatih</Eyebrow>
-                  <Text
-                    className="text-[15px] font-bold text-foreground"
-                    numberOfLines={1}
-                  >
-                    {activeSource.title ?? "Set kosakata terpilih"}
-                  </Text>
-                  <Text
-                    className="text-xs text-muted-foreground"
-                    numberOfLines={1}
-                  >
-                    Ketuk untuk melihat set · Pilih game untuk mulai
-                  </Text>
-                </View>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Hapus pilihan set kosakata"
-                accessibilityHint="Menampilkan semua set kosakata lagi"
-                className="size-8 items-center justify-center rounded-full active:opacity-60"
-                onPress={() => setSourceDismissed(true)}
-              >
-                <SymbolIcon
-                  name="xmark"
-                  size={14}
-                  tintColor={colors.mutedForeground}
-                  weight="bold"
-                />
-              </Pressable>
-            </StudyGlass>
-          ) : null}
           <TourTarget id="practice.games" className="gap-3 pt-1">
             <Eyebrow>Pilih game</Eyebrow>
             <GamePicker
-              tools={displayTools}
+              tools={tools}
               onSelect={handleSelect}
               selectedKey={null}
             />
-            {activeSource ? (
-              <Text className="text-xs leading-4 text-muted-foreground">
-                Quiz memakai tugas kelas, bukan set kosakata. Ketuk × di atas
-                untuk melihat semua set dan quiz.
-              </Text>
-            ) : null}
           </TourTarget>
         </>
       ) : null}
