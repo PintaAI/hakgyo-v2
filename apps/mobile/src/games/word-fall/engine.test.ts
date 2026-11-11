@@ -77,7 +77,7 @@ describe("word fall engine", () => {
     );
 
     expect(resetGame).not.toContain("focusInput();");
-    expect(screenSource).toContain("onDismiss={focusInputAfterModalDismiss}");
+    expect(screenSource).toContain("onDismiss={resumeAfterSheet}");
   });
 
   test("keeps the player and typing feedback clear of the keyboard edge", () => {

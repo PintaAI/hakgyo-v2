@@ -46,6 +46,8 @@ export type GameResultProps = {
   courseItemId?: string;
   /** Off inside a screen that scrolls already (`StudyScreen`). */
   scroll?: boolean;
+  /** As a sheet: closing it without choosing. Leaves (`secondary`) if unset. */
+  onDismiss?: () => void;
   /** Runs before any of the page's actions (the sheet closes itself). */
   onAct?: () => void;
 };

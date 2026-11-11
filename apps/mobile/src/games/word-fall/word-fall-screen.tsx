@@ -27,7 +27,6 @@ import Animated, {
   Easing,
   FadeIn,
   FadeOut,
-  ZoomIn,
   interpolate,
   runOnJS,
   useAnimatedReaction,
@@ -49,7 +48,6 @@ import type {
 import { withOpacity, type ThemeColors } from "../../theme/colors";
 import { toolbarIcons } from "../../theme/toolbar-icons";
 import { GameBackToolbar } from "../game-screens";
-import { GameModal } from "../game-modals";
 import { GameResultSheet } from "../game-result-sheet";
 import type { GameLesson } from "../lesson";
 import { START_LEVEL_OPTIONS, useWordFallSettings } from "./word-fall-settings";
@@ -1009,10 +1007,6 @@ export function WordFallScreen({
   const focusInputOnAndroid = useCallback(() => {
     if (Platform.OS !== "ios") focusInput();
   }, [focusInput]);
-  const focusInputAfterModalDismiss = useCallback(() => {
-    if (Platform.OS === "ios" && phase === "running") focusInput();
-  }, [focusInput, phase]);
-
   const setLockedTarget = useCallback((id: string | null) => {
     lockedTargetRef.current = id;
     setLockedTargetId(id);
@@ -1474,6 +1468,12 @@ export function WordFallScreen({
     setPhase("running");
     focusInputOnAndroid();
   }, [focusInputOnAndroid]);
+
+  // The pause sheet is still closing on iOS: focus once it is gone.
+  const resumeAfterSheet = useCallback(() => {
+    resumeGame();
+    if (Platform.OS === "ios") schedule(() => inputRef.current?.focus(), 500);
+  }, [resumeGame, schedule]);
 
   // In Latihan the round ends on a result page; a lesson goes on instead.
   const showResult = phase === "gameover" && !lesson;
@@ -1947,30 +1947,45 @@ export function WordFallScreen({
       </View>
 
       {countdown ? (
-        <View pointerEvents="none" style={styles.countdown}>
-          <Animated.Text
-            entering={ZoomIn.springify().damping(12)}
-            exiting={FadeOut.duration(160)}
-            key={countdown}
-            style={[styles.countdownNumber, { color: colors.primary }]}
+        <Animated.View
+          entering={FadeIn.duration(160)}
+          exiting={FadeOut.duration(160)}
+          pointerEvents="none"
+          style={styles.countdown}
+        >
+          <Text
+            style={[styles.countdownLabel, { color: colors.mutedForeground }]}
           >
+            Bersiap
+          </Text>
+          <Text style={[styles.countdownNumber, { color: colors.foreground }]}>
             {countdown}
-          </Animated.Text>
-        </View>
+          </Text>
+        </Animated.View>
       ) : null}
-      <GameModal
-        detail={`Skor ${score} · Level ${level}`}
-        eyebrow="Hujan kata"
-        gameKey="word-fall"
-        onDismiss={focusInputAfterModalDismiss}
-        onPrimary={resumeGame}
-        onSecondary={exit}
-        primaryLabel="Lanjutkan"
-        secondaryLabel="Keluar"
-        secondaryDisabled={pendingReportCount > 0}
-        title="Dijeda"
-        visible={phase === "paused"}
-      />
+      {/* Pausing opens the same sheet the round ends on. Closing it any way
+          but "Keluar" goes on with the round. */}
+      {phase === "paused" ? (
+        <GameResultSheet
+          eyebrow="Hujan kata"
+          title="Dijeda"
+          mark={{ value: String(score), label: "poin" }}
+          facts={[{ icon: "flame.fill", text: `Level ${level}` }]}
+          primary={{
+            eyebrow: "Lanjutkan",
+            title: "Kembali ke permainan",
+            meta: "Kata yang sedang jatuh menunggumu",
+            pill: "Lanjut",
+            onPress: resumeAfterSheet,
+          }}
+          secondary={{
+            label: "Keluar",
+            onPress: exit,
+            disabled: pendingReportCount > 0,
+          }}
+          onDismiss={resumeAfterSheet}
+        />
+      ) : null}
       {/* The result is a sheet; this covers the field beneath it rather than
           unmounting it, so the field keeps its measured size, timers and
           shared values and "Main lagi" starts a round at once. */}
@@ -2034,7 +2049,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  countdownNumber: { fontSize: 96, fontWeight: "900" },
+  countdownLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+  },
+  countdownNumber: {
+    fontSize: 44,
+    fontVariant: ["tabular-nums"],
+    fontWeight: "800",
+  },
   screen: { flex: 1 },
   field: { flex: 1, overflow: "hidden" },
   headerStats: { alignItems: "center", flexDirection: "row", gap: 9 },

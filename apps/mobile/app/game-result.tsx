@@ -7,7 +7,8 @@ import { useGameResult } from "../src/games/game-result-sheet";
 /**
  * The end of a vocabulary game, as a sheet over the game. The game owns what
  * it shows (`GameResultSheet`). An action closes the sheet first, then runs;
- * a sheet swiped away leaves the game like "Selesai" does.
+ * a sheet swiped away leaves the game like "Selesai" does (or goes on, when
+ * the game is only paused).
  */
 export default function GameResultScreen() {
   const result = useGameResult();
@@ -16,7 +17,9 @@ export default function GameResultScreen() {
   const acted = useRef(false);
   useEffect(
     () => () => {
-      if (!acted.current) latest.current?.secondary?.onPress();
+      if (acted.current) return;
+      const closed = latest.current;
+      (closed?.onDismiss ?? closed?.secondary?.onPress)?.();
     },
     [],
   );

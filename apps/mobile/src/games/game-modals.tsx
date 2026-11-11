@@ -31,8 +31,8 @@ export const gameHeroAssets = {
 } satisfies Record<GameKey, number>;
 
 /**
- * A sheet over a running game: the pause of Hujan Kata and the round ends of
- * the Hangeul games. Vocabulary games end on `GameResult` instead.
+ * The sheet a Hangeul game's round ends on. Vocabulary games end (and Hujan
+ * Kata pauses) on `GameResult` instead.
  */
 export function GameModal({
   gameKey,
@@ -43,10 +43,8 @@ export function GameModal({
   content,
   primaryLabel,
   onPrimary,
-  onDismiss,
   secondaryLabel,
   onSecondary,
-  secondaryDisabled = false,
 }: {
   gameKey: GameKey;
   visible: boolean;
@@ -56,10 +54,8 @@ export function GameModal({
   content?: ReactNode;
   primaryLabel: string;
   onPrimary: () => void;
-  onDismiss?: () => void;
   secondaryLabel?: string;
   onSecondary?: () => void;
-  secondaryDisabled?: boolean;
 }) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -69,10 +65,7 @@ export function GameModal({
       allowSwipeDismissal={false}
       animationType="slide"
       backdropColor={colors.background}
-      onDismiss={onDismiss}
-      onRequestClose={() => {
-        if (!secondaryDisabled) onSecondary?.();
-      }}
+      onRequestClose={() => onSecondary?.()}
       presentationStyle="formSheet"
       visible={visible}
     >
@@ -142,7 +135,6 @@ export function GameModal({
             {secondaryLabel && onSecondary ? (
               <StudyAction
                 accessibilityLabel={secondaryLabel}
-                disabled={secondaryDisabled}
                 onPress={onSecondary}
                 secondary
               >
