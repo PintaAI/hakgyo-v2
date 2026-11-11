@@ -1,8 +1,7 @@
 import { router } from "expo-router";
 import { useEffect, useRef } from "react";
 
-import { GameResult } from "../src/games/game-result";
-import { useGameResult } from "../src/games/game-result-sheet";
+import { GameResult, useGameResult } from "../src/games/game-result";
 
 /**
  * The end of a vocabulary game, as a sheet over the game. The game owns what
@@ -19,7 +18,7 @@ export default function GameResultScreen() {
     () => () => {
       if (acted.current) return;
       const closed = latest.current;
-      (closed?.onDismiss ?? closed?.secondary?.onPress)?.();
+      (closed?.onDismiss ?? closed?.secondary.onPress)?.();
     },
     [],
   );
@@ -27,7 +26,6 @@ export default function GameResultScreen() {
   return (
     <GameResult
       {...result}
-      scroll
       onAct={() => {
         acted.current = true;
         router.back();

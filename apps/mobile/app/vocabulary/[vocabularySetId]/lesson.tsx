@@ -1,18 +1,11 @@
 import { displayMeanings, entryMeanings } from "@hakgyo/shared";
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Text, View } from "react-native";
 
-import {
-  Action,
-  Card,
-  Empty,
-  Eyebrow,
-  FullScreenState,
-} from "../../../src/components/learning-ui";
 import { CardsScreen } from "../../../src/games/cards-screen";
-import { GameResultSheet } from "../../../src/games/game-result-sheet";
-import { GameBackToolbar, GamePage } from "../../../src/games/game-screens";
+import { GameResultSheet } from "../../../src/games/game-result";
+import { GameLoading, GameUnavailable } from "../../../src/games/game-screens";
 import {
   lessonRounds,
   pickLessonWords,
@@ -25,7 +18,7 @@ import { WordFallScreen } from "../../../src/games/word-fall/word-fall-screen";
 import { authClient } from "../../../src/lib/auth-client";
 import { firstParam } from "../../../src/lib/route-params";
 import { api } from "../../../src/lib/trpc";
-import { useVocabularyProgressReporter } from "../../../src/lib/use-vocabulary-progress";
+import { useVocabularyGameReporter } from "../../../src/lib/use-vocabulary-progress";
 import { useCourseItem } from "../../../src/sync/hooks";
 import { VocabularyWordStatusChip } from "../../../src/components/vocabulary-word-status-chip";
 import {
@@ -133,28 +126,18 @@ export default function VocabularyLessonScreen() {
     [completeRound, plan, round],
   );
 
+  const header = { onBack: leave, backLabel: "Tutup latihan" };
   if (!session || item.isPending || (vocabulary && !plan)) {
-    return (
-      <>
-        <LessonHeader title="" />
-        <FullScreenState kind="loading" />
-      </>
-    );
+    return <GameLoading title="" {...header} />;
   }
 
   if (!vocabulary || !plan || plan.rounds.length === 0) {
     return (
-      <View className="flex-1 bg-background">
-        <LessonHeader title="Latihan" />
-        <GamePage>
-          <Empty>
-            {item.isError || !vocabulary
-              ? "Set kosakata ini tidak dapat dimuat."
-              : "Set kosakata ini belum memiliki kata yang bisa dilatih."}
-          </Empty>
-          <Action onPress={leave}>Kembali</Action>
-        </GamePage>
-      </View>
+      <GameUnavailable title="Latihan" {...header}>
+        {item.isError || !vocabulary
+          ? "Set kosakata ini tidak dapat dimuat."
+          : "Set kosakata ini belum memiliki kata yang bisa dilatih."}
+      </GameUnavailable>
     );
   }
 
@@ -192,31 +175,6 @@ export default function VocabularyLessonScreen() {
   );
 }
 
-function LessonHeader({
-  title,
-  finished = false,
-}: {
-  title: string;
-  /** The lesson is over: swiping back leaves like the button does. */
-  finished?: boolean;
-}) {
-  return (
-    <>
-      <GameBackToolbar accessibilityLabel="Tutup latihan" onPress={leave} />
-      <Stack.Screen
-        options={{
-          gestureEnabled: finished,
-          headerBackButtonDisplayMode: "minimal",
-          headerBackVisible: false,
-          headerShadowVisible: false,
-          headerShown: true,
-          title,
-        }}
-      />
-    </>
-  );
-}
-
 /** One round: the game for `kind`, reporting progress under its own game key. */
 function LessonRoundScreen({
   kind,
@@ -235,39 +193,34 @@ function LessonRoundScreen({
   lesson: GameLesson;
   onEvidence: (evidence: SetEvidence) => void;
 }) {
-  const reporter = useVocabularyProgressReporter({
+  const reporter = useVocabularyGameReporter({
     gameKey: kind,
-    reactive: false,
     sourceCourseItemId,
     vocabularySetId,
   });
   const game = {
     courseId,
     sourceCourseItemId,
+    vocabularySetId,
     words,
     lesson,
-    onAttempt: async (
-      ...args: Parameters<typeof reporter.report>
-    ): Promise<void> => {
-      await reporter.report(...args);
-    },
+    onExit: leave,
+    ...reporter,
     // Sends the round's answers; once synced, the set's new progress feeds
     // the summary.
     onComplete: async () => {
-      const synced = await reporter.finishSession();
+      const synced = await reporter.onComplete();
       const set = synced?.sets.find(
         (item) => item.vocabularySetId === vocabularySetId,
       );
       if (set) onEvidence(set);
     },
-    onExit: leave,
-    onSessionStart: reporter.startSession,
   };
 
   if (kind === "match") return <VocabularyMatchScreen {...game} />;
   if (kind === "sentences") return <SentenceBuilderScreen {...game} />;
   if (kind === "word-fall") return <WordFallScreen {...game} />;
-  return <CardsScreen {...game} vocabularySetId={vocabularySetId} />;
+  return <CardsScreen {...game} />;
 }
 
 /**
@@ -312,77 +265,63 @@ function LessonSummary({
   };
   const risen = words.filter((word) => movedUp(word.id)).length;
   return (
-    <View className="flex-1 bg-background">
-      <LessonHeader title="" finished />
-      <GameResultSheet
-        courseId={courseId}
-        courseItemId={courseItemId}
-        eyebrow="Latihan selesai"
-        title={`${words.length} kata, ${rounds} babak`}
-        description={
-          setProgress
-            ? setProgress.complete
-              ? "Semua kata di set ini sudah dipelajari. Kosakata ini selesai di kelasmu."
-              : "Kata yang belum dipelajari muncul lebih dulu di latihan berikutnya."
-            : "Jawabanmu tersimpan di perangkat. Status kata diperbarui setelah tersambung ke internet."
-        }
-        mark={
-          setProgress
-            ? {
-                value: `${setProgress.learned}/${setProgress.total}`,
-                label: "dipelajari",
-              }
-            : { value: String(words.length), label: "kata" }
-        }
-        done={Boolean(setProgress?.complete)}
-        celebrate={Boolean(setProgress?.complete)}
-        facts={[
-          { icon: "checkmark.seal.fill", text: `${rounds} babak selesai` },
-          ...(risen
-            ? [{ icon: "flame.fill" as const, text: `${risen} kata naik` }]
-            : []),
-        ]}
-        primary={{
-          eyebrow: "Latihan lagi",
-          title: "Kata berikutnya",
-          meta: "Kata baru dan yang perlu dihafal lebih dulu",
-          pill: "Mulai",
-          onPress: onAgain,
-        }}
-        secondary={{ label: "Selesai", onPress: leave }}
-      >
-        <Card className="gap-3 p-4">
-          <Eyebrow size="xs">Kata yang dilatih</Eyebrow>
-          {words.map((word) => {
-            const status = after?.get(word.id);
-            return (
-              <View key={word.id} className="flex-row items-center gap-3">
-                <View className="min-w-0 flex-1 gap-0.5">
-                  <Text className="text-base font-bold text-foreground">
-                    {word.term}
+    <GameResultSheet
+      courseId={courseId}
+      courseItemId={courseItemId}
+      eyebrow="Latihan selesai"
+      title={`${words.length} kata, ${rounds} babak`}
+      description={
+        setProgress
+          ? setProgress.complete
+            ? "Semua kata di set ini sudah dipelajari. Kosakata ini selesai di kelasmu."
+            : "Kata yang belum dipelajari muncul lebih dulu di latihan berikutnya."
+          : "Jawabanmu tersimpan di perangkat. Status kata diperbarui setelah tersambung ke internet."
+      }
+      mark={
+        setProgress
+          ? {
+              value: `${setProgress.learned}/${setProgress.total}`,
+              label: "dipelajari",
+            }
+          : { value: String(words.length), label: "kata" }
+      }
+      done={Boolean(setProgress?.complete)}
+      celebrate={Boolean(setProgress?.complete)}
+      facts={[
+        { icon: "checkmark.seal.fill", text: `${rounds} babak selesai` },
+        ...(risen
+          ? [{ icon: "flame.fill" as const, text: `${risen} kata naik` }]
+          : []),
+      ]}
+      primary={{
+        eyebrow: "Latihan lagi",
+        title: "Kata berikutnya",
+        meta: "Kata baru dan yang perlu dihafal lebih dulu",
+        pill: "Mulai",
+        onPress: onAgain,
+      }}
+      secondary={{ label: "Selesai", onPress: leave }}
+      review={{
+        title: "Kata yang dilatih",
+        rows: words.map((word) => {
+          const status = after?.get(word.id);
+          return {
+            key: word.id,
+            title: word.term,
+            detail: displayMeanings(word.meanings),
+            trailing: status ? (
+              <View className="items-end gap-0.5">
+                <VocabularyWordStatusChip status={status} />
+                {movedUp(word.id) ? (
+                  <Text className="text-[11px] font-bold text-primary">
+                    Naik!
                   </Text>
-                  <Text
-                    className="text-sm text-muted-foreground"
-                    numberOfLines={2}
-                  >
-                    {displayMeanings(word.meanings)}
-                  </Text>
-                </View>
-                {status ? (
-                  <View className="items-end gap-0.5">
-                    <VocabularyWordStatusChip status={status} />
-                    {movedUp(word.id) ? (
-                      <Text className="text-[11px] font-bold text-primary">
-                        Naik!
-                      </Text>
-                    ) : null}
-                  </View>
                 ) : null}
               </View>
-            );
-          })}
-        </Card>
-      </GameResultSheet>
-    </View>
+            ) : null,
+          };
+        }),
+      }}
+    />
   );
 }

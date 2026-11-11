@@ -148,3 +148,24 @@ export function useVocabularyProgressReporter({
     [error, finishSession, isPending, report, reset, startSession],
   );
 }
+
+/**
+ * The reporting half of a vocabulary game's props, for a game that leaves
+ * progress to its host (the game route, a lesson round).
+ */
+export function useVocabularyGameReporter(input: {
+  gameKey: string;
+  sourceCourseItemId: string;
+  vocabularySetId: string;
+}) {
+  const reporter = useVocabularyProgressReporter({ ...input, reactive: false });
+  return {
+    onAttempt: async (
+      ...args: Parameters<typeof reporter.report>
+    ): Promise<void> => {
+      await reporter.report(...args);
+    },
+    onComplete: reporter.finishSession,
+    onSessionStart: reporter.startSession,
+  };
+}

@@ -17,10 +17,9 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
-import { Card, Eyebrow } from "../../components/learning-ui";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { GameBackToolbar } from "../game-screens";
-import { GameResultSheet } from "../game-result-sheet";
+import { GameResultSheet } from "../game-result";
 import type { GameLesson } from "../lesson";
 import { useGameExitGuard } from "../game-navigation";
 import { withOpacity } from "../../theme/colors";
@@ -573,68 +572,7 @@ export function VocabularyMatchScreen({
     .flatMap((item) => item.terms)
     .filter((word) => mistakeIds.includes(word.id));
 
-  if (phase === "complete" && !lesson) {
-    const firstTry = session.wordCount - reviewWords.length;
-    const allCorrect = reviewWords.length === 0;
-    return (
-      <View style={[styles.screen, { backgroundColor: colors.background }]}>
-        <GameBackToolbar onPress={exit} />
-        <Stack.Screen
-          options={{
-            // The round is over: swiping back leaves like the button does.
-            gestureEnabled: true,
-            headerBackButtonDisplayMode: "minimal",
-            headerBackVisible: false,
-            headerShadowVisible: false,
-            headerShown: true,
-            title: "",
-          }}
-        />
-        <GameResultSheet
-          courseId={courseId}
-          courseItemId={sourceCourseItemId}
-          eyebrow="Cocokkan kata"
-          title={allCorrect ? "Mantap, semua benar!" : "Ronde selesai"}
-          mark={{ value: `${firstTry}/${session.wordCount}`, label: "benar" }}
-          done={allCorrect}
-          celebrate={allCorrect}
-          facts={[
-            { icon: "flame.fill", text: `${score} poin` },
-            allCorrect
-              ? { icon: "checkmark.seal.fill", text: "Tanpa salah" }
-              : {
-                  icon: "arrow.clockwise",
-                  text: `${reviewWords.length} perlu diulang`,
-                },
-          ]}
-          primary={{
-            eyebrow: "Main lagi",
-            title: `${session.wordCount} kata`,
-            meta: "Cocokkan lagi semua kata tadi",
-            pill: "Mulai",
-            onPress: resetGame,
-          }}
-          secondary={{ label: "Selesai", onPress: exit }}
-        >
-          {reviewWords.length ? (
-            <Card className="gap-3 p-4">
-              <Eyebrow size="xs">Ulas kembali</Eyebrow>
-              {reviewWords.map((word) => (
-                <View key={word.id} className="gap-0.5">
-                  <Text className="text-base font-bold text-foreground">
-                    {word.term}
-                  </Text>
-                  <Text className="text-sm text-muted-foreground">
-                    {word.meaning}
-                  </Text>
-                </View>
-              ))}
-            </Card>
-          ) : null}
-        </GameResultSheet>
-      </View>
-    );
-  }
+  const allCorrect = reviewWords.length === 0;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -820,6 +758,45 @@ export function VocabularyMatchScreen({
           })}
         </View>
       </GestureDetector>
+      {phase === "complete" && !lesson ? (
+        <GameResultSheet
+          courseId={courseId}
+          courseItemId={sourceCourseItemId}
+          eyebrow="Cocokkan kata"
+          title={allCorrect ? "Mantap, semua benar!" : "Ronde selesai"}
+          mark={{
+            value: `${session.wordCount - reviewWords.length}/${session.wordCount}`,
+            label: "benar",
+          }}
+          done={allCorrect}
+          celebrate={allCorrect}
+          facts={[
+            { icon: "flame.fill", text: `${score} poin` },
+            allCorrect
+              ? { icon: "checkmark.seal.fill", text: "Tanpa salah" }
+              : {
+                  icon: "arrow.clockwise",
+                  text: `${reviewWords.length} perlu diulang`,
+                },
+          ]}
+          review={{
+            title: "Perlu diulang",
+            rows: reviewWords.map((word) => ({
+              key: word.id,
+              title: word.term,
+              detail: word.meaning,
+            })),
+          }}
+          primary={{
+            eyebrow: "Main lagi",
+            title: `${session.wordCount} kata`,
+            meta: "Cocokkan lagi semua kata tadi",
+            pill: "Mulai",
+            onPress: resetGame,
+          }}
+          secondary={{ label: "Selesai", onPress: exit }}
+        />
+      ) : null}
     </View>
   );
 }

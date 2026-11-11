@@ -1,18 +1,12 @@
 import { entryMeanings } from "@hakgyo/shared";
 import { getHangeulGameStage } from "@hakgyo/shared/hangeul";
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, type ReactNode } from "react";
-import { View } from "react-native";
 
-import {
-  Action,
-  Empty,
-  FullScreenState,
-} from "../../src/components/learning-ui";
 import { CardsScreen } from "../../src/games/cards-screen";
 import { gameCatalog, isGameKey } from "../../src/games/catalog";
 import type { GameSource } from "../../src/games/game-exit";
-import { GameBackToolbar, GamePage } from "../../src/games/game-screens";
+import { GameLoading, GameUnavailable } from "../../src/games/game-screens";
 import { HangeulScreen } from "../../src/games/hangeul/hangeul-screen";
 import { createSentenceChallenges } from "../../src/games/sentence-builder/engine";
 import { SentenceBuilderScreen } from "../../src/games/sentence-builder/sentence-builder-screen";
@@ -22,7 +16,7 @@ import { WordFallScreen } from "../../src/games/word-fall/word-fall-screen";
 import { WordBuilderScreen } from "../../src/games/word-builder/word-builder-screen";
 import { authClient } from "../../src/lib/auth-client";
 import { useCourseItem } from "../../src/sync/hooks";
-import { useVocabularyProgressReporter } from "../../src/lib/use-vocabulary-progress";
+import { useVocabularyGameReporter } from "../../src/lib/use-vocabulary-progress";
 import { firstParam } from "../../src/lib/route-params";
 
 /** Back to where the game was opened; Latihan when nothing is behind it. */
@@ -30,6 +24,8 @@ function leave() {
   if (router.canGoBack()) router.back();
   else router.dismissTo("/(home)/(tabs)/assessments");
 }
+
+const back = { onBack: leave, backAction: "Kembali ke latihan" };
 
 export default function GameRoute() {
   const params = useLocalSearchParams<{
@@ -90,54 +86,12 @@ export default function GameRoute() {
     );
   }
 
-  if (sessionPending) return <GameLoading title={game?.title ?? ""} />;
+  if (sessionPending)
+    return <GameLoading title={game?.title ?? ""} onBack={leave} />;
   return (
-    <GameUnavailable title={game?.title ?? "Game"}>
+    <GameUnavailable title={game?.title ?? "Game"} {...back}>
       {session ? "Game ini tidak ditemukan." : "Masuk untuk bermain."}
     </GameUnavailable>
-  );
-}
-
-function GameLoading({ title }: { title: string }) {
-  return (
-    <>
-      <GameBackToolbar onPress={leave} />
-      <Stack.Screen
-        options={{
-          headerBackButtonDisplayMode: "minimal",
-          headerBackVisible: false,
-          headerShown: true,
-          title,
-        }}
-      />
-      <FullScreenState kind="loading" />
-    </>
-  );
-}
-
-function GameUnavailable({
-  children,
-  title,
-}: {
-  children: string;
-  title: string;
-}) {
-  return (
-    <View className="flex-1 bg-background">
-      <GameBackToolbar onPress={leave} />
-      <Stack.Screen
-        options={{
-          headerBackButtonDisplayMode: "minimal",
-          headerBackVisible: false,
-          headerShown: true,
-          title,
-        }}
-      />
-      <GamePage>
-        <Empty>{children}</Empty>
-        <Action onPress={leave}>Kembali ke latihan</Action>
-      </GamePage>
-    </View>
   );
 }
 
@@ -148,19 +102,12 @@ type VocabularyWords = Array<
   VocabularyEntries[number] & { meanings: string[] }
 >;
 
-type VocabularyGame = {
+type VocabularyGame = ReturnType<typeof useVocabularyGameReporter> & {
   courseId: string;
   sourceCourseItemId: string;
   vocabularySetId: string;
   words: VocabularyWords;
-  onAttempt: (
-    ...args: Parameters<
-      ReturnType<typeof useVocabularyProgressReporter>["report"]
-    >
-  ) => Promise<void>;
-  onComplete: () => unknown;
   onExit: () => void;
-  onSessionStart: () => string;
 };
 type VocabularyGameDefinition = {
   title: string;
@@ -229,15 +176,14 @@ function VocabularyGameRoute({
       })),
     [entries],
   );
-  const reporter = useVocabularyProgressReporter({
+  const reporter = useVocabularyGameReporter({
     gameKey,
-    reactive: false,
     sourceCourseItemId,
     vocabularySetId: vocabulary?.id ?? "",
   });
 
   if (item.isPending && sourceCourseItemId) {
-    return <GameLoading title={title} />;
+    return <GameLoading title={title} onBack={leave} />;
   }
 
   if (
@@ -247,7 +193,7 @@ function VocabularyGameRoute({
     !isPlayable(words)
   ) {
     return (
-      <GameUnavailable title={title}>
+      <GameUnavailable title={title} {...back}>
         {!sourceCourseItemId
           ? "Pilih set kosakata dari Latihan untuk bermain."
           : item.isError || !vocabulary
@@ -262,11 +208,7 @@ function VocabularyGameRoute({
     sourceCourseItemId,
     vocabularySetId: vocabulary.id,
     words,
-    onAttempt: async (...args) => {
-      await reporter.report(...args);
-    },
-    onComplete: reporter.finishSession,
     onExit: leave,
-    onSessionStart: reporter.startSession,
+    ...reporter,
   });
 }

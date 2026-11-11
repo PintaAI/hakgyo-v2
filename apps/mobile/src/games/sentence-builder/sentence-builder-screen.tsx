@@ -10,14 +10,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Card, Eyebrow, FullScreenState } from "../../components/learning-ui";
-import type { Fact } from "../../components/learn/hero-parts";
 import { StudyAction } from "../../components/study-glass";
 import type { VocabularyAttempt } from "../../lib/use-vocabulary-progress";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { useGameExitGuard } from "../game-navigation";
-import { GameResultSheet } from "../game-result-sheet";
+import { GameResultSheet } from "../game-result";
 import type { GameLesson } from "../lesson";
 import { GameBackToolbar } from "../game-screens";
 import {
@@ -59,7 +57,6 @@ export function SentenceBuilderScreen({
   const [saveError, setSaveError] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   // No example of these words fits the length limits: nothing to build.
-  const [empty, setEmpty] = useState(false);
   const total = session.challenges.length;
   const challenge = session.challenges[session.index];
   const correct = session.phase === "correct";
@@ -78,7 +75,6 @@ export function SentenceBuilderScreen({
 
   const start = useCallback(() => {
     const challenges = createSentenceChallenges(words);
-    setEmpty(challenges.length === 0);
     if (challenges.length === 0) return;
     setSaving(false);
     setSaveError(false);
@@ -138,79 +134,7 @@ export function SentenceBuilderScreen({
     session.reviewIds.includes(item.id),
   );
 
-  if (empty || (session.phase === "complete" && !lesson)) {
-    const allTepat = !empty && session.independent === total;
-    const repeat = reviewChallenges.length;
-    const facts: Fact[] = [
-      { icon: "text.word.spacing", text: `${total} kalimat disusun` },
-    ];
-    if (repeat)
-      facts.push({ icon: "arrow.clockwise", text: `${repeat} perlu diulang` });
-    return (
-      <View className="min-h-0 flex-1 bg-background">
-        <GameBackToolbar onPress={exit} />
-        <Stack.Screen
-          options={{
-            // The round is over: swiping back leaves like the button does.
-            gestureEnabled: true,
-            headerBackButtonDisplayMode: "minimal",
-            headerBackVisible: false,
-            headerShadowVisible: false,
-            headerShown: true,
-            title: "",
-          }}
-        />
-        {empty ? (
-          <FullScreenState
-            kind="empty"
-            title="Belum ada kalimat untuk disusun"
-            message="Kata di sumber ini belum punya contoh kalimat yang pas untuk disusun."
-            onBack={exit}
-          />
-        ) : (
-          <GameResultSheet
-            courseId={courseId}
-            courseItemId={sourceCourseItemId}
-            eyebrow="Susun makna"
-            title={
-              allTepat ? "Mantap, semua tepat!" : "Kalimat demi kalimat, bisa!"
-            }
-            description="Tepat pada percobaan pertama tanpa petunjuk."
-            mark={{ value: `${session.independent}/${total}`, label: "tepat" }}
-            done={allTepat}
-            celebrate={allTepat}
-            facts={facts}
-            primary={{
-              eyebrow: "Main lagi",
-              title: `${total} kalimat`,
-              meta: "Ronde baru dengan contoh kalimat acak",
-              pill: "Mulai",
-              onPress: start,
-            }}
-            secondary={{ label: "Selesai", onPress: exit }}
-          >
-            {repeat ? (
-              <Card className="gap-3 p-4">
-                <Eyebrow size="xs">Ulangi lagi</Eyebrow>
-                {reviewChallenges.map((item) => (
-                  <View key={item.id} className="gap-0.5">
-                    <Text className="text-base font-bold text-foreground">
-                      {item.sentence}
-                    </Text>
-                    {item.translation ? (
-                      <Text className="text-sm text-muted-foreground">
-                        {item.translation}
-                      </Text>
-                    ) : null}
-                  </View>
-                ))}
-              </Card>
-            ) : null}
-          </GameResultSheet>
-        )}
-      </View>
-    );
-  }
+  const allCorrect = session.independent === total;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -501,6 +425,47 @@ export function SentenceBuilderScreen({
             </Pressable>
           ) : null}
         </ScrollView>
+      ) : null}
+      {session.phase === "complete" && !lesson ? (
+        <GameResultSheet
+          courseId={courseId}
+          courseItemId={sourceCourseItemId}
+          eyebrow="Susun makna"
+          title={
+            allCorrect ? "Mantap, semua tepat!" : "Kalimat demi kalimat, bisa!"
+          }
+          description="Tepat pada percobaan pertama tanpa petunjuk."
+          mark={{ value: `${session.independent}/${total}`, label: "tepat" }}
+          done={allCorrect}
+          celebrate={allCorrect}
+          facts={[
+            { icon: "text.word.spacing", text: `${total} kalimat disusun` },
+            ...(reviewChallenges.length
+              ? [
+                  {
+                    icon: "arrow.clockwise" as const,
+                    text: `${reviewChallenges.length} perlu diulang`,
+                  },
+                ]
+              : []),
+          ]}
+          review={{
+            title: "Perlu diulang",
+            rows: reviewChallenges.map((item) => ({
+              key: item.id,
+              title: item.sentence,
+              detail: item.translation ?? undefined,
+            })),
+          }}
+          primary={{
+            eyebrow: "Main lagi",
+            title: `${total} kalimat`,
+            meta: "Ronde baru dengan contoh kalimat acak",
+            pill: "Mulai",
+            onPress: start,
+          }}
+          secondary={{ label: "Selesai", onPress: exit }}
+        />
       ) : null}
     </View>
   );

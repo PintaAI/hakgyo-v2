@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { router } from "expo-router";
+import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { ScrollView, Text, View } from "react-native";
 
 import { HeroTile } from "../components/hero-tile";
@@ -14,18 +15,8 @@ import {
   HeroTitle,
   type Fact,
 } from "../components/learn/hero-parts";
-import { Action } from "../components/learning-ui";
+import { Action, Card, Eyebrow } from "../components/learning-ui";
 import { getLearningItemTypeMeta } from "../lib/learning-item-type";
-import { useAppTheme } from "../providers/AppThemeProvider";
-
-type MainAction = {
-  eyebrow: string;
-  title: string;
-  meta: string;
-  pill: string;
-  onPress: () => void;
-  disabled?: boolean;
-};
 
 export type GameResultProps = {
   eyebrow: string;
@@ -36,32 +27,77 @@ export type GameResultProps = {
   done?: boolean;
   celebrate?: boolean;
   facts?: readonly Fact[];
+  /** What to go over again: words, sentences, each with an optional tail. */
+  review?: {
+    title: string;
+    rows: readonly {
+      key: string;
+      title: string;
+      detail?: string;
+      trailing?: ReactNode;
+    }[];
+  };
   /** Playing again, or the words to repeat. */
-  primary?: MainAction;
+  primary?: {
+    eyebrow: string;
+    title: string;
+    meta: string;
+    pill: string;
+    onPress: () => void;
+  };
   /** Leaving. */
-  secondary?: { label: string; onPress: () => void; disabled?: boolean };
-  /** The game's review list. */
-  children?: ReactNode;
+  secondary: { label: string; onPress: () => void; disabled?: boolean };
+  /** Closing the sheet without choosing. Leaves (`secondary`) if unset. */
+  onDismiss?: () => void;
   courseId?: string;
   courseItemId?: string;
-  /** Off inside a screen that scrolls already (`StudyScreen`). */
-  scroll?: boolean;
-  /** As a sheet: closing it without choosing. Leaves (`secondary`) if unset. */
-  onDismiss?: () => void;
-  /** Runs before any of the page's actions (the sheet closes itself). */
-  onAct?: () => void;
 };
 
+// The result the open game is showing. The sheet is a route of its own, so
+// the game hands it the page (with its callbacks) through here.
+let current: GameResultProps | undefined;
+const listeners = new Set<() => void>();
+function publish(next: GameResultProps | undefined) {
+  current = next;
+  for (const listener of listeners) listener();
+}
+
+/** The result the open game is showing, for the `/game-result` route. */
+export function useGameResult() {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    () => current,
+  );
+}
+
 /**
- * The end of a game, in the layout its opening has (and a tugas result has):
- * the hero with the round's number on the fanned cards, a title and fact
- * chips, then the game's own review list, one `HeroTile` and the small
- * actions under it. It shows as soon as the round ends on the phone; what the
- * server says later only fills in facts.
+ * The end (or pause) of a game as a form sheet over it, like the sheet a
+ * game starts from. A game renders this while its round is over; the sheet
+ * follows the props as they change, and shows at once from what the phone
+ * knows. Closing the sheet without choosing leaves the game.
+ */
+export function GameResultSheet(props: GameResultProps) {
+  useEffect(() => {
+    publish(props);
+  });
+  useEffect(() => {
+    router.push("/game-result");
+    return () => publish(undefined);
+  }, []);
+  return null;
+}
+
+/**
+ * The sheet's page, in the layout a tugas result has: the hero with the
+ * round's number on the fanned cards, a title and fact chips, then the review
+ * list, one `HeroTile` and the small actions under it.
  *
  * In a course the tile is the next activity once this one is done (playing
  * again becomes a small action); until then a vocabulary set shows the
- * locked "Berikutnya" row.
+ * locked "Berikutnya" row. `onAct` runs before every action (the sheet closes).
  */
 export function GameResult({
   eyebrow,
@@ -71,15 +107,13 @@ export function GameResult({
   done = false,
   celebrate = false,
   facts,
+  review,
   primary,
   secondary,
-  children,
   courseId,
   courseItemId,
-  scroll = true,
   onAct,
-}: GameResultProps) {
-  const { colors } = useAppTheme();
+}: GameResultProps & { onAct: () => void }) {
   const inCourse = Boolean(courseId && courseItemId);
   const learning = useLearningContinuation({
     courseId: courseId ?? "",
@@ -89,11 +123,18 @@ export function GameResult({
   const next = path?.nextItem;
   const nextMeta = next ? getLearningItemTypeMeta(next.type) : null;
   const goesOn = Boolean(path?.item.isCompleted);
-  const holds = path && !goesOn && path.item.type === "VOCABULARY_SET";
+  const act = (action: () => void) => () => {
+    onAct();
+    action();
+  };
 
-  const body = (
-    <>
-      <HakgyoHero inSheet className={scroll ? "" : "-mt-4"}>
+  return (
+    <ScrollView
+      className="flex-1"
+      contentContainerClassName="gap-4 px-5 pb-10"
+      showsVerticalScrollIndicator={false}
+    >
+      <HakgyoHero inSheet>
         <HeroMark
           done={done}
           celebrate={celebrate}
@@ -102,7 +143,26 @@ export function GameResult({
         <HeroTitle eyebrow={eyebrow} title={title} description={description} />
         {facts?.length ? <FactChips facts={facts} /> : null}
       </HakgyoHero>
-      {children}
+      {review?.rows.length ? (
+        <Card className="gap-3 p-4">
+          <Eyebrow size="xs">{review.title}</Eyebrow>
+          {review.rows.map((row) => (
+            <View key={row.key} className="flex-row items-center gap-3">
+              <View className="min-w-0 flex-1 gap-0.5">
+                <Text className="text-base font-bold text-foreground">
+                  {row.title}
+                </Text>
+                {row.detail ? (
+                  <Text className="text-sm text-muted-foreground">
+                    {row.detail}
+                  </Text>
+                ) : null}
+              </View>
+              {row.trailing}
+            </View>
+          ))}
+        </Card>
+      ) : null}
       {goesOn && path ? (
         <HeroTile
           eyebrow={
@@ -116,19 +176,10 @@ export function GameResult({
           meta={`Bab ${path.moduleIndex + 1} · ${path.completedCount}/${path.module.items.length} selesai`}
           pill={next ? "Lanjutkan" : "Buka"}
           loading={learning.busy}
-          onPress={() => {
-            onAct?.();
-            void learning.continueLearning();
-          }}
+          onPress={act(() => void learning.continueLearning())}
         />
       ) : primary ? (
-        <HeroTile
-          {...primary}
-          onPress={() => {
-            onAct?.();
-            primary.onPress();
-          }}
-        />
+        <HeroTile {...primary} onPress={act(primary.onPress)} />
       ) : null}
       {learning.issue?.kind === "error" && inCourse ? (
         <Text
@@ -139,42 +190,35 @@ export function GameResult({
         </Text>
       ) : null}
       {/* The small actions under the tile, side by side. */}
-      {(goesOn && primary) || secondary ? (
-        <View className="flex-row justify-center gap-2">
-          {goesOn && primary ? (
-            <View className="flex-1">
-              <Action
-                variant="ghost"
-                size="sm"
-                leadingIcon="arrow.clockwise"
-                disabled={primary.disabled}
-                onPress={() => {
-                  onAct?.();
-                  primary.onPress();
-                }}
-              >
-                {primary.eyebrow}
-              </Action>
-            </View>
-          ) : null}
-          {secondary ? (
-            <View className="flex-1">
-              <Action
-                variant="ghost"
-                size="sm"
-                disabled={secondary.disabled}
-                onPress={() => {
-                  onAct?.();
-                  secondary.onPress();
-                }}
-              >
-                {secondary.label}
-              </Action>
-            </View>
-          ) : null}
+      <View className="flex-row justify-center gap-2">
+        {goesOn && primary ? (
+          <View className="flex-1">
+            <Action
+              variant="ghost"
+              size="sm"
+              leadingIcon="arrow.clockwise"
+              onPress={act(primary.onPress)}
+            >
+              {primary.eyebrow}
+            </Action>
+          </View>
+        ) : null}
+        <View className="flex-1">
+          <Action
+            variant="ghost"
+            size="sm"
+            disabled={secondary.disabled}
+            onPress={act(secondary.onPress)}
+          >
+            {secondary.label}
+          </Action>
         </View>
-      ) : null}
-      {holds && courseId && courseItemId ? (
+      </View>
+      {path &&
+      !goesOn &&
+      path.item.type === "VOCABULARY_SET" &&
+      courseId &&
+      courseItemId ? (
         <View className="gap-2">
           <LearningFooterView
             courseId={courseId}
@@ -184,25 +228,12 @@ export function GameResult({
             continueButton="screenReader"
             nextLocked
           />
-          <Text
-            className="text-[13px] leading-[18px]"
-            style={{ color: colors.mutedForeground }}
-          >
+          <Text className="text-[13px] leading-[18px] text-muted-foreground">
             Lanjut setelah semua kata di set ini dijawab benar tanpa melihat
             jawabannya.
           </Text>
         </View>
       ) : null}
-    </>
-  );
-  if (!scroll) return <View className="gap-4">{body}</View>;
-  return (
-    <ScrollView
-      className="flex-1"
-      contentContainerClassName="gap-4 px-5 pb-10"
-      showsVerticalScrollIndicator={false}
-    >
-      {body}
     </ScrollView>
   );
 }

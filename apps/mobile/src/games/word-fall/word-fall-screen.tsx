@@ -1,18 +1,9 @@
 import { displayMeanings } from "@hakgyo/shared";
 import { Stack } from "expo-router";
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -39,7 +30,6 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
-import { Card, Eyebrow } from "../../components/learning-ui";
 import type {
   VocabularyAttempt,
   VocabularyAttemptDelivery,
@@ -47,7 +37,7 @@ import type {
 import { withOpacity, type ThemeColors } from "../../theme/colors";
 import { toolbarIcons } from "../../theme/toolbar-icons";
 import { GameBackToolbar } from "../game-screens";
-import { GameResultSheet } from "../game-result-sheet";
+import { GameResultSheet } from "../game-result";
 import type { GameLesson } from "../lesson";
 import { START_LEVEL_OPTIONS, useWordFallSettings } from "./word-fall-settings";
 import { useGameExitGuard } from "../game-navigation";
@@ -594,36 +584,6 @@ const Burst = memo(function Burst({
     />
   );
 });
-
-function LearningRecap({ items }: { items: readonly WordFallReviewItem[] }) {
-  const { colors } = useAppTheme();
-  if (items.length === 0) return null;
-
-  return (
-    <Card className="gap-3 p-4">
-      <Eyebrow size="xs">Perlu diulang</Eyebrow>
-      {items.map((item) => (
-        <View key={item.word.id} style={styles.recapItem}>
-          <View style={styles.recapWord}>
-            <Text className="text-base font-bold text-foreground">
-              {item.word.term}
-            </Text>
-            <Text className="text-sm text-muted-foreground">
-              {displayMeanings(item.word.meanings)}
-            </Text>
-          </View>
-          <Text style={[styles.recapReason, { color: colors.destructive }]}>
-            {item.reasons
-              .map((reason) =>
-                reason === "missed" ? "Terlewat" : "Salah ketik",
-              )
-              .join(" · ")}
-          </Text>
-        </View>
-      ))}
-    </Card>
-  );
-}
 
 function levelDetail(level: number) {
   const fallSeconds = Math.round(fallDurationForLevel(level, 0.5) / 1000);
@@ -1441,19 +1401,15 @@ export function WordFallScreen({
     focusInputOnAndroid();
   }, [focusInputOnAndroid]);
 
-  // The pause sheet is still closing on iOS: focus once it is gone.
-  const resumeAfterSheet = useCallback(() => {
-    resumeGame();
-    if (Platform.OS === "ios") schedule(() => inputRef.current?.focus(), 500);
-  }, [resumeGame, schedule]);
-
-  // In Latihan the round ends on a result page; a lesson goes on instead.
-  const showResult = phase === "gameover" && !lesson;
-  // The result sheet is still closing on iOS: focus once it is gone.
-  const playAgain = useCallback(() => {
-    resetGame();
-    if (Platform.OS === "ios") schedule(() => inputRef.current?.focus(), 500);
-  }, [resetGame, schedule]);
+  // Resuming or playing again from the sheet: it is still closing on iOS,
+  // so the input takes focus once it is gone.
+  const fromSheet = useCallback(
+    (action: () => void) => () => {
+      action();
+      if (Platform.OS === "ios") schedule(() => inputRef.current?.focus(), 500);
+    },
+    [schedule],
+  );
   const answered = Math.max(0, destroyed - destroyedForLevel(startLevel));
 
   // A lesson round starts at once. Opened from Latihan (whose source sheet
@@ -1654,34 +1610,17 @@ export function WordFallScreen({
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={[styles.screen, { backgroundColor: colors.background }]}
     >
-      {showResult ? (
-        <>
-          <GameBackToolbar onPress={exit} />
-          <Stack.Screen
-            options={{
-              // The round is over: swiping back leaves like the button does.
-              gestureEnabled: true,
-              headerBackButtonDisplayMode: "minimal",
-              headerBackVisible: false,
-              headerShadowVisible: false,
-              headerShown: true,
-              title: "",
-            }}
-          />
-        </>
-      ) : (
-        <WordFallHeader
-          combo={combo}
-          health={health}
-          level={level}
-          locked={pendingReportCount > 0}
-          onExit={exit}
-          onPause={pauseGame}
-          phase={phase}
-          score={score}
-          lessonTitle={lesson?.title}
-        />
-      )}
+      <WordFallHeader
+        combo={combo}
+        health={health}
+        level={level}
+        locked={pendingReportCount > 0}
+        onExit={exit}
+        onPause={pauseGame}
+        phase={phase}
+        score={score}
+        lessonTitle={lesson?.title}
+      />
       <TextInput
         ref={inputRef}
         accessibilityLabel={`Ketik ${answerMode === "ID" ? "arti dalam bahasa Indonesia" : "kata Koreanya"}`}
@@ -1948,56 +1887,62 @@ export function WordFallScreen({
             title: "Kembali ke permainan",
             meta: "Kata yang sedang jatuh menunggumu",
             pill: "Lanjut",
-            onPress: resumeAfterSheet,
+            onPress: fromSheet(resumeGame),
           }}
           secondary={{
             label: "Keluar",
             onPress: exit,
             disabled: pendingReportCount > 0,
           }}
-          onDismiss={resumeAfterSheet}
+          onDismiss={fromSheet(resumeGame)}
         />
       ) : null}
-      {/* The result is a sheet; this covers the field beneath it rather than
-          unmounting it, so the field keeps its measured size, timers and
-          shared values and "Main lagi" starts a round at once. */}
-      {showResult ? (
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: colors.background },
+      {/* In Latihan the round ends on the sheet; a lesson goes on instead. */}
+      {phase === "gameover" && !lesson ? (
+        <GameResultSheet
+          courseId={courseId}
+          courseItemId={sourceCourseItemId}
+          eyebrow="Hujan kata"
+          title={`Sampai level ${level}`}
+          mark={{ value: String(score), label: "poin" }}
+          facts={[
+            { icon: "checkmark.seal.fill", text: `${answered} kata dijawab` },
+            {
+              icon: "keyboard.fill",
+              text: answerMode === "ID" ? "Jawab: Indonesia" : "Jawab: Korea",
+              accessibilityHint: "Ganti bahasa jawaban ronde berikutnya",
+              onPress: () => setAnswerMode(answerMode === "ID" ? "KR" : "ID"),
+            },
           ]}
-        >
-          <GameResultSheet
-            courseId={courseId}
-            courseItemId={sourceCourseItemId}
-            eyebrow="Hujan kata"
-            title={`Sampai level ${level}`}
-            mark={{ value: String(score), label: "poin" }}
-            facts={[
-              { icon: "checkmark.seal.fill", text: `${answered} kata dijawab` },
-              {
-                icon: "keyboard.fill",
-                text: answerMode === "ID" ? "Jawab: Indonesia" : "Jawab: Korea",
-                accessibilityHint: "Ganti bahasa jawaban ronde berikutnya",
-                onPress: () => setAnswerMode(answerMode === "ID" ? "KR" : "ID"),
-              },
-            ]}
-            primary={{
-              eyebrow: "Main lagi",
-              title: `Mulai dari level ${startLevel}`,
-              meta:
-                answerMode === "ID"
-                  ? "Lihat kata Korea, ketik artinya"
-                  : "Lihat arti Indonesia, ketik kata Koreanya",
-              pill: "Mulai",
-              onPress: playAgain,
-            }}
-            secondary={{ label: "Selesai", onPress: exit }}
-          >
-            <LearningRecap items={reviewItems} />
-          </GameResultSheet>
-        </View>
+          review={{
+            title: "Perlu diulang",
+            rows: reviewItems.map((item) => ({
+              key: item.word.id,
+              title: item.word.term,
+              detail: displayMeanings(item.word.meanings),
+              trailing: (
+                <Text className="text-right text-[10px] font-extrabold text-destructive">
+                  {item.reasons
+                    .map((reason) =>
+                      reason === "missed" ? "Terlewat" : "Salah ketik",
+                    )
+                    .join(" · ")}
+                </Text>
+              ),
+            })),
+          }}
+          primary={{
+            eyebrow: "Main lagi",
+            title: `Mulai dari level ${startLevel}`,
+            meta:
+              answerMode === "ID"
+                ? "Lihat kata Korea, ketik artinya"
+                : "Lihat arti Indonesia, ketik kata Koreanya",
+            pill: "Mulai",
+            onPress: fromSheet(resetGame),
+          }}
+          secondary={{ label: "Selesai", onPress: exit }}
+        />
       ) : null}
     </KeyboardAvoidingView>
   );
@@ -2200,9 +2145,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   revealButtonText: { fontSize: 14, fontWeight: "800" },
-  recapItem: { alignItems: "center", flexDirection: "row", gap: 12 },
-  recapWord: { flex: 1, gap: 2 },
-  recapReason: { fontSize: 10, fontWeight: "800", textAlign: "right" },
   levelSelector: { gap: 10 },
   levelSelectorTitle: { fontSize: 14, fontWeight: "800" },
   levelList: {
