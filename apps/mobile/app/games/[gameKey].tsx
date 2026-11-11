@@ -1,22 +1,14 @@
 import { entryMeanings } from "@hakgyo/shared";
 import { getHangeulGameStage } from "@hakgyo/shared/hangeul";
-import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useMemo, useState, type ReactNode } from "react";
-import { Text, View } from "react-native";
-import { Gesture } from "react-native-gesture-handler";
+import { router, useLocalSearchParams } from "expo-router";
+import { useMemo, type ReactNode } from "react";
 
-import {
-  Action,
-  Empty,
-  FullScreenState,
-  StudyScreen,
-} from "../../src/components/learning-ui";
-import { VocabularySession } from "../../src/components/vocabulary-session";
+import { CardsScreen } from "../../src/games/cards-screen";
 import { gameCatalog, isGameKey } from "../../src/games/catalog";
 import type { GameSource } from "../../src/games/game-exit";
-import { GameBackToolbar, GamePage } from "../../src/games/game-screens";
+import { GameLoading, GameUnavailable } from "../../src/games/game-screens";
 import { HangeulScreen } from "../../src/games/hangeul/hangeul-screen";
-import { exampleSentences } from "../../src/games/sentence-builder/engine";
+import { createSentenceChallenges } from "../../src/games/sentence-builder/engine";
 import { SentenceBuilderScreen } from "../../src/games/sentence-builder/sentence-builder-screen";
 import { SyllableForgeScreen } from "../../src/games/syllable-forge/syllable-forge-screen";
 import { VocabularyMatchScreen } from "../../src/games/vocabulary-match/vocabulary-match-screen";
@@ -24,7 +16,7 @@ import { WordFallScreen } from "../../src/games/word-fall/word-fall-screen";
 import { WordBuilderScreen } from "../../src/games/word-builder/word-builder-screen";
 import { authClient } from "../../src/lib/auth-client";
 import { useCourseItem } from "../../src/sync/hooks";
-import { useVocabularyProgressReporter } from "../../src/lib/use-vocabulary-progress";
+import { useVocabularyGameReporter } from "../../src/lib/use-vocabulary-progress";
 import { firstParam } from "../../src/lib/route-params";
 
 /** Back to where the game was opened; Latihan when nothing is behind it. */
@@ -32,6 +24,8 @@ function leave() {
   if (router.canGoBack()) router.back();
   else router.dismissTo("/(home)/(tabs)/assessments");
 }
+
+const back = { onBack: leave, backAction: "Kembali ke latihan" };
 
 export default function GameRoute() {
   const params = useLocalSearchParams<{
@@ -52,7 +46,7 @@ export default function GameRoute() {
         : undefined,
     [courseIdParam, sourceCourseItemId],
   );
-  const { data: session } = authClient.useSession();
+  const { data: session, isPending: sessionPending } = authClient.useSession();
   const game = isGameKey(key) ? gameCatalog[key] : undefined;
 
   if (key === "stroke-master") {
@@ -77,210 +71,27 @@ export default function GameRoute() {
     );
   }
 
-  if (key === "cards") {
-    return (
-      <VocabularyCardsRoute
-        courseId={courseIdParam}
-        sessionReady={Boolean(session)}
-        sourceCourseItemId={sourceCourseItemId}
-      />
-    );
-  }
-
-  if (key === "word-fall") {
+  const vocabularyGame =
+    key in vocabularyGames
+      ? vocabularyGames[key as keyof typeof vocabularyGames]
+      : undefined;
+  if (vocabularyGame && session) {
     return (
       <VocabularyGameRoute
         courseId={courseIdParam}
-        sessionReady={Boolean(session)}
         sourceCourseItemId={sourceCourseItemId}
-        gameKey="word-fall"
-        title="Hujan Kata"
-        isPlayable={(words) => words.length > 0}
-        unplayableMessage="Set kosakata ini belum memiliki kata yang bisa dimainkan."
-      >
-        {(game) => <WordFallScreen {...game} />}
-      </VocabularyGameRoute>
+        gameKey={key}
+        {...vocabularyGame}
+      />
     );
   }
 
-  if (key === "sentences") {
-    return (
-      <VocabularyGameRoute
-        courseId={courseIdParam}
-        sessionReady={Boolean(session)}
-        sourceCourseItemId={sourceCourseItemId}
-        gameKey="sentences"
-        title="Susun makna"
-        isPlayable={(words) =>
-          words.some((word) => exampleSentences(word.examples).length > 0)
-        }
-        unplayableMessage="Set kosakata ini belum punya contoh kalimat."
-      >
-        {(game) => <SentenceBuilderScreen {...game} />}
-      </VocabularyGameRoute>
-    );
-  }
-
-  if (key === "match") {
-    return (
-      <VocabularyGameRoute
-        courseId={courseIdParam}
-        sessionReady={Boolean(session)}
-        sourceCourseItemId={sourceCourseItemId}
-        gameKey="match"
-        title="Cocokkan Kata"
-        isPlayable={(words) => words.length >= 2}
-        unplayableMessage="Tambahkan setidaknya dua kata yang bisa dimainkan ke set kosakata ini."
-      >
-        {(game) => <VocabularyMatchScreen {...game} />}
-      </VocabularyGameRoute>
-    );
-  }
-
+  if (sessionPending)
+    return <GameLoading title={game?.title ?? ""} onBack={leave} />;
   return (
-    <View className="flex-1 bg-background">
-      <GameBackToolbar onPress={leave} />
-      <Stack.Screen
-        options={{
-          headerBackButtonDisplayMode: "minimal",
-          headerBackVisible: false,
-          headerShown: true,
-          title: game?.title ?? "Game",
-        }}
-      />
-      <GamePage>
-        {game && session ? (
-          <>
-            <Text className="text-4xl font-black text-primary">
-              {game.icon}
-            </Text>
-            <Text className="text-2xl font-bold text-foreground">
-              Segera hadir
-            </Text>
-            <Text className="text-base text-muted-foreground">
-              {game.description}
-            </Text>
-          </>
-        ) : (
-          <Empty>
-            {session ? "Game ini tidak ditemukan." : "Masuk untuk bermain."}
-          </Empty>
-        )}
-        <Action onPress={leave}>Kembali ke latihan</Action>
-      </GamePage>
-    </View>
-  );
-}
-
-function VocabularyCardsRoute({
-  courseId,
-  sourceCourseItemId,
-  sessionReady,
-}: {
-  courseId: string;
-  sourceCourseItemId: string;
-  sessionReady: boolean;
-}) {
-  const [scrollGesture] = useState(() => Gesture.Native());
-  const [roundActive, setRoundActive] = useState(false);
-  const item = useCourseItem(courseId || undefined, sourceCourseItemId, {
-    enabled: sessionReady,
-  });
-  const vocabulary = item.data?.vocabularySet;
-  const effectiveCourseId = courseId || item.data?.module.courseId || "";
-  const words =
-    vocabulary?.entries.map((entry) => ({
-      id: entry.id,
-      term: entry.term,
-      meanings: entryMeanings(entry),
-      examples: entry.examples,
-      imageAssetId: entry.imageAsset?.id,
-    })) ?? [];
-
-  if (item.isPending && sourceCourseItemId && sessionReady) {
-    return <GameLoading title="Kartu" />;
-  }
-
-  if (
-    !sourceCourseItemId ||
-    item.isError ||
-    !vocabulary ||
-    words.length === 0
-  ) {
-    return (
-      <GameUnavailable title="Kartu">
-        {!sourceCourseItemId
-          ? "Pilih set kosakata dari Latihan untuk bermain."
-          : item.isError
-            ? "Set kosakata ini tidak dapat dimuat."
-            : "Set kosakata ini belum memiliki kata yang bisa dimainkan."}
-      </GameUnavailable>
-    );
-  }
-
-  return (
-    <StudyScreen
-      fillViewport
-      gameHeader
-      keyboardAvoiding
-      scrollable={!roundActive}
-      scrollGesture={scrollGesture}
-      title="Kartu"
-    >
-      <VocabularySession
-        key={`${sourceCourseItemId}:${vocabulary.id}`}
-        courseId={effectiveCourseId}
-        onComplete={async () => leave()}
-        onRoundActiveChange={setRoundActive}
-        scrollGesture={scrollGesture}
-        sourceCourseItemId={sourceCourseItemId}
-        vocabularySetId={vocabulary.id}
-        words={words}
-      />
-    </StudyScreen>
-  );
-}
-
-function GameLoading({ title }: { title: string }) {
-  return (
-    <>
-      <GameBackToolbar onPress={leave} />
-      <Stack.Screen
-        options={{
-          headerBackButtonDisplayMode: "minimal",
-          headerBackVisible: false,
-          headerShown: true,
-          title,
-        }}
-      />
-      <FullScreenState kind="loading" />
-    </>
-  );
-}
-
-function GameUnavailable({
-  children,
-  title,
-}: {
-  children: string;
-  title: string;
-}) {
-  return (
-    <View className="flex-1 bg-background">
-      <GameBackToolbar onPress={leave} />
-      <Stack.Screen
-        options={{
-          headerBackButtonDisplayMode: "minimal",
-          headerBackVisible: false,
-          headerShown: true,
-          title,
-        }}
-      />
-      <GamePage>
-        <Empty>{children}</Empty>
-        <Action onPress={leave}>Kembali ke latihan</Action>
-      </GamePage>
-    </View>
+    <GameUnavailable title={game?.title ?? "Game"} {...back}>
+      {session ? "Game ini tidak ditemukan." : "Masuk untuk bermain."}
+    </GameUnavailable>
   );
 }
 
@@ -291,44 +102,70 @@ type VocabularyWords = Array<
   VocabularyEntries[number] & { meanings: string[] }
 >;
 
+type VocabularyGame = ReturnType<typeof useVocabularyGameReporter> & {
+  courseId: string;
+  sourceCourseItemId: string;
+  vocabularySetId: string;
+  words: VocabularyWords;
+  onExit: () => void;
+};
+type VocabularyGameDefinition = {
+  title: string;
+  isPlayable: (words: VocabularyWords) => boolean;
+  unplayableMessage: string;
+  render: (game: VocabularyGame) => ReactNode;
+};
+
+/** The games played on a vocabulary set, by game key. */
+const vocabularyGames = {
+  cards: {
+    title: "Kartu",
+    isPlayable: (words) => words.length > 0,
+    unplayableMessage:
+      "Set kosakata ini belum memiliki kata yang bisa dimainkan.",
+    render: (game) => <CardsScreen {...game} />,
+  },
+  "word-fall": {
+    title: "Hujan Kata",
+    isPlayable: (words) => words.length > 0,
+    unplayableMessage:
+      "Set kosakata ini belum memiliki kata yang bisa dimainkan.",
+    render: (game) => <WordFallScreen {...game} />,
+  },
+  sentences: {
+    title: "Susun makna",
+    isPlayable: (words) => createSentenceChallenges(words).length > 0,
+    unplayableMessage:
+      "Set kosakata ini belum punya contoh kalimat yang bisa disusun.",
+    render: (game) => <SentenceBuilderScreen {...game} />,
+  },
+  match: {
+    title: "Cocokkan Kata",
+    isPlayable: (words) => words.length >= 2,
+    unplayableMessage:
+      "Tambahkan setidaknya dua kata yang bisa dimainkan ke set kosakata ini.",
+    render: (game) => <VocabularyMatchScreen {...game} />,
+  },
+} satisfies Record<string, VocabularyGameDefinition>;
+
 /**
  * Loads the vocabulary set behind a game and reports progress for it. Renders
  * the game only once the set loads and `isPlayable` accepts its words.
  */
 function VocabularyGameRoute({
-  children,
   courseId,
   gameKey,
   isPlayable,
-  sessionReady,
+  render,
   sourceCourseItemId,
   title,
   unplayableMessage,
-}: {
-  children: (game: {
-    courseId: string;
-    sourceCourseItemId: string;
-    words: VocabularyWords;
-    onAttempt: (
-      ...args: Parameters<
-        ReturnType<typeof useVocabularyProgressReporter>["report"]
-      >
-    ) => Promise<void>;
-    onComplete: () => unknown;
-    onExit: () => void;
-    onSessionStart: () => string;
-  }) => ReactNode;
+}: VocabularyGameDefinition & {
   courseId: string;
   gameKey: string;
-  isPlayable: (words: VocabularyWords) => boolean;
-  sessionReady: boolean;
   sourceCourseItemId: string;
-  title: string;
-  unplayableMessage: string;
 }) {
-  const item = useCourseItem(courseId || undefined, sourceCourseItemId, {
-    enabled: sessionReady,
-  });
+  const item = useCourseItem(courseId || undefined, sourceCourseItemId);
   const vocabulary = item.data?.vocabularySet;
   const entries = vocabulary?.entries;
   const words = useMemo<VocabularyWords>(
@@ -339,38 +176,39 @@ function VocabularyGameRoute({
       })),
     [entries],
   );
-  const reporter = useVocabularyProgressReporter({
+  const reporter = useVocabularyGameReporter({
     gameKey,
-    reactive: false,
     sourceCourseItemId,
     vocabularySetId: vocabulary?.id ?? "",
   });
 
-  if (item.isPending && sourceCourseItemId && sessionReady) {
-    return <GameLoading title={title} />;
+  if (item.isPending && sourceCourseItemId) {
+    return <GameLoading title={title} onBack={leave} />;
   }
 
-  if (!sourceCourseItemId || item.isError || !isPlayable(words)) {
+  if (
+    !sourceCourseItemId ||
+    item.isError ||
+    !vocabulary ||
+    !isPlayable(words)
+  ) {
     return (
-      <GameUnavailable title={title}>
+      <GameUnavailable title={title} {...back}>
         {!sourceCourseItemId
           ? "Pilih set kosakata dari Latihan untuk bermain."
-          : item.isError
+          : item.isError || !vocabulary
             ? "Set kosakata ini tidak dapat dimuat."
             : unplayableMessage}
       </GameUnavailable>
     );
   }
 
-  return children({
+  return render({
     courseId: courseId || item.data?.module.courseId || "",
     sourceCourseItemId,
+    vocabularySetId: vocabulary.id,
     words,
-    onAttempt: async (...args) => {
-      await reporter.report(...args);
-    },
-    onComplete: reporter.finishSession,
     onExit: leave,
-    onSessionStart: reporter.startSession,
+    ...reporter,
   });
 }

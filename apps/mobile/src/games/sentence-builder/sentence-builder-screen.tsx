@@ -14,8 +14,8 @@ import { StudyAction } from "../../components/study-glass";
 import type { VocabularyAttempt } from "../../lib/use-vocabulary-progress";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
-import { GameJourneyFooter, GameModal } from "../game-modals";
 import { useGameExitGuard } from "../game-navigation";
+import { GameResultSheet } from "../game-result";
 import type { GameLesson } from "../lesson";
 import { GameBackToolbar } from "../game-screens";
 import {
@@ -56,6 +56,7 @@ export function SentenceBuilderScreen({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
+  // No example of these words fits the length limits: nothing to build.
   const total = session.challenges.length;
   const challenge = session.challenges[session.index];
   const correct = session.phase === "correct";
@@ -132,6 +133,8 @@ export function SentenceBuilderScreen({
   const reviewChallenges = session.challenges.filter((item) =>
     session.reviewIds.includes(item.id),
   );
+
+  const allCorrect = session.independent === total;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -423,60 +426,47 @@ export function SentenceBuilderScreen({
           ) : null}
         </ScrollView>
       ) : null}
-
-      <GameModal
-        gameKey="sentences"
-        visible={session.phase === "complete" && !lesson}
-        eyebrow="LATIHAN SELESAI"
-        title="Kalimat demi kalimat, bisa!"
-        detail={`Kamu berhasil menyusun ${total} kalimat.`}
-        content={
-          <View style={styles.finishContent}>
-            <View style={styles.result}>
-              <Text style={[styles.resultNumber, { color: colors.primary }]}>
-                {session.independent}/{total}
-              </Text>
-              <Text
-                style={[styles.modalCopy, { color: colors.mutedForeground }]}
-              >
-                Tepat pada percobaan pertama tanpa petunjuk.
-              </Text>
-            </View>
-            {reviewChallenges.length > 0 ? (
-              <View style={[styles.review, { borderColor: colors.border }]}>
-                <Text
-                  style={[
-                    styles.reviewTitle,
-                    { color: colors.mutedForeground },
-                  ]}
-                >
-                  Ulangi lagi
-                </Text>
-                {reviewChallenges.slice(0, 4).map((item) => (
-                  <Text
-                    key={item.id}
-                    style={[
-                      styles.reviewSentence,
-                      { color: colors.foreground },
-                    ]}
-                  >
-                    {item.sentence}
-                  </Text>
-                ))}
-              </View>
-            ) : null}
-            <GameJourneyFooter
-              courseId={courseId}
-              courseItemId={sourceCourseItemId}
-              scrollable={false}
-            />
-          </View>
-        }
-        primaryLabel="Main lagi"
-        secondaryLabel="Kembali ke latihan"
-        onPrimary={start}
-        onSecondary={exit}
-      />
+      {session.phase === "complete" && !lesson ? (
+        <GameResultSheet
+          courseId={courseId}
+          courseItemId={sourceCourseItemId}
+          eyebrow="Susun makna"
+          title={
+            allCorrect ? "Mantap, semua tepat!" : "Kalimat demi kalimat, bisa!"
+          }
+          description="Tepat pada percobaan pertama tanpa petunjuk."
+          mark={{ value: `${session.independent}/${total}`, label: "tepat" }}
+          done={allCorrect}
+          celebrate={allCorrect}
+          facts={[
+            { icon: "text.word.spacing", text: `${total} kalimat disusun` },
+            ...(reviewChallenges.length
+              ? [
+                  {
+                    icon: "arrow.clockwise" as const,
+                    text: `${reviewChallenges.length} perlu diulang`,
+                  },
+                ]
+              : []),
+          ]}
+          review={{
+            title: "Perlu diulang",
+            rows: reviewChallenges.map((item) => ({
+              key: item.id,
+              title: item.sentence,
+              detail: item.translation ?? undefined,
+            })),
+          }}
+          primary={{
+            eyebrow: "Main lagi",
+            title: `${total} kalimat`,
+            meta: "Ronde baru dengan contoh kalimat acak",
+            pill: "Mulai",
+            onPress: start,
+          }}
+          secondary={{ label: "Selesai", onPress: exit }}
+        />
+      ) : null}
     </View>
   );
 }
@@ -568,21 +558,4 @@ const styles = StyleSheet.create({
   feedback: { fontSize: 13, lineHeight: 20, textAlign: "center" },
   hintAction: { alignItems: "center", paddingVertical: 8 },
   hintLabel: { fontSize: 14, fontWeight: "700" },
-  modalCopy: { fontSize: 14, lineHeight: 22, textAlign: "center" },
-  finishContent: { alignSelf: "stretch", gap: 16 },
-  result: { alignItems: "center", gap: 10 },
-  resultNumber: { fontSize: 46, fontWeight: "800" },
-  review: {
-    alignSelf: "stretch",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 6,
-    paddingTop: 12,
-  },
-  reviewTitle: {
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  reviewSentence: { fontSize: 14, fontWeight: "600" },
 });

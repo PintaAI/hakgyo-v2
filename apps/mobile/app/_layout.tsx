@@ -282,6 +282,17 @@ function RootNavigator() {
                     }}
                   />
                   <Stack.Screen
+                    name="game-result"
+                    options={{
+                      headerShown: false,
+                      contentStyle: { backgroundColor: colors.background },
+                      ...formSheetOptions({
+                        detents: [0.75, 1],
+                        expandsWhenScrolledToEdge: true,
+                      }),
+                    }}
+                  />
+                  <Stack.Screen
                     name="organization-switcher"
                     options={{
                       headerShown: Platform.OS === "ios",

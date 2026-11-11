@@ -1,7 +1,7 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { displayMeanings, joinMeanings } from "@hakgyo/shared";
 import { Stack } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Keyboard,
   Text,
@@ -28,21 +28,14 @@ import {
 } from "./onboarding-deck-tutorial";
 import { VocabularyModeSwitch } from "./vocabulary-mode-switch";
 import { api } from "../lib/trpc";
-import { GameResult } from "../games/game-result";
+import { GameResultSheet } from "../games/game-result";
 import { GameBackToolbar } from "../games/game-screens";
 import { useGameExitGuard } from "../games/game-navigation";
 import type { GameLesson } from "../games/lesson";
 import { useVocabularyProgressReporter } from "../lib/use-vocabulary-progress";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { toolbarIcons } from "../theme/toolbar-icons";
-import {
-  Action,
-  Card,
-  Empty,
-  Eyebrow,
-  QueryState,
-  Spinner,
-} from "./learning-ui";
+import { Action, Card, Empty, QueryState, Spinner } from "./learning-ui";
 import type { VocabularyAttemptResult } from "../lib/use-vocabulary-progress";
 import {
   VocabularyPracticeDeck,
@@ -497,6 +490,7 @@ export function VocabularySession({
             ? "Disimpan untuk diulang."
             : "Disimpan untuk diulang lebih cepat.";
 
+  let resultSheet: ReactNode = null;
   if (showFinish) {
     const played = queue.filter((word) => roundResults[word.id]);
     const correct = played.filter(
@@ -507,100 +501,77 @@ export function VocabularySession({
     );
     const allCorrect = roundDone && played.length > 0 && !retryWords.length;
     const again = retryWords.length ? retryWords : roundDone ? readyWords : [];
-    return (
-      <View className="min-h-0 flex-1">
-        <GameBackToolbar onPress={exit} />
-        <Stack.Screen
-          options={{
-            // The round is over: swiping back leaves like the button does.
-            gestureEnabled: true,
-            headerBackButtonDisplayMode: "minimal",
-            headerBackVisible: false,
-            headerShadowVisible: false,
-            headerShown: true,
-            title: "",
-          }}
-        />
-        <GameResult
-          scroll={false}
-          courseId={courseId}
-          courseItemId={sourceCourseItemId}
-          eyebrow="Kartu"
-          title={
-            !roundDone
-              ? evidence?.mastered
-                ? "Kosakata dikuasai"
-                : "Belum ada kata untuk diulang"
-              : allCorrect
-                ? "Mantap, semua benar!"
-                : "Ronde selesai"
-          }
-          description={
-            !roundDone
-              ? "Semua kata di set ini sudah kamu latih. Kata yang perlu diulang muncul lagi nanti."
-              : latestEvidence
-                ? `${masteredCount} dari ${usableWords.length} kata di set ini sudah dikuasai.`
-                : "Jawabanmu tersimpan di perangkat dan disinkronkan saat tersambung."
-          }
-          mark={
-            roundDone
-              ? { value: `${correct}/${played.length}`, label: "benar" }
-              : {
-                  value: `${practicedCount}/${usableWords.length}`,
-                  label: "dilatih",
-                }
-          }
-          done={allCorrect || (!roundDone && Boolean(evidence?.mastered))}
-          celebrate={allCorrect}
-          facts={
-            roundDone
-              ? [
-                  { icon: "checkmark.seal.fill", text: `${correct} benar` },
-                  ...(retryWords.length
-                    ? [
-                        {
-                          icon: "arrow.clockwise" as const,
-                          text: `${retryWords.length} perlu diulang`,
-                        },
-                      ]
-                    : []),
-                ]
-              : undefined
-          }
-          primary={
-            again.length
-              ? {
-                  eyebrow: retryWords.length ? "Ulangi" : "Main lagi",
-                  title: retryWords.length
-                    ? `${retryWords.length} kata yang belum tepat`
-                    : `${again.length} kata`,
-                  meta: retryWords.length
-                    ? "Kata yang salah atau kamu buka jawabannya"
-                    : "Ronde baru dengan kata yang siap dilatih",
-                  pill: "Mulai",
-                  onPress: () => beginRound(again),
-                }
-              : undefined
-          }
-          secondary={{ label: "Selesai", onPress: exit }}
-        >
-          {retryWords.length ? (
-            <Card className="gap-3 p-4">
-              <Eyebrow size="xs">Perlu diulang</Eyebrow>
-              {retryWords.map((word) => (
-                <View key={word.id} className="gap-0.5">
-                  <Text className="text-base font-bold text-foreground">
-                    {word.term}
-                  </Text>
-                  <Text className="text-sm text-muted-foreground">
-                    {displayMeanings(word.meanings)}
-                  </Text>
-                </View>
-              ))}
-            </Card>
-          ) : null}
-        </GameResult>
-      </View>
+    resultSheet = (
+      <GameResultSheet
+        courseId={courseId}
+        courseItemId={sourceCourseItemId}
+        eyebrow="Kartu"
+        title={
+          !roundDone
+            ? evidence?.mastered
+              ? "Kosakata dikuasai"
+              : "Belum ada kata untuk diulang"
+            : allCorrect
+              ? "Mantap, semua benar!"
+              : "Ronde selesai"
+        }
+        description={
+          !roundDone
+            ? "Semua kata di set ini sudah kamu latih. Kata yang perlu diulang muncul lagi nanti."
+            : latestEvidence
+              ? `${masteredCount} dari ${usableWords.length} kata di set ini sudah dikuasai.`
+              : "Jawabanmu tersimpan di perangkat dan disinkronkan saat tersambung."
+        }
+        mark={
+          roundDone
+            ? { value: `${correct}/${played.length}`, label: "benar" }
+            : {
+                value: `${practicedCount}/${usableWords.length}`,
+                label: "dilatih",
+              }
+        }
+        done={allCorrect || (!roundDone && Boolean(evidence?.mastered))}
+        celebrate={allCorrect}
+        facts={
+          roundDone
+            ? [
+                { icon: "checkmark.seal.fill", text: `${correct} benar` },
+                ...(retryWords.length
+                  ? [
+                      {
+                        icon: "arrow.clockwise" as const,
+                        text: `${retryWords.length} perlu diulang`,
+                      },
+                    ]
+                  : []),
+              ]
+            : undefined
+        }
+        primary={
+          again.length
+            ? {
+                eyebrow: retryWords.length ? "Ulangi" : "Main lagi",
+                title: retryWords.length
+                  ? `${retryWords.length} kata yang belum tepat`
+                  : `${again.length} kata`,
+                meta: retryWords.length
+                  ? "Kata yang salah atau kamu buka jawabannya"
+                  : "Ronde baru dengan kata yang siap dilatih",
+                pill: "Mulai",
+                onPress: () => beginRound(again),
+              }
+            : undefined
+        }
+        secondary={{ label: "Selesai", onPress: exit }}
+        review={{
+          title: "Perlu diulang",
+          rows: retryWords.map((word) => ({
+            key: word.id,
+            title: word.term,
+            detail: displayMeanings(word.meanings),
+          })),
+        }}
+      />
     );
   }
 
@@ -820,6 +791,7 @@ export function VocabularySession({
           ) : null}
         </Card>
       ) : null}
+      {resultSheet}
     </View>
   );
 }

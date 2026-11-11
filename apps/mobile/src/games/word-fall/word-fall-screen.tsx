@@ -1,18 +1,9 @@
 import { displayMeanings } from "@hakgyo/shared";
 import { Stack } from "expo-router";
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -27,7 +18,6 @@ import Animated, {
   Easing,
   FadeIn,
   FadeOut,
-  ZoomIn,
   interpolate,
   runOnJS,
   useAnimatedReaction,
@@ -40,7 +30,6 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
-import { VocabularyModeSwitch } from "../../components/vocabulary-mode-switch";
 import type {
   VocabularyAttempt,
   VocabularyAttemptDelivery,
@@ -48,7 +37,7 @@ import type {
 import { withOpacity, type ThemeColors } from "../../theme/colors";
 import { toolbarIcons } from "../../theme/toolbar-icons";
 import { GameBackToolbar } from "../game-screens";
-import { GameModal, GameJourneyFooter } from "../game-modals";
+import { GameResultSheet } from "../game-result";
 import type { GameLesson } from "../lesson";
 import { START_LEVEL_OPTIONS, useWordFallSettings } from "./word-fall-settings";
 import { useGameExitGuard } from "../game-navigation";
@@ -596,54 +585,6 @@ const Burst = memo(function Burst({
   );
 });
 
-function LearningRecap({ items }: { items: readonly WordFallReviewItem[] }) {
-  const { colors } = useAppTheme();
-  if (items.length === 0) return null;
-
-  return (
-    <View style={styles.recap}>
-      <Text style={[styles.recapTitle, { color: colors.foreground }]}>
-        Ulas kata-kata ini
-      </Text>
-      <ScrollView
-        contentContainerStyle={styles.recapList}
-        nestedScrollEnabled
-        showsVerticalScrollIndicator={items.length > 4}
-        style={styles.recapScroll}
-      >
-        {items.map((item) => (
-          <View
-            key={item.word.id}
-            style={[styles.recapItem, { borderBottomColor: colors.border }]}
-          >
-            <View style={styles.recapWord}>
-              <Text style={[styles.recapTerm, { color: colors.foreground }]}>
-                {item.word.term}
-              </Text>
-              <Text
-                numberOfLines={2}
-                style={[
-                  styles.recapDefinition,
-                  { color: colors.mutedForeground },
-                ]}
-              >
-                {displayMeanings(item.word.meanings)}
-              </Text>
-            </View>
-            <Text style={[styles.recapReason, { color: colors.destructive }]}>
-              {item.reasons
-                .map((reason) =>
-                  reason === "missed" ? "Terlewat" : "Salah ketik",
-                )
-                .join(" · ")}
-            </Text>
-          </View>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
 function levelDetail(level: number) {
   const fallSeconds = Math.round(fallDurationForLevel(level, 0.5) / 1000);
   const maxWords = maximumActiveWords(level);
@@ -726,33 +667,6 @@ export function LevelSelector({
           );
         })}
       </ScrollView>
-    </View>
-  );
-}
-
-export function WordFallModeSelector({
-  mode,
-  onChange,
-}: {
-  mode: WordFallAnswerMode;
-  onChange: (mode: WordFallAnswerMode) => void;
-}) {
-  const { colors } = useAppTheme();
-  return (
-    <View style={styles.modeSelector}>
-      <View style={styles.modeSelectorCopy}>
-        <Text style={[styles.modeSelectorTitle, { color: colors.foreground }]}>
-          Bahasa jawaban
-        </Text>
-        <Text
-          style={[styles.modeSelectorDetail, { color: colors.mutedForeground }]}
-        >
-          {mode === "ID"
-            ? "Indonesia: lihat kata Korea, ketik artinya"
-            : "Korea: lihat arti Indonesia, ketik katanya"}
-        </Text>
-      </View>
-      <VocabularyModeSwitch mode={mode} onChange={onChange} />
     </View>
   );
 }
@@ -1025,10 +939,6 @@ export function WordFallScreen({
   const focusInputOnAndroid = useCallback(() => {
     if (Platform.OS !== "ios") focusInput();
   }, [focusInput]);
-  const focusInputAfterModalDismiss = useCallback(() => {
-    if (Platform.OS === "ios" && phase === "running") focusInput();
-  }, [focusInput, phase]);
-
   const setLockedTarget = useCallback((id: string | null) => {
     lockedTargetRef.current = id;
     setLockedTargetId(id);
@@ -1491,6 +1401,17 @@ export function WordFallScreen({
     focusInputOnAndroid();
   }, [focusInputOnAndroid]);
 
+  // Resuming or playing again from the sheet: it is still closing on iOS,
+  // so the input takes focus once it is gone.
+  const fromSheet = useCallback(
+    (action: () => void) => () => {
+      action();
+      if (Platform.OS === "ios") schedule(() => inputRef.current?.focus(), 500);
+    },
+    [schedule],
+  );
+  const answered = Math.max(0, destroyed - destroyedForLevel(startLevel));
+
   // A lesson round starts at once. Opened from Latihan (whose source sheet
   // took the settings), words start falling after a 3-2-1.
   const [countdown, setCountdown] = useState<number | null>(
@@ -1937,61 +1858,92 @@ export function WordFallScreen({
       </View>
 
       {countdown ? (
-        <View pointerEvents="none" style={styles.countdown}>
-          <Animated.Text
-            entering={ZoomIn.springify().damping(12)}
-            exiting={FadeOut.duration(160)}
-            key={countdown}
-            style={[styles.countdownNumber, { color: colors.primary }]}
+        <Animated.View
+          entering={FadeIn.duration(160)}
+          exiting={FadeOut.duration(160)}
+          pointerEvents="none"
+          style={styles.countdown}
+        >
+          <Text
+            style={[styles.countdownLabel, { color: colors.mutedForeground }]}
           >
+            Bersiap
+          </Text>
+          <Text style={[styles.countdownNumber, { color: colors.foreground }]}>
             {countdown}
-          </Animated.Text>
-        </View>
+          </Text>
+        </Animated.View>
       ) : null}
-      <GameModal
-        detail={`Skor ${score} · Level ${level}`}
-        eyebrow="Hujan kata"
-        gameKey="word-fall"
-        onDismiss={focusInputAfterModalDismiss}
-        onPrimary={resumeGame}
-        onSecondary={exit}
-        primaryLabel="Lanjutkan"
-        secondaryLabel="Keluar"
-        secondaryDisabled={pendingReportCount > 0}
-        title="Dijeda"
-        visible={phase === "paused"}
-      />
-      <GameModal
-        content={
-          <View style={styles.finishContent}>
-            <WordFallModeSelector mode={answerMode} onChange={setAnswerMode} />
-            <LearningRecap items={reviewItems} />
-            {pendingReportCount === 0 ? (
-              <GameJourneyFooter
-                courseId={courseId}
-                courseItemId={sourceCourseItemId}
-                scrollable={false}
-              />
-            ) : null}
-          </View>
-        }
-        detail={
-          pendingReportCount > 0
-            ? `Skor akhir ${score} · Menyinkronkan ${pendingReportCount} hasil…`
-            : `Skor akhir ${score} · Level ${level}`
-        }
-        eyebrow="Hujan kata"
-        gameKey="word-fall"
-        onDismiss={focusInputAfterModalDismiss}
-        onPrimary={resetGame}
-        onSecondary={exit}
-        primaryLabel="Main lagi"
-        primaryDisabled={pendingReportCount > 0}
-        secondaryLabel="Keluar"
-        secondaryDisabled={pendingReportCount > 0}
-        title="Game selesai"
-        visible={phase === "gameover" && !lesson}
-      />
+      {/* Pausing opens the same sheet the round ends on. Closing it any way
+          but "Keluar" goes on with the round. */}
+      {phase === "paused" ? (
+        <GameResultSheet
+          eyebrow="Hujan kata"
+          title="Dijeda"
+          mark={{ value: String(score), label: "poin" }}
+          facts={[{ icon: "flame.fill", text: `Level ${level}` }]}
+          primary={{
+            eyebrow: "Lanjutkan",
+            title: "Kembali ke permainan",
+            meta: "Kata yang sedang jatuh menunggumu",
+            pill: "Lanjut",
+            onPress: fromSheet(resumeGame),
+          }}
+          secondary={{
+            label: "Keluar",
+            onPress: exit,
+            disabled: pendingReportCount > 0,
+          }}
+          onDismiss={fromSheet(resumeGame)}
+        />
+      ) : null}
+      {/* In Latihan the round ends on the sheet; a lesson goes on instead. */}
+      {phase === "gameover" && !lesson ? (
+        <GameResultSheet
+          courseId={courseId}
+          courseItemId={sourceCourseItemId}
+          eyebrow="Hujan kata"
+          title={`Sampai level ${level}`}
+          mark={{ value: String(score), label: "poin" }}
+          facts={[
+            { icon: "checkmark.seal.fill", text: `${answered} kata dijawab` },
+            {
+              icon: "keyboard.fill",
+              text: answerMode === "ID" ? "Jawab: Indonesia" : "Jawab: Korea",
+              accessibilityHint: "Ganti bahasa jawaban ronde berikutnya",
+              onPress: () => setAnswerMode(answerMode === "ID" ? "KR" : "ID"),
+            },
+          ]}
+          review={{
+            title: "Perlu diulang",
+            rows: reviewItems.map((item) => ({
+              key: item.word.id,
+              title: item.word.term,
+              detail: displayMeanings(item.word.meanings),
+              trailing: (
+                <Text className="text-right text-[10px] font-extrabold text-destructive">
+                  {item.reasons
+                    .map((reason) =>
+                      reason === "missed" ? "Terlewat" : "Salah ketik",
+                    )
+                    .join(" · ")}
+                </Text>
+              ),
+            })),
+          }}
+          primary={{
+            eyebrow: "Main lagi",
+            title: `Mulai dari level ${startLevel}`,
+            meta:
+              answerMode === "ID"
+                ? "Lihat kata Korea, ketik artinya"
+                : "Lihat arti Indonesia, ketik kata Koreanya",
+            pill: "Mulai",
+            onPress: fromSheet(resetGame),
+          }}
+          secondary={{ label: "Selesai", onPress: exit }}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -2006,7 +1958,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  countdownNumber: { fontSize: 96, fontWeight: "900" },
+  countdownLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+  },
+  countdownNumber: {
+    fontSize: 44,
+    fontVariant: ["tabular-nums"],
+    fontWeight: "800",
+  },
   screen: { flex: 1 },
   field: { flex: 1, overflow: "hidden" },
   headerStats: { alignItems: "center", flexDirection: "row", gap: 9 },
@@ -2183,26 +2145,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   revealButtonText: { fontSize: 14, fontWeight: "800" },
-  recap: { gap: 8 },
-  modeSelector: { alignItems: "center", flexDirection: "row", gap: 12 },
-  modeSelectorCopy: { flex: 1, gap: 3 },
-  modeSelectorTitle: { fontSize: 14, fontWeight: "800" },
-  modeSelectorDetail: { fontSize: 11, lineHeight: 16 },
-  recapTitle: { fontSize: 14, fontWeight: "800" },
-  recapScroll: { maxHeight: 220 },
-  recapList: { gap: 0 },
-  recapItem: {
-    alignItems: "center",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    gap: 12,
-    minHeight: 48,
-    paddingVertical: 8,
-  },
-  recapWord: { flex: 1 },
-  recapTerm: { fontSize: 16, fontWeight: "800" },
-  recapDefinition: { fontSize: 12, lineHeight: 17 },
-  recapReason: { fontSize: 10, fontWeight: "800", textAlign: "right" },
   levelSelector: { gap: 10 },
   levelSelectorTitle: { fontSize: 14, fontWeight: "800" },
   levelList: {
@@ -2222,8 +2164,4 @@ const styles = StyleSheet.create({
   levelRowCopy: { flex: 1, gap: 2 },
   levelRowTitle: { fontSize: 16, fontWeight: "700" },
   levelRowDetail: { fontSize: 12, lineHeight: 17 },
-  levelRowCheck: { fontSize: 20, fontWeight: "900" },
-  finishContent: { alignSelf: "stretch", gap: 12 },
-  finishFooter: { maxHeight: 320 },
-  finishFooterContent: { paddingBottom: 4 },
 });

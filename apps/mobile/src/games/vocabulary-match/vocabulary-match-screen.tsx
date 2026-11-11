@@ -1,13 +1,5 @@
 import { Stack } from "expo-router";
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -27,7 +19,7 @@ import { scheduleOnRN } from "react-native-worklets";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { GameBackToolbar } from "../game-screens";
-import { GameModal, GameJourneyFooter } from "../game-modals";
+import { GameResultSheet } from "../game-result";
 import type { GameLesson } from "../lesson";
 import { useGameExitGuard } from "../game-navigation";
 import { withOpacity } from "../../theme/colors";
@@ -580,6 +572,8 @@ export function VocabularyMatchScreen({
     .flatMap((item) => item.terms)
     .filter((word) => mistakeIds.includes(word.id));
 
+  const allCorrect = reviewWords.length === 0;
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <GameBackToolbar disabled={saving} onPress={exit} />
@@ -764,49 +758,45 @@ export function VocabularyMatchScreen({
           })}
         </View>
       </GestureDetector>
-
-      <GameModal
-        content={
-          <View style={styles.finishContent}>
-            {reviewWords.length > 0 ? (
-              <View style={[styles.review, { borderColor: colors.border }]}>
-                <Text
-                  style={[
-                    styles.reviewTitle,
-                    { color: colors.mutedForeground },
-                  ]}
-                >
-                  Ulas kembali
-                </Text>
-                {reviewWords.slice(0, 4).map((word) => (
-                  <Text
-                    key={word.id}
-                    style={[styles.reviewWord, { color: colors.foreground }]}
-                  >
-                    {word.term} · {word.meaning}
-                  </Text>
-                ))}
-              </View>
-            ) : null}
-            <GameJourneyFooter
-              courseId={courseId}
-              courseItemId={sourceCourseItemId}
-              scrollable={false}
-            />
-          </View>
-        }
-        detail={`Skor akhir ${score} · ${session.wordCount} kata dicocokkan`}
-        eyebrow="Cocokkan kata"
-        gameKey="match"
-        onPrimary={resetGame}
-        onSecondary={exit}
-        primaryLabel="Main lagi"
-        primaryDisabled={saving}
-        secondaryLabel="Keluar"
-        secondaryDisabled={saving}
-        title="Ronde selesai"
-        visible={phase === "complete" && !lesson}
-      />
+      {phase === "complete" && !lesson ? (
+        <GameResultSheet
+          courseId={courseId}
+          courseItemId={sourceCourseItemId}
+          eyebrow="Cocokkan kata"
+          title={allCorrect ? "Mantap, semua benar!" : "Ronde selesai"}
+          mark={{
+            value: `${session.wordCount - reviewWords.length}/${session.wordCount}`,
+            label: "benar",
+          }}
+          done={allCorrect}
+          celebrate={allCorrect}
+          facts={[
+            { icon: "flame.fill", text: `${score} poin` },
+            allCorrect
+              ? { icon: "checkmark.seal.fill", text: "Tanpa salah" }
+              : {
+                  icon: "arrow.clockwise",
+                  text: `${reviewWords.length} perlu diulang`,
+                },
+          ]}
+          review={{
+            title: "Perlu diulang",
+            rows: reviewWords.map((word) => ({
+              key: word.id,
+              title: word.term,
+              detail: word.meaning,
+            })),
+          }}
+          primary={{
+            eyebrow: "Main lagi",
+            title: `${session.wordCount} kata`,
+            meta: "Cocokkan lagi semua kata tadi",
+            pill: "Mulai",
+            onPress: resetGame,
+          }}
+          secondary={{ label: "Selesai", onPress: exit }}
+        />
+      ) : null}
     </View>
   );
 }
@@ -850,18 +840,4 @@ const styles = StyleSheet.create({
     height: 9,
     position: "absolute",
   },
-  review: {
-    alignSelf: "stretch",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 5,
-    paddingTop: 12,
-  },
-  reviewTitle: {
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  reviewWord: { fontSize: 13, fontWeight: "600" },
-  finishContent: { alignSelf: "stretch", gap: 12 },
 });
