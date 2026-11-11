@@ -26,7 +26,7 @@ export default {
     name: isDev ? "Hakgyo Dev" : "Hakgyo",
     slug: "hakgyo",
     scheme: "hakgyo",
-    version: "1.0.1",
+    version: "1.0.2",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",

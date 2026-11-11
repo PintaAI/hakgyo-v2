@@ -1,7 +1,6 @@
-import { useIsFocused } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { AppState } from "react-native";
 
+import { useScreenActive } from "./use-screen-active";
 import { createUserRecordStore } from "./user-json-store";
 
 /**
@@ -52,16 +51,7 @@ export function useReadingGuard({
   requiredSeconds: number;
   active: boolean;
 }) {
-  const focused = useIsFocused();
-  const [foreground, setForeground] = useState(
-    AppState.currentState === "active",
-  );
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (state) =>
-      setForeground(state === "active"),
-    );
-    return () => subscription.remove();
-  }, []);
+  const inFront = useScreenActive();
 
   const [spent, setSpent] = useState(() =>
     userId ? readSpentSeconds(userId, courseItemId) : 0,
@@ -75,11 +65,7 @@ export function useReadingGuard({
   const spentRef = useRef(spent);
   spentRef.current = spent;
   const counting =
-    active &&
-    Boolean(userId) &&
-    focused &&
-    foreground &&
-    spent < requiredSeconds;
+    active && Boolean(userId) && inFront && spent < requiredSeconds;
 
   useEffect(() => {
     if (!counting) return;

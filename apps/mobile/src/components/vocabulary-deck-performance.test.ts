@@ -125,10 +125,6 @@ function harness() {
           },
         };
       },
-      useFrameCallback: (callback: any) => {
-        frame = onUI(callback);
-        return { setActive() {} };
-      },
       Easing: { cubic: null, inOut() {}, out() {}, bezier() {} },
       cancelAnimation() {},
       withTiming: (value: any) => value,
@@ -158,12 +154,20 @@ function harness() {
           gestures.push(callbacks);
           return proxy;
         },
+        LongPress(): any {
+          return this.Pan();
+        },
       },
     },
     "../providers/AppThemeProvider": {
       useAppTheme: () => ({ colors: themeColors.light, colorScheme: "light" }),
     },
     "../theme/colors": { withOpacity },
+    "../lib/use-frame-callback-while": {
+      useFrameCallbackWhile: (_running: any, callback: any) => {
+        frame = onUI(callback);
+      },
+    },
     "../lib/vocabulary-deck-motion": motion,
     "../lib/vocabulary-card-text": textLayout,
     "../lib/vocabulary-sticker-peel": peel,
@@ -304,7 +308,8 @@ test("a peel starting in the corner has priority over the upward card swipe", ()
     onInteractionChange() {},
     onAdvanceComplete() {},
   });
-  const gesture = gestureDetector(tree)?.props.gesture;
+  // The long press races the pair of peel and swipe.
+  const gesture = gestureDetector(tree)?.props.gesture.items[0];
   // Exclusive recognizers make the first item win. Since the peel's hitSlop
   // confines it to the corner, a swipe outside that area still activates.
   expect(gesture?.composition).toBe("exclusive");

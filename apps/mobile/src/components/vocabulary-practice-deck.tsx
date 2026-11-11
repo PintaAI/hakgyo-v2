@@ -27,7 +27,6 @@ import Animated, {
   type SharedValue,
   useAnimatedStyle,
   useDerivedValue,
-  useFrameCallback,
   useReducedMotion,
   useSharedValue,
   withDelay,
@@ -54,6 +53,7 @@ import {
   vocabularyAnswerTextLayout,
   vocabularyPromptTextLayout,
 } from "../lib/vocabulary-card-text";
+import { useFrameCallbackWhile } from "../lib/use-frame-callback-while";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import {
   vocabularyStickerPeel,
@@ -268,7 +268,11 @@ const VocabularyDeckScene = memo(function VocabularyDeckScene({
     if (mounted.current) setFlyingOrdinals(ordinals);
   }, []);
 
-  useFrameCallback(
+  useFrameCallbackWhile(
+    useCallback(() => {
+      "worklet";
+      return flights.value.length > 0;
+    }, [flights]),
     useCallback(
       (frame) => {
         "worklet";

@@ -10,7 +10,6 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useAnimatedStyle,
-  useFrameCallback,
   useSharedValue,
   withSpring,
   type SharedValue,
@@ -23,6 +22,7 @@ import { GameResultSheet } from "../game-result";
 import type { GameLesson } from "../lesson";
 import { useGameExitGuard } from "../game-navigation";
 import { withOpacity } from "../../theme/colors";
+import { useFrameCallbackWhile } from "../../lib/use-frame-callback-while";
 import type { VocabularyAttempt } from "../../lib/use-vocabulary-progress";
 import {
   createVocabularyMatchSession,
@@ -281,7 +281,11 @@ export function VocabularyMatchScreen({
     onExit,
   });
 
-  useFrameCallback(
+  useFrameCallbackWhile(
+    useCallback(() => {
+      "worklet";
+      return active.value !== 0;
+    }, [active]),
     useCallback(
       (frame) => {
         "worklet";

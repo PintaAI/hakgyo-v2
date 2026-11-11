@@ -72,6 +72,7 @@ const DEFAULT_CHECK_AFTER_MS = 60_000;
 export const MAINTENANCE_RETRY_MS = 5 * 60_000;
 /** Debounce for persisting a whitelisted query result. */
 const QUERY_PERSIST_DELAY_MS = 250;
+const INDEX_SAVE_DELAY_MS = 2_000;
 const TERMINAL_FAILURE_CODES = new Set([
   "BAD_REQUEST",
   "FORBIDDEN",
@@ -253,6 +254,8 @@ export function createMobileSyncEngine({
   const indexes = new Map<string, IndexEntry>();
   const indexLoads = new Map<string, Promise<IndexEntry | null>>();
   const persistTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  // Scopes whose index changed in memory and waits for one write to SQLite.
+  const indexSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
   // Server indexes whose notices could not be recorded; retried by the next
   // successful refresh (their baseline was not advanced).
   const pendingIndexNotices = new Map<
@@ -372,12 +375,18 @@ export function createMobileSyncEngine({
     return { index: entry.index, stale: entry.stale };
   }
 
-  function publishIndex(scope: string, entry: IndexEntry) {
+  /**
+   * `searchable: false` for a change search cannot show (XP, the stale flag):
+   * rebuilding the search corpus reads every stored index and bundle.
+   */
+  function publishIndex(scope: string, entry: IndexEntry, searchable = true) {
     indexes.set(scope, entry);
     queryClient.setQueryData(syncQueryKeys.index(scope), indexRecord(entry));
-    void queryClient.invalidateQueries({
-      queryKey: syncQueryKeys.searchCorpus(),
-    });
+    if (searchable) {
+      void queryClient.invalidateQueries({
+        queryKey: syncQueryKeys.searchCorpus(),
+      });
+    }
     onIndexApplied?.(scope, entry.index);
   }
 
@@ -413,8 +422,7 @@ export function createMobileSyncEngine({
     return load;
   }
 
-  async function storeIndex(scope: string, entry: IndexEntry) {
-    publishIndex(scope, entry);
+  async function saveIndex(scope: string, entry: IndexEntry) {
     await store.saveIndex(userId, {
       scope,
       token: entry.token,
@@ -423,6 +431,43 @@ export function createMobileSyncEngine({
       stale: entry.stale,
       updatedAt: now(),
     });
+  }
+
+  async function storeIndex(scope: string, entry: IndexEntry) {
+    // This write carries whatever a delayed one was waiting to save.
+    const waiting = indexSaveTimers.get(scope);
+    if (waiting) clearTimeout(waiting);
+    indexSaveTimers.delete(scope);
+    publishIndex(scope, entry);
+    await saveIndex(scope, entry);
+  }
+
+  /**
+   * Shows a small, frequent change at once and writes it a moment later, once
+   * for the whole burst: saving serializes the entire index, too much to
+   * repeat for every answer of a fast game.
+   */
+  function storeIndexSoon(scope: string, entry: IndexEntry) {
+    publishIndex(scope, entry, false);
+    if (indexSaveTimers.has(scope)) return;
+    indexSaveTimers.set(
+      scope,
+      setTimeout(() => {
+        indexSaveTimers.delete(scope);
+        const latest = indexes.get(scope);
+        if (latest) void saveIndex(scope, latest).catch(() => undefined);
+      }, INDEX_SAVE_DELAY_MS),
+    );
+  }
+
+  async function flushIndexSaves() {
+    const scopes = [...indexSaveTimers.keys()];
+    for (const timer of indexSaveTimers.values()) clearTimeout(timer);
+    indexSaveTimers.clear();
+    for (const scope of scopes) {
+      const latest = indexes.get(scope);
+      if (latest) await saveIndex(scope, latest).catch(() => undefined);
+    }
   }
 
   async function applyIndex(scope: string, index: LearnerIndex) {
@@ -485,7 +530,7 @@ export function createMobileSyncEngine({
 
   async function markIndexesStale() {
     for (const [scope, entry] of indexes) {
-      if (!entry.stale) publishIndex(scope, { ...entry, stale: true });
+      if (!entry.stale) publishIndex(scope, { ...entry, stale: true }, false);
     }
     await store.markIndexStale(userId);
   }
@@ -535,7 +580,7 @@ export function createMobileSyncEngine({
       if (!entry) continue;
       const gamification = update(entry.index.gamification);
       if (gamification === entry.index.gamification) continue;
-      await storeIndex(target, {
+      storeIndexSoon(target, {
         ...entry,
         index: { ...entry.index, gamification },
         stale: true,
@@ -1340,6 +1385,7 @@ export function createMobileSyncEngine({
     bundles.dispose();
     await checkpointTail;
     await writeTail;
+    await flushIndexSaves();
   }
 
   const engine = {

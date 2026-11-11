@@ -13,6 +13,7 @@ import Animated, {
 
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { glassTint } from "../theme/colors";
+import { useScreenActive } from "../lib/use-screen-active";
 import type { VocabularySpeechMode } from "../lib/vocabulary-speech";
 import { GlassBox } from "./GlassBox";
 
@@ -50,18 +51,19 @@ export function VocabularyModeSwitch({
   const { colors, colorScheme } = useAppTheme();
   const reducedMotion = useReducedMotion();
   const pulse = useSharedValue(0);
+  const inFront = useScreenActive();
   const next: VocabularySpeechMode = mode === "KR" ? "ID" : "KR";
 
   useEffect(() => {
     cancelAnimation(pulse);
     pulse.value = 0;
-    if (!highlight || reducedMotion) return;
+    if (!highlight || reducedMotion || !inFront) return;
     pulse.value = withRepeat(
       withTiming(1, { duration: 1400, easing: Easing.out(Easing.quad) }),
       -1,
     );
     return () => cancelAnimation(pulse);
-  }, [highlight, pulse, reducedMotion]);
+  }, [highlight, inFront, pulse, reducedMotion]);
 
   const ringStyle = useAnimatedStyle(() => {
     const t = reducedMotion ? 0.3 : pulse.value;

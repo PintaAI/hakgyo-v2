@@ -11,6 +11,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { useScreenActive } from "../lib/use-screen-active";
 import { DECK_TOP_SPACE } from "../lib/vocabulary-deck-motion";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { Card, IconCircle } from "./learning-ui";
@@ -62,11 +63,14 @@ export function DeckTutorialOverlay({ step }: { step: DeckTutorialStep }) {
   const { colors } = useAppTheme();
   const reducedMotion = useReducedMotion();
   const progress = useSharedValue(0);
+  // Home stays mounted under other tabs and screens: loop only in view.
+  const inFront = useScreenActive();
 
   useEffect(() => {
     cancelAnimation(progress);
     progress.value = 0;
-    if (reducedMotion || step === "done" || step === "language") return;
+    if (reducedMotion || !inFront || step === "done" || step === "language")
+      return;
     const loops = step === "swipe" ? SWIPE_PATHS.length : 1;
     progress.value = withRepeat(
       withTiming(loops, {
@@ -76,7 +80,7 @@ export function DeckTutorialOverlay({ step }: { step: DeckTutorialStep }) {
       -1,
     );
     return () => cancelAnimation(progress);
-  }, [progress, reducedMotion, step]);
+  }, [inFront, progress, reducedMotion, step]);
 
   const peelHandStyle = useAnimatedStyle(() => {
     if (reducedMotion) return { opacity: 1 };
