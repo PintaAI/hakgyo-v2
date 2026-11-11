@@ -6,19 +6,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HangeulMasteryBadge } from "../../../src/components/hangeul-mastery-medal";
 import { HeroTile } from "../../../src/components/hero-tile";
-import { ConfettiBurst } from "../../../src/components/learn/confetti";
+import { HakgyoHero } from "../../../src/components/learn/hakgyo-hero";
 import {
-  CardFan,
-  HakgyoHero,
-  HERO_TITLE,
-} from "../../../src/components/learn/hakgyo-hero";
+  HeroMark,
+  HeroMarkValue,
+  HeroTitle,
+} from "../../../src/components/learn/hero-parts";
 import {
   Action,
   Eyebrow,
   FullScreenState,
   ProgressBar,
 } from "../../../src/components/learning-ui";
-import { SymbolIcon } from "../../../src/components/ui/symbol-icon";
 import { authClient } from "../../../src/lib/auth-client";
 import {
   chapterCelebrated,
@@ -29,12 +28,7 @@ import { hangeulCompletionBadgeCopy } from "../../../src/lib/hangeul-visibility"
 import { openCourseItem } from "../../../src/lib/navigation";
 import { firstParam } from "../../../src/lib/route-params";
 import { useHangeulBadgeState } from "../../../src/lib/use-cohort-archive";
-import { useAppTheme } from "../../../src/providers/AppThemeProvider";
 import { useCourseOutline } from "../../../src/sync/hooks";
-
-/** The box the chapter cards sit in, which the confetti bursts from. */
-const FAN_BOX = { width: 220, height: 112 };
-const DONE_GREEN = "#10b981";
 
 type OutlineItem = {
   type?: "MATERIAL" | "VOCABULARY_SET" | "ASSESSMENT";
@@ -81,7 +75,6 @@ export default function ChapterCompleteScreen() {
   }>();
   const courseId = firstParam(params.courseId);
   const moduleId = firstParam(params.moduleId);
-  const { colors } = useAppTheme();
   const outline = useCourseOutline(courseId);
   const { data: session } = authClient.useSession();
   const userId = session?.user.id;
@@ -149,74 +142,27 @@ export default function ChapterCompleteScreen() {
       style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
     >
       <HakgyoHero inSheet>
-        <View className="items-center">
-          <View style={FAN_BOX}>
-            <CardFan
-              faces={[
-                <View className="items-center" key="chapter">
-                  <Eyebrow>{courseCompleted ? "Kurikulum" : "Bab"}</Eyebrow>
-                  <Text className="text-4xl font-black tabular-nums tracking-tight text-foreground">
-                    {courseCompleted ? totalModules : moduleIndex + 1}
-                  </Text>
-                </View>,
-                <View key="second" />,
-                <View key="third" />,
-              ]}
-            />
-            <View
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-              className="absolute size-8 items-center justify-center rounded-full"
-              style={{
-                left: FAN_BOX.width / 2 + 80 - 18,
-                top: -4,
-                backgroundColor: DONE_GREEN,
-                borderWidth: 3,
-                borderColor: colors.background,
-              }}
-            >
-              <SymbolIcon
-                name="checkmark"
-                size={14}
-                weight="bold"
-                tintColor="#ffffff"
+        <HeroMark
+          done
+          celebrate={celebrate}
+          face={
+            <>
+              <Eyebrow>{courseCompleted ? "Kurikulum" : "Bab"}</Eyebrow>
+              <HeroMarkValue
+                value={String(courseCompleted ? totalModules : moduleIndex + 1)}
               />
-            </View>
-            <ConfettiBurst
-              fire={celebrate}
-              width={FAN_BOX.width}
-              height={FAN_BOX.height}
-              colors={[
-                colors.primary,
-                "#F2C14E",
-                "#F472B6",
-                "#34D399",
-                "#60A5FA",
-              ]}
-            />
-          </View>
-        </View>
-        <View className="items-center gap-2">
-          <Eyebrow size="md" tone="primary">
-            {courseCompleted ? "Kurikulum selesai" : "Bab selesai"}
-          </Eyebrow>
-          <Text
-            accessibilityRole="header"
-            className="text-center font-black tracking-tight text-foreground"
-            numberOfLines={2}
-            style={HERO_TITLE}
-          >
-            {courseCompleted
+            </>
+          }
+        />
+        <HeroTitle
+          eyebrow={courseCompleted ? "Kurikulum selesai" : "Bab selesai"}
+          title={
+            courseCompleted
               ? "Kamu berhasil!"
-              : `Mantap, Bab ${moduleIndex + 1} selesai!`}
-          </Text>
-          <Text
-            className="text-center text-sm text-muted-foreground"
-            numberOfLines={2}
-          >
-            {courseCompleted ? course.title : module.title}
-          </Text>
-        </View>
+              : `Mantap, Bab ${moduleIndex + 1} selesai!`
+          }
+          description={courseCompleted ? course.title : module.title}
+        />
         {!courseCompleted && (contents.length > 0 || score !== null) ? (
           <View className="flex-row gap-2">
             {contents.map(([n, label]) => (

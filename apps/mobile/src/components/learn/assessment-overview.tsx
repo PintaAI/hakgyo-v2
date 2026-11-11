@@ -15,6 +15,7 @@ import { Badge, Eyebrow } from "../learning-ui";
 import { QuizQuestion, type QuizQuestionData } from "../quiz/quiz-question";
 import { SymbolIcon } from "../ui/symbol-icon";
 import type { SymbolName } from "../ui/symbol-names";
+import { FactChips } from "./hero-parts";
 
 export type LatestAttempt = {
   status: LearnerAttemptStatus;
@@ -44,7 +45,6 @@ export function AssessmentFacts({
   /** An event's closing time. */
   closesAt?: Date | null;
 }) {
-  const { colors } = useAppTheme();
   const facts: { icon: SymbolName; label: string; text: string }[] = [
     {
       icon: "timer",
@@ -88,26 +88,13 @@ export function AssessmentFacts({
       : []),
   ];
   return (
-    <View className="flex-row flex-wrap justify-center gap-2">
-      {facts.map((fact) => (
-        <View
-          accessible
-          accessibilityLabel={`${fact.label}: ${fact.text}`}
-          className="flex-row items-center gap-1.5 rounded-full bg-muted px-3 py-1.5"
-          key={fact.label}
-        >
-          <SymbolIcon
-            name={fact.icon}
-            size={13}
-            tintColor={colors.mutedForeground}
-            weight="semibold"
-          />
-          <Text className="text-sm font-semibold text-foreground">
-            {fact.text}
-          </Text>
-        </View>
-      ))}
-    </View>
+    <FactChips
+      facts={facts.map((fact) => ({
+        icon: fact.icon,
+        text: fact.text,
+        accessibilityLabel: `${fact.label}: ${fact.text}`,
+      }))}
+    />
   );
 }
 

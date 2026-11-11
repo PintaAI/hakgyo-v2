@@ -12,7 +12,6 @@ import {
 } from "../assessment-result-review";
 import { useApiAssetResolver } from "../content-renderer";
 import { Action, Badge, Eyebrow } from "../learning-ui";
-import { SymbolIcon } from "../ui/symbol-icon";
 import {
   gradedNote,
   hasPassed,
@@ -20,14 +19,11 @@ import {
   scorePercent,
   type LatestAttempt,
 } from "./assessment-overview";
-import { ConfettiBurst } from "./confetti";
 import type { LearningContinuation } from "./course-learning-footer";
 import { HeroTile } from "../hero-tile";
-import { CardFan, HakgyoHero, HERO_TITLE } from "./hakgyo-hero";
+import { HakgyoHero } from "./hakgyo-hero";
+import { HeroMark, HeroMarkValue, HeroTitle } from "./hero-parts";
 
-/** The box the score cards sit in, which the confetti bursts from. */
-const FAN_BOX = { width: 220, height: 112 };
-const PASSED_GREEN = "#10b981";
 /** How much of the previewed question shows before it fades out. */
 const PREVIEW_MAX_HEIGHT = 420;
 
@@ -82,7 +78,6 @@ export function AssessmentResult({
   /** Between the actions and the answer preview (an event's ranking). */
   children?: ReactNode;
 }) {
-  const { colors } = useAppTheme();
   const percent = scorePercent(attempt);
   const passed = hasPassed(attempt, passingScore);
   const gatesProgress = Boolean(learning);
@@ -120,84 +115,31 @@ export function AssessmentResult({
   return (
     <>
       <HakgyoHero>
-        <View className="items-center">
-          <View style={FAN_BOX}>
-            <CardFan
-              faces={[
-                <View className="items-center" key="score">
-                  <Text className="text-4xl font-black tabular-nums tracking-tight text-foreground">
-                    {percent !== null
-                      ? `${percent}%`
-                      : attempt.score !== null
-                        ? formatScore(attempt.score)
-                        : "–"}
-                  </Text>
-                  {attempt.score !== null && attempt.maxScore !== null ? (
-                    <Text className="text-xs font-semibold tabular-nums text-muted-foreground">
-                      {formatScoreOutOf(attempt.score, attempt.maxScore, " / ")}{" "}
-                      poin
-                    </Text>
-                  ) : null}
-                </View>,
-                <View key="second" />,
-                <View key="third" />,
-              ]}
+        <HeroMark
+          done={passed && passingScore !== null}
+          celebrate={celebrate}
+          face={
+            <HeroMarkValue
+              value={
+                percent !== null
+                  ? `${percent}%`
+                  : attempt.score !== null
+                    ? formatScore(attempt.score)
+                    : "–"
+              }
+              label={
+                attempt.score !== null && attempt.maxScore !== null
+                  ? `${formatScoreOutOf(attempt.score, attempt.maxScore, " / ")} poin`
+                  : undefined
+              }
             />
-            {passed && passingScore !== null ? (
-              <View
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
-                className="absolute size-8 items-center justify-center rounded-full"
-                style={{
-                  left: FAN_BOX.width / 2 + 80 - 18,
-                  top: -4,
-                  backgroundColor: PASSED_GREEN,
-                  borderWidth: 3,
-                  borderColor: colors.background,
-                }}
-              >
-                <SymbolIcon
-                  name="checkmark"
-                  size={14}
-                  weight="bold"
-                  tintColor="#ffffff"
-                />
-              </View>
-            ) : null}
-            <ConfettiBurst
-              fire={celebrate}
-              width={FAN_BOX.width}
-              height={FAN_BOX.height}
-              colors={[
-                colors.primary,
-                "#F2C14E",
-                "#F472B6",
-                "#34D399",
-                "#60A5FA",
-              ]}
-            />
-          </View>
-        </View>
-        <View className="items-center gap-2">
-          <Eyebrow size="md" tone="primary">
-            {eyebrow}
-          </Eyebrow>
-          <Text
-            accessibilityRole="header"
-            className="text-center font-black tracking-tight text-foreground"
-            numberOfLines={2}
-            style={HERO_TITLE}
-          >
-            {headline}
-          </Text>
-          {headline !== title ? (
-            <Text
-              className="text-center text-sm text-muted-foreground"
-              numberOfLines={2}
-            >
-              {title}
-            </Text>
-          ) : null}
+          }
+        />
+        <HeroTitle
+          eyebrow={eyebrow}
+          title={headline}
+          description={headline !== title ? title : undefined}
+        >
           {!passed ? (
             <View className="mt-1">
               <Badge tone="destructiveTinted">
@@ -207,7 +149,7 @@ export function AssessmentResult({
               </Badge>
             </View>
           ) : null}
-        </View>
+        </HeroTitle>
         {percent !== null ? (
           <View className="gap-1.5">
             <ScoreBar percent={percent} passingScore={passingScore} />

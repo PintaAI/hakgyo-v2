@@ -27,8 +27,10 @@ import { useCourseItem } from "../../src/sync/hooks";
 import { useVocabularyProgressReporter } from "../../src/lib/use-vocabulary-progress";
 import { firstParam } from "../../src/lib/route-params";
 
+/** Back to where the game was opened; Latihan when nothing is behind it. */
 function leave() {
-  router.dismissTo("/(home)/(tabs)/assessments");
+  if (router.canGoBack()) router.back();
+  else router.dismissTo("/(home)/(tabs)/assessments");
 }
 
 export default function GameRoute() {
