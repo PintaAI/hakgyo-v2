@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { formatCountdown } from "../../lib/reading-time";
+import { useScreenActive } from "../../lib/use-screen-active";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { SymbolIcon } from "../ui/symbol-icon";
 import type { SymbolName } from "../ui/symbol-names";
@@ -375,12 +376,15 @@ export function PullToContinueIndicator({
   busy: boolean;
 }) {
   // The hint bounces only while it shows: an endless animation on a hidden
-  // view would still cost a frame of UI-thread work, every frame.
+  // view would still cost a frame of UI-thread work, every frame. That
+  // includes a game or sheet opened over this screen, which stays mounted.
   const bounce = useSharedValue(0);
   const reducedMotion = useReducedMotion();
+  const inFront = useScreenActive();
   useAnimatedReaction(
     () =>
       !reducedMotion &&
+      inFront &&
       !busy &&
       !releasing.value &&
       drop.value === 0 &&
@@ -402,7 +406,7 @@ export function PullToContinueIndicator({
         bounce.value = withTiming(0, { duration: 160 });
       }
     },
-    [busy, reducedMotion],
+    [busy, inFront, reducedMotion],
   );
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();

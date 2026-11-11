@@ -1397,6 +1397,54 @@ describe("mobile sync engine index and bundles", () => {
     await engine.dispose();
   });
 
+  test("shows every XP change at once but writes a burst of them once", async () => {
+    const store = memoryStore();
+    const { engine, queryClient } = engineFor({ store });
+    await engine.initialize();
+    await engine.refresh();
+    // Let the course download of the refresh finish: it rebuilds search too.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const saveIndex = store.saveIndex;
+    let saves = 0;
+    store.saveIndex = async (...args) => {
+      saves += 1;
+      await saveIndex(...args);
+    };
+    let searchRebuilds = 0;
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (
+        event.type === "updated" &&
+        event.action.type === "invalidate" &&
+        event.query.queryKey[1] === syncQueryKeys.searchCorpus()[1]
+      )
+        searchRebuilds += 1;
+    });
+    queryClient.setQueryData(syncQueryKeys.searchCorpus(), {});
+
+    for (let streak = 1; streak <= 5; streak += 1) {
+      await engine.patchGamification(
+        "all",
+        () => ({ streak }) as unknown as LearnerIndex["gamification"],
+      );
+      const record = queryClient.getQueryData<{ index: LearnerIndex }>(
+        syncQueryKeys.index("all"),
+      );
+      expect(record?.index.gamification as unknown).toEqual({ streak });
+    }
+    expect(saves).toBe(0);
+    expect(searchRebuilds).toBe(0);
+
+    // Leaving (sign-out, a new account) writes what was still waiting.
+    unsubscribe();
+    await engine.dispose();
+    expect(saves).toBe(1);
+    const stored = await store.loadIndex("user-1", "all");
+    expect(stored?.stale).toBe(true);
+    expect(
+      SuperJSON.parse<LearnerIndex>(stored!.payload).gamification as unknown,
+    ).toEqual({ streak: 5 });
+  });
+
   test("refuses to clear local data while operations are pending", async () => {
     const { engine, store } = engineFor({ isOnline: async () => false });
     await engine.initialize();

@@ -16,6 +16,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import type { BadgeClaim } from "../../lib/badge-claims";
+import { useScreenActive } from "../../lib/use-screen-active";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { CourseMedal, GOLD } from "../hangeul-mastery-medal";
@@ -111,10 +112,12 @@ function ClaimMedal({
   const ring = useSharedValue(0);
   const rays = useSharedValue(0);
   const burst = useSharedValue(0);
+  // Belajar stays mounted under other tabs and screens: loop only in view.
+  const inFront = useScreenActive();
 
   // Waiting to be claimed: breathes and shines, inviting the tap.
   useEffect(() => {
-    if (claimed || celebrating || reduceMotion) return;
+    if (claimed || celebrating || reduceMotion || !inFront) return;
     breathe.value = withRepeat(
       withSequence(
         withTiming(1.06, { duration: 1100, easing: Easing.inOut(Easing.sin) }),
@@ -133,7 +136,7 @@ function ClaimMedal({
       breathe.value = 1;
       shine.value = 0;
     };
-  }, [breathe, celebrating, claimed, reduceMotion, shine]);
+  }, [breathe, celebrating, claimed, inFront, reduceMotion, shine]);
 
   useEffect(() => {
     if (!celebrating) return;

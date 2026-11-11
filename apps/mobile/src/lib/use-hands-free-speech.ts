@@ -7,6 +7,7 @@ import {
   withTiming,
 } from "react-native-reanimated";
 
+import { useScreenActive } from "./use-screen-active";
 import { useVocabularySpeech } from "./use-vocabulary-speech";
 import {
   matchSpeechAlternative,
@@ -39,7 +40,10 @@ type UseHandsFreeSpeechOptions = {
 /**
  * Hands-free vocabulary practice: listens on every card, submits a matching
  * word, flags a wrong one in the answer field, and moves on once a correct
- * answer is saved, until the learner stops it or a fatal error occurs.
+ * answer is saved, until the learner stops it or a fatal error occurs. It
+ * holds while the screen is not in front (another tab, a screen or sheet over
+ * it, the app in the background) and picks up again on the way back: Home
+ * stays mounted, so the microphone would otherwise keep restarting unseen.
  */
 export function useHandsFreeSpeech({
   mode,
@@ -55,6 +59,7 @@ export function useHandsFreeSpeech({
 }: UseHandsFreeSpeechOptions) {
   const [handsFree, setHandsFree] = useState(false);
   const [typing, setTyping] = useState(false);
+  const inFront = useScreenActive();
   // A word that did not match: shown in red in the answer field for a moment,
   // then the field asks the learner to say it again.
   const [misheard, setMisheard] = useState<string | null>(null);
@@ -117,7 +122,7 @@ export function useHandsFreeSpeech({
   const speech = useVocabularySpeech({
     mode,
     contextualStrings,
-    disabled: blocked || typing,
+    disabled: blocked || typing || !inFront,
     onInterim: (text) => {
       if (!latest.current.canAnswer) return;
       // The learner is speaking again: replace the red word right away.
@@ -147,10 +152,17 @@ export function useHandsFreeSpeech({
   const { start, status } = speech;
 
   useEffect(() => {
-    if (!handsFree || !canAnswer || typing || fatalError || status !== "idle")
+    if (
+      !handsFree ||
+      !canAnswer ||
+      typing ||
+      fatalError ||
+      !inFront ||
+      status !== "idle"
+    )
       return;
     void start();
-  }, [canAnswer, fatalError, handsFree, start, status, typing]);
+  }, [canAnswer, fatalError, handsFree, inFront, start, status, typing]);
 
   const { abort: abortSpeech } = speech;
   // Close the mic once the card no longer takes an answer (graded, saving or
@@ -158,6 +170,11 @@ export function useHandsFreeSpeech({
   useEffect(() => {
     if (handsFree && !canAnswer && status === "listening") abortSpeech();
   }, [abortSpeech, canAnswer, handsFree, status]);
+
+  // Also a one-off recording the learner started by hand.
+  useEffect(() => {
+    if (!inFront) abortSpeech();
+  }, [abortSpeech, inFront]);
 
   useEffect(() => {
     if (handsFree && fatalError) setHandsFree(false);
@@ -199,7 +216,7 @@ export function useHandsFreeSpeech({
     typing,
     // Hands-free restarts the recognizer after every miss or silence. Treat
     // the whole session as listening so hints stay steady across restarts.
-    listening: handsFree && !typing && canAnswer,
+    listening: handsFree && !typing && canAnswer && inFront,
     speechBusy: status !== "idle",
     // Errors hands-free retries on its own are not worth showing.
     speechError:
