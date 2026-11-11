@@ -1,9 +1,4 @@
-import {
-  formatScore,
-  formatScoreOutOf,
-  reachesPercent,
-  type SectionNavigation,
-} from "@hakgyo/shared";
+import { formatScore, formatScoreOutOf, reachesPercent } from "@hakgyo/shared";
 import { Text, View } from "react-native";
 
 import type { LearnerAttemptStatus } from "../../lib/assessment-state";
@@ -168,31 +163,19 @@ export function QuestionPreview({
  * for a grade, or graded. Nothing before a first attempt.
  */
 export function AssessmentOverview({
-  timeLimitMinutes,
   passingScore,
-  maxAttempts,
-  attemptsUsed,
   latestAttempt,
   itemCompleted,
   canReattempt,
   gatesProgress,
-  sections,
 }: {
-  timeLimitMinutes: number | null;
   passingScore: number | null;
-  maxAttempts: number | null;
-  attemptsUsed: number;
   latestAttempt?: LatestAttempt | null;
   /** Whether the course item already counts as completed; unknown while the outline loads. */
   itemCompleted?: boolean;
   canReattempt: boolean;
   /** Whether passing the tugas unlocks the next activity in the course. */
   gatesProgress: boolean;
-  /** The assessment's sections, for how it is worked through. */
-  sections: ReadonlyArray<{
-    navigation: SectionNavigation;
-    lockAnswers: boolean;
-  }>;
 }) {
   const showGate = gatesProgress && itemCompleted === false;
 

@@ -2,10 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { syllableKeys } from "./hangul-composer";
 import { SYLLABLE_CHALLENGES } from "./syllable-forge-data";
 import {
+  createSyllableSessionReducer,
   initialSession,
-  syllableSessionReducer as reduce,
   type SyllableSession,
 } from "./syllable-session";
+
+const reduce = createSyllableSessionReducer(SYLLABLE_CHALLENGES);
 
 function typeAnswer(state: SyllableSession) {
   return syllableKeys(SYLLABLE_CHALLENGES[state.index]!.target).reduce(

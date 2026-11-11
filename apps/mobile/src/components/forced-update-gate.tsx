@@ -26,7 +26,7 @@ const STORE_URLS: { ios: string | null; android: string | null } = {
   android: "https://play.google.com/store/apps/details?id=com.rorez.hakgyo",
 };
 
-export function storeUrl() {
+function storeUrl() {
   const url = Platform.select({
     ios: STORE_URLS.ios,
     android: STORE_URLS.android,

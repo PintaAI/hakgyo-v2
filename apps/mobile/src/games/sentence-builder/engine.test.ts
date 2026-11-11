@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   createSentenceChallenges,
-  exampleSentences,
+  exampleSentencePairs,
   initialSentenceBuilderSession,
   sentenceBuilderReducer,
   sentenceHint,
@@ -50,9 +50,11 @@ function pick(
 
 describe("sentence builder engine", () => {
   test("reads only non-empty string examples", () => {
-    expect(exampleSentences(["  a  b ", 3, ""])).toEqual(["a b"]);
-    expect(exampleSentences("하나\n둘")).toEqual(["하나", "둘"]);
-    expect(exampleSentences(null)).toEqual([]);
+    const sentences = (examples: unknown) =>
+      exampleSentencePairs(examples).map(({ sentence }) => sentence);
+    expect(sentences(["  a  b ", 3, ""])).toEqual(["a b"]);
+    expect(sentences("하나\n둘")).toEqual(["하나", "둘"]);
+    expect(sentences(null)).toEqual([]);
   });
 
   test("builds tiles from the Korean sentence and keeps its translation", () => {
@@ -70,9 +72,6 @@ describe("sentence builder engine", () => {
     expect(challenge?.sentence).toBe("알면서 왜 물어봐?");
     expect(challenge?.translation).toBe("Udah tahu kok nanya?");
     expect([...(challenge?.words ?? [])]).toEqual(["알면서", "왜", "물어봐"]);
-    expect(
-      exampleSentences(["알면서 왜 물어봐? = Udah tahu kok nanya?"]),
-    ).toEqual(["알면서 왜 물어봐?"]);
   });
 
   test("splits words and drops final punctuation", () => {

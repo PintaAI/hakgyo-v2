@@ -12,12 +12,10 @@ export function EmptyState({
   title,
   children,
   variant = "flush",
-  action,
 }: {
   title?: string;
   children: ReactNode;
   variant?: keyof typeof variants;
-  action?: ReactNode;
 }) {
   return (
     <View className={`items-center gap-2 px-6 py-8 ${variants[variant]}`}>
@@ -29,7 +27,6 @@ export function EmptyState({
       <Text className="text-center text-sm leading-5 text-muted-foreground">
         {children}
       </Text>
-      {action}
     </View>
   );
 }

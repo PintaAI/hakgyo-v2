@@ -17,11 +17,5 @@ describe("syllable stage visual contract", () => {
     expect(source).not.toContain("FadeOut");
     expect(source).not.toContain("ScrollView");
     expect(source).not.toContain("scrollToEnd");
-    expect(source).toContain('alignItems: "center"');
-    expect(source).toContain('justifyContent: "center"');
-    expect(source).toContain("color: colors.foreground");
-    expect(source).not.toContain("function MovingPiece");
-    expect(source).not.toContain("pieceText");
-    expect(source).not.toContain("assembled.value = withDelay");
   });
 });

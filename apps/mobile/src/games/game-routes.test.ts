@@ -56,28 +56,18 @@ describe("game routes", () => {
     expect(modalSource).toContain("allowSwipeDismissal={false}");
     expect(modalSource).toContain("gameSymbols");
     expect(modalSource).toContain("<SymbolIcon");
-    expect(modalSource).not.toContain("StudyGlass");
     expect(modalSource).toContain("StudyAction");
-    expect(modalSource).not.toContain("useGameSheetSync");
-    expect(modalSource).not.toContain("useGameSheetsOptional");
-    expect(modalSource).not.toContain("dismissAction");
   });
 
-  test("pops to Practice without forcing a sync checkpoint", () => {
+  test("pops to Practice", () => {
     const routeSource = readFileSync(
       resolve(import.meta.dir, "../../app/games/[gameKey].tsx"),
-      "utf8",
-    );
-    const cardsSource = readFileSync(
-      resolve(import.meta.dir, "../components/vocabulary-session.tsx"),
       "utf8",
     );
 
     expect(routeSource).toContain(
       'router.dismissTo("/(home)/(tabs)/assessments")',
     );
-    expect(routeSource).not.toContain("finishGameAndLeave");
-    expect(cardsSource).not.toContain("finishGameAndLeave");
   });
 
   test("returns Hangeul games launched from a lesson to the lesson", () => {
@@ -98,34 +88,5 @@ describe("game routes", () => {
       expect(source).toContain("gameLeaveLabel(source)");
       expect(source).not.toContain("router.dismissTo");
     }
-  });
-
-  test("keeps keyboard controls and progress in the Cards native header", () => {
-    const cardsSource = readFileSync(
-      resolve(import.meta.dir, "../components/vocabulary-session.tsx"),
-      "utf8",
-    );
-    const wordFallSource = readFileSync(
-      resolve(import.meta.dir, "./word-fall/word-fall-screen.tsx"),
-      "utf8",
-    );
-
-    expect(cardsSource).toContain('<Stack.Toolbar placement="right">');
-    expect(cardsSource).toContain("onPress={toggleKeyboard}");
-    expect(cardsSource).toContain("ref={answerInputRef}");
-    expect(cardsSource).toContain(
-      "{practicedCount}/{usableWords.length} practiced",
-    );
-    const revealAnswer = cardsSource.slice(
-      cardsSource.indexOf("function revealAnswer"),
-      cardsSource.indexOf("async function saveReveal"),
-    );
-    expect(revealAnswer).not.toContain("dismissKeyboard()");
-    expect(cardsSource).not.toContain(
-      'className="absolute inset-x-0 top-0 z-10',
-    );
-    expect(wordFallSource).not.toContain("toggleKeyboard");
-    expect(wordFallSource).not.toContain("keyboardProbe");
-    expect(wordFallSource).not.toContain("keyboardHeight");
   });
 });

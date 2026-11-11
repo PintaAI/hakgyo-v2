@@ -324,11 +324,3 @@ export function pointsForWord(
 export function wordFallResult(hadMistake: boolean) {
   return hadMistake ? ("INCORRECT" as const) : ("CORRECT" as const);
 }
-
-export function maskedDefinition(definition: string, revealed: number) {
-  return Array.from(definition)
-    .map((character, index) =>
-      character.trim() === "" || index < revealed ? character : "•",
-    )
-    .join("");
-}

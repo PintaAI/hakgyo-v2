@@ -408,14 +408,10 @@ export default function AssessmentEventScreen() {
           ) : null}
 
           <AssessmentOverview
-            timeLimitMinutes={event.durationMinutes}
             passingScore={assessment?.passingScore ?? null}
-            maxAttempts={assessment?.maxAttempts ?? null}
-            attemptsUsed={event.attemptCount}
             latestAttempt={attempt}
             canReattempt={event.entry.canReattempt}
             gatesProgress={false}
-            sections={bundled.data?.sections ?? []}
           />
 
           {event.leaderboard ? (

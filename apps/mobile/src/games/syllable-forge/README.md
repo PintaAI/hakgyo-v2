@@ -29,7 +29,7 @@ Device checklist for iOS and Android:
 
 ## Generated hero
 
-Asset: `apps/mobile/assets/games/syllable-forge-intro-v2.png` (640 × 768 RGBA), rendered through the shared start modal's Expo Image component. Generated using the built-in image generation tool; resized with alpha preserved. The previous asset is retained.
+The asset (`assets/games/syllable-forge-intro-v2.png`, 640 × 768 RGBA) was removed: Susun 한글 starts directly from Latihan, without the source sheet that showed it. The prompt is kept for regenerating it. It was generated using the built-in image generation tool and resized with alpha preserved.
 
 Final prompt:
 

@@ -91,7 +91,6 @@ type FooterProps = {
   nextLocked?: boolean;
   onReadAgain?: () => void;
   completionMode?: "manual" | "assessment";
-  initialOutline?: LearningPathCourse;
   requirementActions?: LearningRequirementAction[];
   assessmentState?: LearningAssessmentState;
 };
@@ -107,12 +106,8 @@ export function useLearningContinuation({
   courseId,
   courseItemId,
   completionMode = "manual",
-  initialOutline,
   pendingRequirements,
-}: Pick<
-  FooterProps,
-  "courseId" | "courseItemId" | "completionMode" | "initialOutline"
-> & {
+}: Pick<FooterProps, "courseId" | "courseItemId" | "completionMode"> & {
   /**
    * Required activities not done yet, from the local course item, read when
    * the learner continues. The server would refuse the completion; with any
@@ -126,7 +121,7 @@ export function useLearningContinuation({
   const { completeContent } = useMobileSyncActions();
   const { data: session } = authClient.useSession();
   const userId = session?.user.id;
-  const baseline = useRef(initialOutline);
+  const baseline = useRef<LearningPathCourse>(undefined);
   const inFlight = useRef(false);
   const mounted = useRef(true);
   const saved = useRef(false);
@@ -388,15 +383,11 @@ function NextUpRow({
   );
 }
 
-/** The progress, next item and continue button after a course item. */
-export function CourseLearningFooter(props: FooterProps) {
-  const learning = useLearningContinuation(props);
-  return <LearningFooterView {...props} learning={learning} />;
-}
-
-/** `CourseLearningFooter` for a caller that runs the continuation itself. */
+/**
+ * The progress, next item and continue button after a course item, for a
+ * caller that runs the continuation (`useLearningContinuation`) itself.
+ */
 export function LearningFooterView({
-  courseId,
   continueButton = "always",
   compact = false,
   nextLocked = false,
@@ -406,7 +397,7 @@ export function LearningFooterView({
   assessmentState,
   learning,
   continueLock,
-}: FooterProps & {
+}: Omit<FooterProps, "courseId" | "courseItemId"> & {
   learning: LearningContinuation;
   /**
    * Holds "continue" with this label (a material's reading guard: "Baca dulu
@@ -422,7 +413,6 @@ export function LearningFooterView({
     busy,
     issue,
     setIssue,
-    navigate,
     continueLearning,
     finishingModule,
     assessmentIncomplete,

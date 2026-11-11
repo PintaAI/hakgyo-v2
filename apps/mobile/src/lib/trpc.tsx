@@ -25,7 +25,7 @@ export const api = createTRPCReact<AppRouter>();
  * use (`MobileClientVersion`). The bundle download (data layer) sends the
  * same header without the platform.
  */
-export const clientHeaderValue = formatClientHeader({
+const clientHeaderValue = formatClientHeader({
   protocol: SYNC_PROTOCOL,
   runtime: Updates.runtimeVersion,
   update: Updates.updateId,

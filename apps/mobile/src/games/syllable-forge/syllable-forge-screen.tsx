@@ -528,7 +528,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: "100%",
   },
-  modalCloseFallback: { fontSize: 22, fontWeight: "700", lineHeight: 24 },
   hintTarget: { alignItems: "center", gap: 4 },
   hintTargetGlyph: { fontSize: 72, fontWeight: "600", lineHeight: 86 },
   hintTargetCue: { fontSize: 20, fontWeight: "800" },

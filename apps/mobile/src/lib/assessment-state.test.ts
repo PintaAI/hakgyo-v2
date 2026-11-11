@@ -4,9 +4,7 @@ import {
   assessmentAttemptPresentation,
   assessmentResultPolicy,
   assessmentTerminalResult,
-  canReattemptAssessment,
   isStaleClosedOnDemandAssessment,
-  latestStandaloneAttemptForItem,
   latestStandaloneAttemptsByItem,
 } from "./assessment-state";
 
@@ -61,11 +59,6 @@ describe("learner assessment state", () => {
       startedAt: new Date("2026-09-03T08:00:00Z"),
       assessmentEvent: { id: "event-1" },
     };
-
-    expect(
-      latestStandaloneAttemptForItem([older, eventAttempt, newer], "item-1")
-        ?.id,
-    ).toBe("attempt-newer");
 
     const otherItem = { ...older, id: "attempt-other", courseItemId: "item-2" };
     const byItem = latestStandaloneAttemptsByItem([
@@ -137,37 +130,6 @@ describe("learner assessment state", () => {
         },
         now,
       ),
-    ).toBe(false);
-  });
-
-  test("allows another standalone attempt only while attempts remain", () => {
-    expect(
-      canReattemptAssessment({
-        attemptNumber: 1,
-        maxAttempts: 2,
-        eventType: null,
-      }),
-    ).toBe(true);
-    expect(
-      canReattemptAssessment({
-        attemptNumber: 2,
-        maxAttempts: 2,
-        eventType: null,
-      }),
-    ).toBe(false);
-    expect(
-      canReattemptAssessment({
-        attemptNumber: 20,
-        maxAttempts: null,
-        eventType: null,
-      }),
-    ).toBe(true);
-    expect(
-      canReattemptAssessment({
-        attemptNumber: 1,
-        maxAttempts: 2,
-        eventType: "QUICK_ASSESSMENT",
-      }),
     ).toBe(false);
   });
 

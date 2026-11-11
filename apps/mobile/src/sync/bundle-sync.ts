@@ -27,13 +27,13 @@ import type {
 } from "./types";
 
 /** Parallel bundle downloads. */
-export const BUNDLE_CONCURRENCY = 2;
+const BUNDLE_CONCURRENCY = 2;
 /** Background (not currently opened) courses start after a random delay. */
-export const BUNDLE_BACKGROUND_JITTER_MS = 30_000;
+const BUNDLE_BACKGROUND_JITTER_MS = 30_000;
 /** Attempts per enqueue before a course is reported failed (re-queued by the next refresh). */
-export const BUNDLE_MAX_ATTEMPTS = 5;
-export const BUNDLE_BACKOFF_BASE_MS = 2_000;
-export const BUNDLE_BACKOFF_MAX_MS = 5 * 60_000;
+const BUNDLE_MAX_ATTEMPTS = 5;
+const BUNDLE_BACKOFF_BASE_MS = 2_000;
+const BUNDLE_BACKOFF_MAX_MS = 5 * 60_000;
 
 export type BundlePriority = "requested" | "background";
 
@@ -502,7 +502,7 @@ export function createBundleSync(options: BundleSyncOptions) {
 
 export type BundleSync = ReturnType<typeof createBundleSync>;
 
-export class BundleSchemaError extends Error {
+class BundleSchemaError extends Error {
   constructor(public readonly schema: number) {
     super(`Unsupported bundle schema ${schema}`);
     this.name = "BundleSchemaError";
@@ -522,7 +522,7 @@ export type BundleFetcherOptions = {
   fetch?: typeof fetch;
 };
 
-export class BundleFetchError extends Error {
+class BundleFetchError extends Error {
   constructor(
     public readonly status: number,
     message?: string,

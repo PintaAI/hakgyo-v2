@@ -8,8 +8,7 @@ mock.module("../providers/AppThemeProvider", () => ({
 }));
 mock.module("@trpc/react-query", () => ({ getQueryKey: () => [] }));
 
-const { composeSafely, lessonItemIds, resolveLocalFirst, toBundle } =
-  await import("./hooks");
+const { composeSafely, resolveLocalFirst, toBundle } = await import("./hooks");
 
 type Online = {
   data: string | undefined;
@@ -169,15 +168,6 @@ const structure = {
     },
   ],
 };
-
-describe("lessonItemIds", () => {
-  test("returns the item and the next one in module/item order", () => {
-    expect(lessonItemIds(structure, "i1")).toEqual(["i1", "i2"]);
-    expect(lessonItemIds(structure, "i2")).toEqual(["i2", "i3"]);
-    expect(lessonItemIds(structure, "i3")).toEqual(["i3"]);
-    expect(lessonItemIds(structure, "missing")).toEqual([]);
-  });
-});
 
 describe("toBundle", () => {
   test("builds a compose bundle from stored records, with empty content by default", () => {

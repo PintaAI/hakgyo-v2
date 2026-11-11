@@ -1,10 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  isSpeechAnswerCorrect,
-  matchSpeechAlternative,
-  speechLangForMode,
-} from "./vocabulary-speech";
+import { matchSpeechAlternative, speechLangForMode } from "./vocabulary-speech";
 
 describe("vocabulary speech helpers", () => {
   test("maps modes to recognizer locales", () => {
@@ -22,8 +18,8 @@ describe("vocabulary speech helpers", () => {
 
   test("accepts any of several expected answers", () => {
     expect(matchSpeechAlternative(["perut", "kapal"], ["Kapal"])).toBe("Kapal");
-    expect(isSpeechAnswerCorrect(["perut", "kapal"], ["buku"])).toBeFalse();
-    expect(isSpeechAnswerCorrect([], ["buku"])).toBeFalse();
+    expect(matchSpeechAlternative(["perut", "kapal"], ["buku"])).toBeNull();
+    expect(matchSpeechAlternative([], ["buku"])).toBeNull();
   });
 
   test("ignores notes in brackets and punctuation like typed answers", () => {
@@ -33,9 +29,8 @@ describe("vocabulary speech helpers", () => {
   });
 
   test("rejects non-matches and empty input", () => {
-    expect(isSpeechAnswerCorrect("학교", ["책"])).toBeFalse();
-    expect(isSpeechAnswerCorrect("학교", [])).toBeFalse();
-    expect(isSpeechAnswerCorrect("", ["학교"])).toBeFalse();
+    expect(matchSpeechAlternative("학교", [])).toBeNull();
+    expect(matchSpeechAlternative("", ["학교"])).toBeNull();
     // Wrong answers still surface: caller falls back to the first transcript.
     expect(matchSpeechAlternative("학교", ["책"])).toBeNull();
   });

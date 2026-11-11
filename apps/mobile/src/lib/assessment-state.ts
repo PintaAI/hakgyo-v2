@@ -2,7 +2,7 @@ import { formatScoreOutOf } from "@hakgyo/shared";
 export type LearnerAttemptStatus =
   "IN_PROGRESS" | "SUBMITTED" | "IN_REVIEW" | "GRADED";
 
-export type LearnerAssessmentEventType = "QUICK_ASSESSMENT" | "TRYOUT";
+type LearnerAssessmentEventType = "QUICK_ASSESSMENT" | "TRYOUT";
 
 const ONE_DAY_MS = 24 * 3_600_000;
 
@@ -88,40 +88,9 @@ export function assessmentTerminalResult(attempt?: AttemptResult) {
   };
 }
 
-export function canReattemptAssessment({
-  attemptNumber,
-  maxAttempts,
-  eventType,
-}: {
-  attemptNumber: number;
-  maxAttempts: number | null;
-  eventType?: LearnerAssessmentEventType | null;
-}) {
-  return (
-    eventType == null && (maxAttempts === null || attemptNumber < maxAttempts)
-  );
-}
-
-export function latestStandaloneAttemptForItem<T extends AttemptIdentity>(
-  attempts: readonly T[] | undefined,
-  courseItemId: string,
-) {
-  return attempts
-    ?.filter(
-      (attempt) =>
-        attempt.courseItemId === courseItemId && !attempt.assessmentEvent,
-    )
-    .reduce<T | undefined>((latest, attempt) => {
-      if (!latest || attempt.startedAt.getTime() > latest.startedAt.getTime()) {
-        return attempt;
-      }
-      return latest;
-    }, undefined);
-}
-
 /**
- * `latestStandaloneAttemptForItem` for every item at once, keyed by course
- * item id: one pass over the attempts instead of one per item.
+ * The newest standalone (non-event) attempt of every course item, keyed by
+ * course item id, in one pass over the attempts.
  */
 export function latestStandaloneAttemptsByItem<T extends AttemptIdentity>(
   attempts: readonly T[] | undefined,

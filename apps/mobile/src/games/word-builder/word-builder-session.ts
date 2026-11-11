@@ -1,4 +1,4 @@
-import { WORD_CHALLENGES, type WordChallenge } from "./word-builder-data";
+import { type WordChallenge } from "./word-builder-data";
 
 export type WordBuilderSession = {
   phase: "intro" | "playing" | "correct" | "complete";
@@ -31,8 +31,6 @@ export function createWordBuilderReducer(words: readonly WordChallenge[]) {
   return (state: WordBuilderSession, action: WordBuilderAction) =>
     reduceWordBuilder(words, state, action);
 }
-
-export const wordBuilderReducer = createWordBuilderReducer(WORD_CHALLENGES);
 
 function reduceWordBuilder(
   words: readonly WordChallenge[],

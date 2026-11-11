@@ -54,11 +54,10 @@ export type CourseItemAssessment =
 export type VocabularyPractice =
   RouterOutputs["learning"]["getVocabularyPractice"];
 export type LearnerAttempt = RouterOutputs["assessment"]["getMyAttempt"];
-export type LearnerEvent = RouterOutputs["assessmentEvent"]["getForLearner"];
 
 /** Persisted-query keys (see `LocalData.saveQuery`) for attempts started or graded on this device. */
-export const attemptQueryKey = (attemptId: string) => `attempt:${attemptId}`;
-export const attemptAssessmentQueryKey = (attemptId: string) =>
+const attemptQueryKey = (attemptId: string) => `attempt:${attemptId}`;
+const attemptAssessmentQueryKey = (attemptId: string) =>
   `attempt-assessment:${attemptId}`;
 
 // ---------------------------------------------------------------------------
@@ -771,25 +770,6 @@ export function useLearnerEvent(eventId: string) {
     error: query.data === undefined ? query.error : null,
     refetch: query.refetch,
   };
-}
-
-// ---------------------------------------------------------------------------
-// Lesson prefetch helper (pure, unit tested)
-// ---------------------------------------------------------------------------
-
-/** The item plus the next one in reading order (module, then item position). */
-export function lessonItemIds(
-  structure: BundleStructure,
-  courseItemId: string,
-) {
-  const items = [...structure.modules]
-    .sort((a, b) => a.position - b.position)
-    .flatMap((module) =>
-      [...module.items].sort((a, b) => a.position - b.position),
-    );
-  const index = items.findIndex((item) => item.id === courseItemId);
-  if (index === -1) return [];
-  return items.slice(index, index + 2).map((item) => item.id);
 }
 
 export type CourseOfflineMedia = {

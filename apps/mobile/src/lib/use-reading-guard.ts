@@ -1,7 +1,8 @@
-import Storage from "expo-sqlite/kv-store";
 import { useIsFocused } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
+
+import { createUserRecordStore } from "./user-json-store";
 
 /**
  * Time spent on materials not finished yet, kept on this device per account
@@ -10,44 +11,28 @@ import { AppState } from "react-native";
  */
 const MAX_REMEMBERED = 40;
 const SAVE_EVERY_SECONDS = 5;
-const storageKey = (userId: string) => `hakgyo:reading-guard:v1:${userId}`;
+const store = createUserRecordStore(
+  "hakgyo:reading-guard:v1",
+  (value): value is number => typeof value === "number",
+);
 
-function readAll(userId: string): Record<string, number> {
-  try {
-    const raw = Storage.getItemSync(storageKey(userId));
-    const saved: unknown = raw ? JSON.parse(raw) : null;
-    if (!saved || typeof saved !== "object") return {};
-    return Object.fromEntries(
-      Object.entries(saved).filter(
-        (entry): entry is [string, number] => typeof entry[1] === "number",
-      ),
-    );
-  } catch {
-    return {};
-  }
-}
-
-export function readSpentSeconds(userId: string, courseItemId: string) {
-  return readAll(userId)[courseItemId] ?? 0;
+function readSpentSeconds(userId: string, courseItemId: string) {
+  return store.get(userId, courseItemId) ?? 0;
 }
 
 /** Saves the time on a material, newest last, keeping the latest few. */
-export function saveSpentSeconds(
+function saveSpentSeconds(
   userId: string,
   courseItemId: string,
   seconds: number,
 ) {
-  const all = readAll(userId);
-  delete all[courseItemId];
-  const entries = [...Object.entries(all), [courseItemId, seconds] as const];
-  try {
-    Storage.setItemSync(
-      storageKey(userId),
-      JSON.stringify(Object.fromEntries(entries.slice(-MAX_REMEMBERED))),
+  store.update(userId, (records) => {
+    const others = Object.entries(records).filter(
+      ([key]) => key !== courseItemId,
     );
-  } catch {
-    // The countdown restarts next visit.
-  }
+    const entries = [...others, [courseItemId, seconds] as const];
+    return Object.fromEntries(entries.slice(-MAX_REMEMBERED));
+  });
 }
 
 /**

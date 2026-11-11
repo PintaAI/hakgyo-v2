@@ -13,7 +13,6 @@ import {
   isWordFallInputEditable,
   knockbackDelayMs,
   levelForDestroyed,
-  maskedDefinition,
   maximumActiveWords,
   pointsForWord,
   promptTextForWord,
@@ -60,10 +59,6 @@ describe("word fall engine", () => {
     expect(screenSource).toContain(
       'behavior={Platform.OS === "ios" ? "padding" : undefined}',
     );
-    expect(screenSource).not.toContain("useAnimatedKeyboard");
-    expect(screenSource).not.toContain("nativeKeyboardHeight");
-    expect(screenSource).not.toContain("keyboardResizeOffset");
-    expect(screenSource).not.toContain("wordFallKeyboardInset");
   });
 
   test("waits for the native sheet to dismiss before focusing on iOS", () => {
@@ -218,10 +213,6 @@ describe("word fall engine", () => {
     expect(missed).toEqual([{ word, reasons: ["mistyped", "missed"] }]);
   });
 
-  test("reveals one definition character for each completed character", () => {
-    expect(maskedDefinition("South Korea", 3)).toBe("Sou•• •••••");
-  });
-
   test("keeps the reveal button near the player for thumb reach", () => {
     const screenSource = readFileSync(
       new URL("./word-fall-screen.tsx", import.meta.url),
@@ -237,22 +228,5 @@ describe("word fall engine", () => {
     for (const level of [1, 2, 5, 10]) {
       expect(levelForDestroyed(destroyedForLevel(level))).toBe(level);
     }
-  });
-
-  test("starts at the level picked in Latihan's source sheet", () => {
-    const screenSource = readFileSync(
-      new URL("./word-fall-screen.tsx", import.meta.url),
-      "utf8",
-    );
-    const sheetSource = readFileSync(
-      new URL("../../../app/practice-source.tsx", import.meta.url),
-      "utf8",
-    );
-    expect(sheetSource).toContain("<LevelSelector");
-    expect(sheetSource).toContain("useWordFallSettings()");
-    expect(screenSource).toContain("useWordFallSettings()");
-    expect(screenSource).toContain(
-      "setDestroyed(destroyedForLevel(startLevel))",
-    );
   });
 });

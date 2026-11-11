@@ -35,7 +35,7 @@ let inFlight: Promise<boolean> | null = null;
  * Checks for an update and downloads it. True when one is ready to apply.
  * Concurrent callers share one check.
  */
-export function fetchOtaUpdate(): Promise<boolean> {
+function fetchOtaUpdate(): Promise<boolean> {
   inFlight ??= (async () => {
     const result = await Updates.checkForUpdateAsync();
     if (!result.isAvailable) return false;

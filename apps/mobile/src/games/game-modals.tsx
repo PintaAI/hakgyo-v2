@@ -19,16 +19,16 @@ const gameSymbols = {
   "word-builder": "text.word.spacing",
 } satisfies Record<GameKey, SymbolName>;
 
-/** The illustration of each game, shown at the top of Latihan's source sheet. */
-export const gameHeroAssets = {
+/**
+ * The illustration of each game, shown at the top of Latihan's source sheet.
+ * Only the vocabulary games open that sheet; Hangeul games start directly.
+ */
+export const gameHeroAssets: Partial<Record<GameKey, number>> = {
   cards: require("../../assets/games/cards-intro.png"),
   "word-fall": require("../../assets/games/word-fall-intro.png"),
   sentences: require("../../assets/games/sentences-intro.png"),
   match: require("../../assets/games/match-intro.png"),
-  "syllable-forge": require("../../assets/games/syllable-forge-intro-v2.png"),
-  "stroke-master": require("../../assets/games/hangeul-intro.png"),
-  "word-builder": require("../../assets/games/word-builder-intro.png"),
-} satisfies Record<GameKey, number>;
+} satisfies Record<"cards" | "word-fall" | "sentences" | "match", number>;
 
 /**
  * The sheet a Hangeul game's round ends on. Vocabulary games end (and Hujan

@@ -94,7 +94,6 @@ export type SyncNotice = SyncNoticeBase &
       }
   );
 
-export type SyncNoticeKind = SyncNotice["kind"];
 export type CourseContentNotice = Extract<
   SyncNotice,
   { kind: "COURSE_CONTENT" }

@@ -14,11 +14,11 @@ import type {
 } from "./asset-cache";
 
 /** Ids collected for this long before one `createDownloadUrls` call is made. */
-export const ASSET_URL_BATCH_DELAY_MS = 30;
+const ASSET_URL_BATCH_DELAY_MS = 30;
 /** Server limit (`storage.createDownloadUrls`). */
-export const ASSET_URL_BATCH_SIZE = 100;
+const ASSET_URL_BATCH_SIZE = 100;
 /** A signed URL is reused until this long before it expires. */
-export const ASSET_URL_SAFETY_MARGIN_MS = 30_000;
+const ASSET_URL_SAFETY_MARGIN_MS = 30_000;
 
 export type SignedAssetDownload = {
   downloadUrl: string;
@@ -59,7 +59,7 @@ type Waiter = {
   reject: (error: unknown) => void;
 };
 
-export class AssetUnavailableError extends Error {
+class AssetUnavailableError extends Error {
   constructor(public readonly assetId: string) {
     super(`Asset ${assetId} is not available`);
     this.name = "AssetUnavailableError";
