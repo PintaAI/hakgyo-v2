@@ -50,7 +50,7 @@ import { withOpacity, type ThemeColors } from "../../theme/colors";
 import { toolbarIcons } from "../../theme/toolbar-icons";
 import { GameBackToolbar } from "../game-screens";
 import { GameModal } from "../game-modals";
-import { GameResult } from "../game-result";
+import { GameResultSheet } from "../game-result-sheet";
 import type { GameLesson } from "../lesson";
 import { START_LEVEL_OPTIONS, useWordFallSettings } from "./word-fall-settings";
 import { useGameExitGuard } from "../game-navigation";
@@ -1477,11 +1477,11 @@ export function WordFallScreen({
 
   // In Latihan the round ends on a result page; a lesson goes on instead.
   const showResult = phase === "gameover" && !lesson;
-  // No sheet to wait for on iOS: the field is uncovered at once.
+  // The result sheet is still closing on iOS: focus once it is gone.
   const playAgain = useCallback(() => {
     resetGame();
-    if (Platform.OS === "ios") focusInput();
-  }, [focusInput, resetGame]);
+    if (Platform.OS === "ios") schedule(() => inputRef.current?.focus(), 500);
+  }, [resetGame, schedule]);
   const answered = Math.max(0, destroyed - destroyedForLevel(startLevel));
 
   // A lesson round starts at once. Opened from Latihan (whose source sheet
@@ -1971,9 +1971,9 @@ export function WordFallScreen({
         title="Dijeda"
         visible={phase === "paused"}
       />
-      {/* Over the field rather than in its place: the field keeps its
-          measured size, timers and shared values, so "Main lagi" starts a
-          round at once. The keyboard went down with the round (endGame). */}
+      {/* The result is a sheet; this covers the field beneath it rather than
+          unmounting it, so the field keeps its measured size, timers and
+          shared values and "Main lagi" starts a round at once. */}
       {showResult ? (
         <View
           style={[
@@ -1981,7 +1981,7 @@ export function WordFallScreen({
             { backgroundColor: colors.background },
           ]}
         >
-          <GameResult
+          <GameResultSheet
             courseId={courseId}
             courseItemId={sourceCourseItemId}
             eyebrow="Hujan kata"
@@ -2017,7 +2017,7 @@ export function WordFallScreen({
               />
             </Card>
             <LearningRecap items={reviewItems} />
-          </GameResult>
+          </GameResultSheet>
         </View>
       ) : null}
     </KeyboardAvoidingView>

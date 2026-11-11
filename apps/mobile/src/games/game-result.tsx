@@ -27,6 +27,29 @@ type MainAction = {
   disabled?: boolean;
 };
 
+export type GameResultProps = {
+  eyebrow: string;
+  title: string;
+  description?: string;
+  /** On the front card: "8/10" over "benar", a score over "poin". */
+  mark: { value: string; label?: string };
+  done?: boolean;
+  celebrate?: boolean;
+  facts?: readonly Fact[];
+  /** Playing again, or the words to repeat. */
+  primary?: MainAction;
+  /** Leaving. */
+  secondary?: { label: string; onPress: () => void; disabled?: boolean };
+  /** The game's review list. */
+  children?: ReactNode;
+  courseId?: string;
+  courseItemId?: string;
+  /** Off inside a screen that scrolls already (`StudyScreen`). */
+  scroll?: boolean;
+  /** Runs before any of the page's actions (the sheet closes itself). */
+  onAct?: () => void;
+};
+
 /**
  * The end of a game, in the layout its opening has (and a tugas result has):
  * the hero with the round's number on the fanned cards, a title and fact
@@ -52,26 +75,8 @@ export function GameResult({
   courseId,
   courseItemId,
   scroll = true,
-}: {
-  eyebrow: string;
-  title: string;
-  description?: string;
-  /** On the front card: "8/10" over "benar", a score over "poin". */
-  mark: { value: string; label?: string };
-  done?: boolean;
-  celebrate?: boolean;
-  facts?: readonly Fact[];
-  /** Playing again, or the words to repeat. */
-  primary?: MainAction;
-  /** Leaving. */
-  secondary?: { label: string; onPress: () => void; disabled?: boolean };
-  /** The game's review list. */
-  children?: ReactNode;
-  courseId?: string;
-  courseItemId?: string;
-  /** Off inside a screen that scrolls already (`StudyScreen`). */
-  scroll?: boolean;
-}) {
+  onAct,
+}: GameResultProps) {
   const { colors } = useAppTheme();
   const inCourse = Boolean(courseId && courseItemId);
   const learning = useLearningContinuation({
@@ -108,17 +113,29 @@ export function GameResult({
           meta={`Bab ${path.moduleIndex + 1} · ${path.completedCount}/${path.module.items.length} selesai`}
           pill={next ? "Lanjutkan" : "Buka"}
           loading={learning.busy}
-          onPress={() => void learning.continueLearning()}
+          onPress={() => {
+            onAct?.();
+            void learning.continueLearning();
+          }}
         />
       ) : primary ? (
-        <HeroTile {...primary} />
+        <HeroTile
+          {...primary}
+          onPress={() => {
+            onAct?.();
+            primary.onPress();
+          }}
+        />
       ) : null}
       {goesOn && primary ? (
         <Action
           variant="secondary"
           leadingIcon="arrow.clockwise"
           disabled={primary.disabled}
-          onPress={primary.onPress}
+          onPress={() => {
+            onAct?.();
+            primary.onPress();
+          }}
         >
           {`${primary.eyebrow} · ${primary.title}`}
         </Action>
@@ -127,7 +144,10 @@ export function GameResult({
         <Action
           variant="ghost"
           disabled={secondary.disabled}
-          onPress={secondary.onPress}
+          onPress={() => {
+            onAct?.();
+            secondary.onPress();
+          }}
         >
           {secondary.label}
         </Action>

@@ -11,7 +11,7 @@ import {
   FullScreenState,
 } from "../../../src/components/learning-ui";
 import { CardsScreen } from "../../../src/games/cards-screen";
-import { GameResult } from "../../../src/games/game-result";
+import { GameResultSheet } from "../../../src/games/game-result-sheet";
 import { GameBackToolbar, GamePage } from "../../../src/games/game-screens";
 import {
   lessonRounds,
@@ -314,7 +314,7 @@ function LessonSummary({
   return (
     <View className="flex-1 bg-background">
       <LessonHeader title="" finished />
-      <GameResult
+      <GameResultSheet
         courseId={courseId}
         courseItemId={courseItemId}
         eyebrow="Latihan selesai"
@@ -382,7 +382,7 @@ function LessonSummary({
             );
           })}
         </Card>
-      </GameResult>
+      </GameResultSheet>
     </View>
   );
 }

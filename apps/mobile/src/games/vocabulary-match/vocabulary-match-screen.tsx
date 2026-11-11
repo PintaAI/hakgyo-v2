@@ -20,7 +20,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { Card, Eyebrow } from "../../components/learning-ui";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { GameBackToolbar } from "../game-screens";
-import { GameResult } from "../game-result";
+import { GameResultSheet } from "../game-result-sheet";
 import type { GameLesson } from "../lesson";
 import { useGameExitGuard } from "../game-navigation";
 import { withOpacity } from "../../theme/colors";
@@ -590,7 +590,7 @@ export function VocabularyMatchScreen({
             title: "",
           }}
         />
-        <GameResult
+        <GameResultSheet
           courseId={courseId}
           courseItemId={sourceCourseItemId}
           eyebrow="Cocokkan kata"
@@ -631,7 +631,7 @@ export function VocabularyMatchScreen({
               ))}
             </Card>
           ) : null}
-        </GameResult>
+        </GameResultSheet>
       </View>
     );
   }

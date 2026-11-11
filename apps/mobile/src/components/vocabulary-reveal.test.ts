@@ -207,7 +207,7 @@ function screenHarness(kind: "today" | "course") {
       HandsFreeAnswerField: "HandsFreeAnswerField",
     },
     "./GlassBox": { GlassBox: "GlassBox" },
-    "../games/game-result": { GameResult: "GameResult" },
+    "../games/game-result-sheet": { GameResultSheet: "GameResult" },
     "./source-link": { SourceLink: "SourceLink" },
     "../lib/use-deck-tutorial": {
       useDeckTutorial: () => ({

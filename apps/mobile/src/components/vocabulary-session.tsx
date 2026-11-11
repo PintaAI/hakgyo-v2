@@ -28,7 +28,7 @@ import {
 } from "./onboarding-deck-tutorial";
 import { VocabularyModeSwitch } from "./vocabulary-mode-switch";
 import { api } from "../lib/trpc";
-import { GameResult } from "../games/game-result";
+import { GameResultSheet } from "../games/game-result-sheet";
 import { GameBackToolbar } from "../games/game-screens";
 import { useGameExitGuard } from "../games/game-navigation";
 import type { GameLesson } from "../games/lesson";
@@ -521,8 +521,7 @@ export function VocabularySession({
             title: "",
           }}
         />
-        <GameResult
-          scroll={false}
+        <GameResultSheet
           courseId={courseId}
           courseItemId={sourceCourseItemId}
           eyebrow="Kartu"
@@ -599,7 +598,7 @@ export function VocabularySession({
               ))}
             </Card>
           ) : null}
-        </GameResult>
+        </GameResultSheet>
       </View>
     );
   }

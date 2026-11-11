@@ -17,7 +17,7 @@ import type { VocabularyAttempt } from "../../lib/use-vocabulary-progress";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { useGameExitGuard } from "../game-navigation";
-import { GameResult } from "../game-result";
+import { GameResultSheet } from "../game-result-sheet";
 import type { GameLesson } from "../lesson";
 import { GameBackToolbar } from "../game-screens";
 import {
@@ -168,7 +168,7 @@ export function SentenceBuilderScreen({
             onBack={exit}
           />
         ) : (
-          <GameResult
+          <GameResultSheet
             courseId={courseId}
             courseItemId={sourceCourseItemId}
             eyebrow="Susun makna"
@@ -206,7 +206,7 @@ export function SentenceBuilderScreen({
                 ))}
               </Card>
             ) : null}
-          </GameResult>
+          </GameResultSheet>
         )}
       </View>
     );

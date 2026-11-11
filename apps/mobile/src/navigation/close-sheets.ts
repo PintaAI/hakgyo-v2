@@ -8,6 +8,7 @@ const SHEET_ROUTES = new Set([
   "courses/[courseId]",
   "courses/[courseId]/chapter-complete",
   "courses/[courseId]/items/[courseItemId]/result",
+  "game-result",
   "material-link",
   "organization-switcher",
   "profile",
