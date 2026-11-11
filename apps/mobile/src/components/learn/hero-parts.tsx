@@ -145,6 +145,10 @@ export type Fact = {
   text: string;
   /** Read out instead of `text` ("Waktu: 20 menit"). */
   accessibilityLabel?: string;
+  /** A tappable chip changes a setting. */
+  onPress?: () => void;
+  accessibilityHint?: string;
+  active?: boolean;
 };
 
 /**
@@ -158,11 +162,7 @@ export function FactChip({
   onPress,
   accessibilityHint,
   active = false,
-}: Fact & {
-  onPress?: () => void;
-  accessibilityHint?: string;
-  active?: boolean;
-}) {
+}: Fact) {
   const { colors } = useAppTheme();
   const body = (
     <View

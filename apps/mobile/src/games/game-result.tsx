@@ -55,12 +55,12 @@ export type GameResultProps = {
 /**
  * The end of a game, in the layout its opening has (and a tugas result has):
  * the hero with the round's number on the fanned cards, a title and fact
- * chips, then one `HeroTile`, a plain second action and the game's own
- * review list. It shows as soon as the round ends on the phone; what the
+ * chips, then the game's own review list, one `HeroTile` and the small
+ * actions under it. It shows as soon as the round ends on the phone; what the
  * server says later only fills in facts.
  *
  * In a course the tile is the next activity once this one is done (playing
- * again becomes the plain action); until then a vocabulary set shows the
+ * again becomes a small action); until then a vocabulary set shows the
  * locked "Berikutnya" row.
  */
 export function GameResult({
@@ -102,6 +102,7 @@ export function GameResult({
         <HeroTitle eyebrow={eyebrow} title={title} description={description} />
         {facts?.length ? <FactChips facts={facts} /> : null}
       </HakgyoHero>
+      {children}
       {goesOn && path ? (
         <HeroTile
           eyebrow={
@@ -129,31 +130,6 @@ export function GameResult({
           }}
         />
       ) : null}
-      {goesOn && primary ? (
-        <Action
-          variant="secondary"
-          leadingIcon="arrow.clockwise"
-          disabled={primary.disabled}
-          onPress={() => {
-            onAct?.();
-            primary.onPress();
-          }}
-        >
-          {`${primary.eyebrow} · ${primary.title}`}
-        </Action>
-      ) : null}
-      {secondary ? (
-        <Action
-          variant="ghost"
-          disabled={secondary.disabled}
-          onPress={() => {
-            onAct?.();
-            secondary.onPress();
-          }}
-        >
-          {secondary.label}
-        </Action>
-      ) : null}
       {learning.issue?.kind === "error" && inCourse ? (
         <Text
           accessibilityRole="alert"
@@ -162,7 +138,42 @@ export function GameResult({
           {learning.issue.message}
         </Text>
       ) : null}
-      {children}
+      {/* The small actions under the tile, side by side. */}
+      {(goesOn && primary) || secondary ? (
+        <View className="flex-row justify-center gap-2">
+          {goesOn && primary ? (
+            <View className="flex-1">
+              <Action
+                variant="ghost"
+                size="sm"
+                leadingIcon="arrow.clockwise"
+                disabled={primary.disabled}
+                onPress={() => {
+                  onAct?.();
+                  primary.onPress();
+                }}
+              >
+                {primary.eyebrow}
+              </Action>
+            </View>
+          ) : null}
+          {secondary ? (
+            <View className="flex-1">
+              <Action
+                variant="ghost"
+                size="sm"
+                disabled={secondary.disabled}
+                onPress={() => {
+                  onAct?.();
+                  secondary.onPress();
+                }}
+              >
+                {secondary.label}
+              </Action>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
       {holds && courseId && courseItemId ? (
         <View className="gap-2">
           <LearningFooterView

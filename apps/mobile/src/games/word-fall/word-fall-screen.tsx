@@ -40,7 +40,6 @@ import Animated, {
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { Card, Eyebrow } from "../../components/learning-ui";
-import { VocabularyModeSwitch } from "../../components/vocabulary-mode-switch";
 import type {
   VocabularyAttempt,
   VocabularyAttemptDelivery,
@@ -708,33 +707,6 @@ export function LevelSelector({
           );
         })}
       </ScrollView>
-    </View>
-  );
-}
-
-export function WordFallModeSelector({
-  mode,
-  onChange,
-}: {
-  mode: WordFallAnswerMode;
-  onChange: (mode: WordFallAnswerMode) => void;
-}) {
-  const { colors } = useAppTheme();
-  return (
-    <View style={styles.modeSelector}>
-      <View style={styles.modeSelectorCopy}>
-        <Text style={[styles.modeSelectorTitle, { color: colors.foreground }]}>
-          Bahasa jawaban
-        </Text>
-        <Text
-          style={[styles.modeSelectorDetail, { color: colors.mutedForeground }]}
-        >
-          {mode === "ID"
-            ? "Indonesia: lihat kata Korea, ketik artinya"
-            : "Korea: lihat arti Indonesia, ketik katanya"}
-        </Text>
-      </View>
-      <VocabularyModeSwitch mode={mode} onChange={onChange} />
     </View>
   );
 }
@@ -2000,37 +1972,29 @@ export function WordFallScreen({
             courseId={courseId}
             courseItemId={sourceCourseItemId}
             eyebrow="Hujan kata"
-            title="Game selesai"
+            title={`Sampai level ${level}`}
             mark={{ value: String(score), label: "poin" }}
             facts={[
-              { icon: "flame.fill", text: `Level ${level}` },
               { icon: "checkmark.seal.fill", text: `${answered} kata dijawab` },
-              ...(reviewItems.length
-                ? [
-                    {
-                      icon: "arrow.clockwise" as const,
-                      text: `${reviewItems.length} perlu diulang`,
-                    },
-                  ]
-                : []),
+              {
+                icon: "keyboard.fill",
+                text: answerMode === "ID" ? "Jawab: Indonesia" : "Jawab: Korea",
+                accessibilityHint: "Ganti bahasa jawaban ronde berikutnya",
+                onPress: () => setAnswerMode(answerMode === "ID" ? "KR" : "ID"),
+              },
             ]}
             primary={{
               eyebrow: "Main lagi",
-              title: "Ronde baru",
-              meta: `Mulai level ${startLevel} · ${
-                answerMode === "ID" ? "ketik artinya" : "ketik kata Koreanya"
-              }`,
+              title: `Mulai dari level ${startLevel}`,
+              meta:
+                answerMode === "ID"
+                  ? "Lihat kata Korea, ketik artinya"
+                  : "Lihat arti Indonesia, ketik kata Koreanya",
               pill: "Mulai",
               onPress: playAgain,
             }}
             secondary={{ label: "Selesai", onPress: exit }}
           >
-            <Card className="p-4">
-              <WordFallModeSelector
-                mode={answerMode}
-                onChange={setAnswerMode}
-              />
-            </Card>
             <LearningRecap items={reviewItems} />
           </GameResultSheet>
         </View>
@@ -2236,10 +2200,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   revealButtonText: { fontSize: 14, fontWeight: "800" },
-  modeSelector: { alignItems: "center", flexDirection: "row", gap: 12 },
-  modeSelectorCopy: { flex: 1, gap: 3 },
-  modeSelectorTitle: { fontSize: 14, fontWeight: "800" },
-  modeSelectorDetail: { fontSize: 11, lineHeight: 16 },
   recapItem: { alignItems: "center", flexDirection: "row", gap: 12 },
   recapWord: { flex: 1, gap: 2 },
   recapReason: { fontSize: 10, fontWeight: "800", textAlign: "right" },
