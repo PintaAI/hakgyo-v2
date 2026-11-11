@@ -13,7 +13,7 @@ export const mobileAppStoreLinks: {
   playStore: null,
   testFlight: "https://testflight.apple.com/join/yGEtbK2q",
   androidApk:
-    "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/app-releases/android/hakgyo-1.0.1-preview-22d6b915.apk",
+    "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/app-releases/android/hakgyo-1.0.2-preview-2d296bb1.apk",
 };
 
 export const mobileAppScheme = "hakgyo";
