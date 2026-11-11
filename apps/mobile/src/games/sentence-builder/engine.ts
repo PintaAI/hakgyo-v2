@@ -84,11 +84,6 @@ export function exampleSentencePairs(examples: unknown) {
   });
 }
 
-/** The Korean example sentences of a vocabulary entry, without translations. */
-export function exampleSentences(examples: unknown): string[] {
-  return exampleSentencePairs(examples).map(({ sentence }) => sentence);
-}
-
 /**
  * Splits a sentence into word tiles. Final punctuation is dropped so the last
  * tile does not give the answer away; it returns with the full sentence.

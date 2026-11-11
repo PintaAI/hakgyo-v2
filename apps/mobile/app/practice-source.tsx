@@ -131,14 +131,14 @@ function placeLine(courseTitle: string, moduleTitle: string, title: string) {
     : `${courseTitle} · ${moduleTitle}`;
 }
 
+/** Suggestion labels whose reason only restates the curriculum order. */
+const PLAIN_LABELS = new Set(["Bab sekarang", "Berikutnya"]);
+
 /**
  * The suggested source at the foot of the hero, on the glass tile of the
  * "Lanjutkan belajar" hero in a Belajar class card: why and what on the
  * left, "Main" on the right, the whole tile tappable.
  */
-/** Suggestion labels whose reason only restates the curriculum order. */
-const PLAIN_LABELS = new Set(["Bab sekarang", "Berikutnya"]);
-
 function HeroPick({ pick }: { pick: Pick }) {
   const learned = pick.progress?.learned ?? 0;
   const total = pick.progress?.total ?? 0;
@@ -309,7 +309,6 @@ export default function PracticeSourceSheet() {
         };
       });
   const [mainPick, ...otherPicks] = picks;
-  // Nothing to suggest (no sets yet): the list explains why.
   // Nothing to suggest (no sets yet): the full list explains why.
   const listOpen = segment === 1 || !mainPick;
 
@@ -418,7 +417,6 @@ export default function PracticeSourceSheet() {
           <ResourceLibrary
             courses={courses}
             filter={tool.resource}
-            gameKey={gameKey}
             onOpenItem={openItem}
             onRetry={() => void index.refetch()}
             outlines={outlines}

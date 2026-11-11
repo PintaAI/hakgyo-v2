@@ -556,8 +556,6 @@ function CourseItemContent({
               />
               {!assessment.event ? (
                 <LearningFooterView
-                  courseId={courseId}
-                  courseItemId={courseItemId}
                   learning={learning}
                   compact
                   continueButton="screenReader"
@@ -671,20 +669,14 @@ function CourseItemContent({
                 />
               ) : null}
               <AssessmentOverview
-                timeLimitMinutes={assessment.timeLimitMinutes}
                 passingScore={assessment.passingScore}
-                maxAttempts={assessment.maxAttempts}
-                attemptsUsed={assessment.standaloneAttemptCount}
                 latestAttempt={latestAttempt}
                 itemCompleted={itemCompleted}
                 canReattempt={assessmentEntry.canReattempt}
                 gatesProgress={!assessment.event}
-                sections={assessment.sections}
               />
               {!assessment.event ? (
                 <LearningFooterView
-                  courseId={courseId}
-                  courseItemId={courseItemId}
                   learning={learning}
                   compact
                   continueButton="screenReader"
@@ -793,8 +785,6 @@ function CourseItemContent({
               </View>
               <View className="mt-10">
                 <LearningFooterView
-                  courseId={courseId}
-                  courseItemId={courseItemId}
                   learning={learning}
                   // One "next" row: pulling past the end is how to go on.
                   compact

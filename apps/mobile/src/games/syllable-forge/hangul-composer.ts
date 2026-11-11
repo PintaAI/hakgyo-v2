@@ -144,11 +144,3 @@ export function syllableKeys(text: string): string[] {
     return [block.initial, ...vowel, ...final];
   });
 }
-
-export function vowelLayout(
-  vowel: string,
-): "vertical" | "horizontal" | "mixed" {
-  if ([..."ㅗㅛㅜㅠㅡ"].includes(vowel)) return "horizontal";
-  if ([..."ㅘㅙㅚㅝㅞㅟㅢ"].includes(vowel)) return "mixed";
-  return "vertical";
-}

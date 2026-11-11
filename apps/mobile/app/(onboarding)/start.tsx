@@ -119,7 +119,6 @@ const LEVEL_UNLOCKS = [
 ];
 
 /** The Latihan tab's vocabulary games, as `practice-hub.tsx` names them. */
-/** The Latihan tab's vocabulary games, as `practice-hub.tsx` names them. */
 const GAMES = ["Kartu", "Hujan Kata", "Susun makna", "Cocokkan"];
 
 const SAMPLE_DECK_CARDS: VocabularyPracticeDeckCard[] = [

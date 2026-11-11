@@ -4,10 +4,7 @@ import {
   syllableKeys,
   VOWELS,
 } from "./hangul-composer";
-import {
-  SYLLABLE_CHALLENGES,
-  type SyllableChallenge,
-} from "./syllable-forge-data";
+import { type SyllableChallenge } from "./syllable-forge-data";
 
 export type SyllableSession = {
   phase: "intro" | "playing" | "correct" | "complete";
@@ -44,9 +41,6 @@ export function createSyllableSessionReducer(
   return (state: SyllableSession, action: SessionAction) =>
     reduceSyllableSession(challenges, state, action);
 }
-
-export const syllableSessionReducer =
-  createSyllableSessionReducer(SYLLABLE_CHALLENGES);
 
 function reduceSyllableSession(
   challenges: readonly SyllableChallenge[],

@@ -116,8 +116,3 @@ export function createThemeVariables(colors: ThemeColors) {
     ]),
   ) as Record<`--${string}`, string>;
 }
-
-export const themeVariables = {
-  light: createThemeVariables(themeColors.light),
-  dark: createThemeVariables(themeColors.dark),
-} as const;

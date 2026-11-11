@@ -22,7 +22,7 @@ function sumBytes(
  * What of `assetIds` is stored on the device, plus the progress of the offline download under
  * `key`. Re-checks the device whenever an offline download stores files.
  */
-export function useOfflineStatus(
+function useOfflineStatus(
   key: string,
   assetIds: readonly string[],
   sizes: ReadonlyMap<string, number>,

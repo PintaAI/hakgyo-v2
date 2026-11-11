@@ -9,7 +9,7 @@ export type RopeState = {
 
 export type ChainLinkLayout = RopePoint & { angle: number; length: number };
 
-export const ROPE_POINT_COUNT = 13;
+const ROPE_POINT_COUNT = 13;
 export const CHAIN_LINK_SPACING = 13;
 export const MAX_CHAIN_LINK_COUNT = 64;
 

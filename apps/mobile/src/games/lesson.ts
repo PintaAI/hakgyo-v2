@@ -14,7 +14,7 @@ export type GameLesson = {
 };
 
 /** Words in one lesson: a short session, like one lesson in Duolingo. */
-export const LESSON_WORD_COUNT = 5;
+const LESSON_WORD_COUNT = 5;
 
 /**
  * The rounds, each a game key: recognise the meaning, recall the Korean

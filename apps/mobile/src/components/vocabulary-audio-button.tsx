@@ -1,6 +1,6 @@
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, Text } from "react-native";
+import { ActivityIndicator, Pressable } from "react-native";
 
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { useApiAssetResolver } from "./content-renderer/use-api-asset-resolver";

@@ -35,15 +35,6 @@ export type LearnerIndex = Extract<
   MobileSyncIndexResult,
   { status: "ok" }
 >["index"];
-export type LearnerIndexSections = Omit<
-  LearnerIndex,
-  | "indexToken"
-  | "indexSchema"
-  | "generatedAt"
-  | "organizationId"
-  | "validUntil"
-  | "learner"
->;
 
 export type MobileSyncCommitInput = V2Inputs["commit"];
 export type MobileSyncCommitResult = V2Outputs["commit"];
@@ -53,14 +44,6 @@ export type MobileSyncCommitPatch = NonNullable<
 export type MobileSyncManifestInput = V2Inputs["getManifest"];
 export type MobileSyncManifest = V2Outputs["getManifest"];
 export type MobileSyncIndexInput = V2Inputs["getIndex"];
-
-/** `getMyAttempt` / `getForCourseItem` written by commit results and assessment starts. */
-export type MobileSyncAssessmentResult = NonNullable<
-  MobileSyncCommitResult["results"][number]["assessment"]
->;
-export type MobileSyncAssessmentDetail = NonNullable<
-  MobileSyncCommitResult["results"][number]["assessmentDetail"]
->;
 
 // ---------------------------------------------------------------------------
 // Transport

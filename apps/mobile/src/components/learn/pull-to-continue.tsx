@@ -45,7 +45,7 @@ const RELEASE_SETTLE_MS = 320;
 const AT_END_SLACK = 8;
 
 /** How far past the end the finger travels before a release continues. */
-export const PULL_THRESHOLD = 200;
+const PULL_THRESHOLD = 200;
 
 /** Farthest the indicator rises; it approaches this and never reaches it. */
 const RISE = 120;
@@ -94,7 +94,7 @@ const LOCK_Y = HINT_Y - rubber(PULL_THRESHOLD) - SNAP_JUMP;
  * gives a lot at first and less and less near the end, like a band that
  * pulls back harder the more it stretches.
  */
-export function tension(pull: number) {
+function tension(pull: number) {
   "worklet";
   const x = Math.min(1, Math.max(0, pull / PULL_THRESHOLD));
   return (1 - Math.exp(-TENSION * x)) / (1 - Math.exp(-TENSION));

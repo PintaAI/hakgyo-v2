@@ -1,6 +1,6 @@
 import type { RouterOutputs } from "@hakgyo/api";
 import { router } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { openAssessmentEvent, openCourseItem } from "../lib/navigation";
@@ -24,7 +24,7 @@ import { SymbolIcon } from "./ui/symbol-icon";
 import type { SymbolName } from "./ui/symbol-names";
 import { TourTarget } from "../tour/tour-target";
 
-export type Course = RouterOutputs["learning"]["listMyCourses"][number];
+type Course = RouterOutputs["learning"]["listMyCourses"][number];
 export type Event = RouterOutputs["assessmentEvent"]["listForLearner"][number];
 type CourseOutline = RouterOutputs["learning"]["getCourseOutline"];
 export type PracticeFilter = "VOCABULARY_SET" | "ASSESSMENT";
@@ -37,21 +37,19 @@ type HubProps = {
   hangeulHidden?: boolean;
 };
 
-export type Tool = {
+type Tool = {
   key: string;
   title: string;
   subtitle: string;
   sourceLabel: string;
-  unavailableLabel?: string;
   icon: SymbolName;
   /** Text drawn in place of the symbol when `textIcon` is set. */
   fallback?: string;
   textIcon?: boolean;
   resource: PracticeFilter;
-  available: boolean;
 };
 
-export const tools: Tool[] = [
+const tools: Tool[] = [
   {
     key: "cards",
     title: "Kartu",
@@ -59,7 +57,6 @@ export const tools: Tool[] = [
     sourceLabel: "Kosakata",
     icon: "rectangle.stack.fill",
     resource: "VOCABULARY_SET",
-    available: true,
   },
   {
     key: "assessment",
@@ -68,7 +65,6 @@ export const tools: Tool[] = [
     sourceLabel: "Tugas",
     icon: "checkmark.circle.fill",
     resource: "ASSESSMENT",
-    available: true,
   },
   {
     key: "word-fall",
@@ -77,7 +73,6 @@ export const tools: Tool[] = [
     sourceLabel: "Kosakata",
     icon: "arrow.down.circle.fill",
     resource: "VOCABULARY_SET",
-    available: true,
   },
   {
     key: "sentences",
@@ -86,7 +81,6 @@ export const tools: Tool[] = [
     sourceLabel: "Kosakata",
     icon: "text.word.spacing",
     resource: "VOCABULARY_SET",
-    available: true,
   },
   {
     key: "match",
@@ -95,7 +89,6 @@ export const tools: Tool[] = [
     sourceLabel: "Kosakata",
     icon: "square.grid.2x2.fill",
     resource: "VOCABULARY_SET",
-    available: true,
   },
 ];
 
@@ -105,34 +98,28 @@ const hangeulTools: Tool[] = [
     title: "Hangeul",
     subtitle: "Pelajari huruf Hangeul",
     sourceLabel: "한글",
-    unavailableLabel: "한글",
     icon: "pencil",
     fallback: "한",
     textIcon: true,
     resource: "VOCABULARY_SET",
-    available: true,
   },
   {
     key: "syllable-forge",
     title: "Susun 한글",
     subtitle: "Susun suku kata Hangeul",
     sourceLabel: "한글",
-    unavailableLabel: "한글",
     icon: "character.book.closed.fill",
     fallback: "글",
     textIcon: true,
     resource: "VOCABULARY_SET",
-    available: true,
   },
   {
     key: "word-builder",
     title: "Susun kata",
     subtitle: "Susun kata dari suku kata",
     sourceLabel: "한글",
-    unavailableLabel: "한글",
     icon: "text.word.spacing",
     resource: "VOCABULARY_SET",
-    available: true,
   },
 ];
 
@@ -145,24 +132,12 @@ export function selectedTool(key: string | null | undefined) {
   return tools.find((tool) => tool.key === key);
 }
 
-export function GameIcon({
-  tool,
-  selected = false,
-  size = 44,
-}: {
-  tool: Tool;
-  selected?: boolean;
-  size?: number;
-}) {
+export function GameIcon({ tool, size = 44 }: { tool: Tool; size?: number }) {
   const { colors } = useAppTheme();
-  const glyph = selected
-    ? colors.primaryForeground
-    : tool.available
-      ? colors.primary
-      : colors.mutedForeground;
+  const glyph = colors.primary;
   return (
     <View
-      className={`items-center justify-center rounded-full ${selected ? "bg-primary" : tool.available ? "bg-primary/10" : "bg-muted"}`}
+      className="items-center justify-center rounded-full bg-primary/10"
       style={{ width: size, height: size }}
     >
       {tool.textIcon ? (
@@ -183,46 +158,30 @@ export function GameIcon({
 
 function GameTile({
   tool,
-  selected,
   onSelect,
   fullWidth = false,
 }: {
   tool: Tool;
-  selected: boolean;
   onSelect: (key: string) => void;
   fullWidth?: boolean;
 }) {
-  // A game can replace the default "Soon" badge with a domain label.
-  // The badge turns primary when the tile is selected.
-  const badgeLabel = tool.available
-    ? tool.sourceLabel
-    : (tool.unavailableLabel ?? "Segera");
-  const disabled = !tool.available;
   const badge = (
-    <View
-      className={`rounded-full px-2 py-1 ${selected ? "bg-primary" : "bg-muted"}`}
-    >
-      <Text
-        className={`text-[9px] font-black uppercase tracking-[1px] ${selected ? "text-primary-foreground" : "text-muted-foreground"}`}
-      >
-        {badgeLabel}
+    <View className="rounded-full bg-muted px-2 py-1">
+      <Text className="text-[9px] font-black uppercase tracking-[1px] text-muted-foreground">
+        {tool.sourceLabel}
       </Text>
     </View>
   );
   return (
     <Pressable
-      accessibilityRole={disabled ? undefined : "button"}
-      accessibilityState={{ disabled, selected }}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: false, selected: false }}
       className="active:scale-[0.98] active:opacity-80"
-      disabled={disabled}
       onPress={() => onSelect(tool.key)}
-      style={{
-        opacity: disabled ? 0.6 : 1,
-        width: fullWidth ? "100%" : "48%",
-      }}
+      style={{ width: fullWidth ? "100%" : "48%" }}
     >
       {/* Plain glass like the cohort "Continue learning" hero: tint only, no
-          border. Selection reads from the icon + pill. */}
+          border. */}
       <StudyGlass
         bordered={false}
         contentClassName={
@@ -230,13 +189,13 @@ function GameTile({
             ? "flex-row items-center gap-3 p-4"
             : "min-h-28 justify-between gap-3 p-4"
         }
-        isInteractive={!disabled}
+        isInteractive
         radius={SURFACE_RADIUS}
-        tinted={selected}
+        tinted={false}
       >
         {fullWidth ? (
           <>
-            <GameIcon selected={selected} size={44} tool={tool} />
+            <GameIcon size={44} tool={tool} />
             <View className="min-w-0 flex-1 gap-0.5">
               <Text
                 className="text-[15px] font-bold text-foreground"
@@ -253,7 +212,7 @@ function GameTile({
         ) : (
           <>
             <View className="flex-row items-start justify-between gap-2">
-              <GameIcon selected={selected} size={44} tool={tool} />
+              <GameIcon size={44} tool={tool} />
               {badge}
             </View>
             <View className="gap-0.5">
@@ -276,11 +235,9 @@ function GameTile({
 
 function GamePicker({
   tools,
-  selectedKey,
   onSelect,
 }: {
   tools: Tool[];
-  selectedKey: string | null;
   onSelect: (key: string) => void;
 }) {
   // With an odd tile count the orphan stretches full-width as a compact
@@ -294,7 +251,6 @@ function GamePicker({
           key={tool.key}
           fullWidth={tool.key === orphanKey}
           onSelect={onSelect}
-          selected={selectedKey === tool.key}
           tool={tool}
         />
       ))}
@@ -424,7 +380,7 @@ export function openLibraryItem(item: LibraryItem, gameKey?: GameKey) {
 
 // Thin wrapper over the shared learning-item row: the practice library
 // always shows the rail + type highlight, single-line detail, chevron.
-export function LibraryRow({
+function LibraryRow({
   item,
   isLast,
   onOpen,
@@ -461,7 +417,6 @@ export function ResourceLibrary({
   courses,
   filter,
   sourceLabel,
-  gameKey,
   onRetry,
   outlines,
   onOpenItem,
@@ -469,23 +424,15 @@ export function ResourceLibrary({
   courses: Course[];
   filter: PracticeFilter;
   sourceLabel: string;
-  gameKey?: GameKey;
   onRetry: () => void;
   outlines: Record<string, CourseOutline>;
-  /** Replaces opening the item directly (the source sheet closes first). */
-  onOpenItem?: (item: LibraryItem) => void;
+  /** Opens an item (the source sheet closes first). */
+  onOpenItem: (item: LibraryItem) => void;
 }) {
   const { colors } = useAppTheme();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [courseFilter, setCourseFilter] = useState<string | null>(null);
-
-  // Search + status reset when the game tab changes. Dashboard outlines stay
-  // namespaced per course, so switching tabs never wipes warm cached results.
-  useEffect(() => {
-    setQuery("");
-    setStatus("all");
-  }, [filter]);
 
   const allItems = useMemo(
     () => practiceLibraryItems(courses, outlines, filter),
@@ -513,8 +460,6 @@ export function ResourceLibrary({
     ? visible.filter((item) => item.key !== upNext.key)
     : visible;
   const activeFilter = statusFilters.find((option) => option.key === status)!;
-  const open =
-    onOpenItem ?? ((item: LibraryItem) => openLibraryItem(item, gameKey));
 
   if (courses.length === 0) {
     return <Empty>Ikuti kurikulum untuk membuka latihan.</Empty>;
@@ -641,7 +586,7 @@ export function ResourceLibrary({
             <LibraryRow
               isLast={rest.length === 0}
               item={upNext}
-              onOpen={open}
+              onOpen={onOpenItem}
             />
           ) : null}
           {rest.map((item, index) => (
@@ -649,7 +594,7 @@ export function ResourceLibrary({
               key={item.key}
               isLast={index === rest.length - 1}
               item={item}
-              onOpen={open}
+              onOpen={onOpenItem}
             />
           ))}
         </View>
@@ -660,8 +605,6 @@ export function ResourceLibrary({
 
 export function PracticeHub(props: HubProps) {
   const handleSelect = useCallback((key: string) => {
-    const nextTool = selectedTool(key);
-    if (!nextTool?.available) return;
     // The source (a vocabulary set or a tugas) is picked in a sheet, which
     // keeps Latihan a short menu.
     router.push({ pathname: "/practice-source", params: { tool: key } });
@@ -681,7 +624,6 @@ export function PracticeHub(props: HubProps) {
                 params: { gameKey: key },
               });
             }}
-            selectedKey={null}
           />
         </TourTarget>
       )}
@@ -694,11 +636,7 @@ export function PracticeHub(props: HubProps) {
         <>
           <TourTarget id="practice.games" className="gap-3 pt-1">
             <Eyebrow>Pilih game</Eyebrow>
-            <GamePicker
-              tools={tools}
-              onSelect={handleSelect}
-              selectedKey={null}
-            />
+            <GamePicker tools={tools} onSelect={handleSelect} />
           </TourTarget>
         </>
       ) : null}

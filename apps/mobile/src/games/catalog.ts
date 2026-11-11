@@ -36,7 +36,7 @@ export const gameCatalog = {
   },
 } satisfies Record<string, GameDefinition>;
 
-export type GameDefinition = {
+type GameDefinition = {
   title: string;
   icon: string;
   description: string;

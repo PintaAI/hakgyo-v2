@@ -15,7 +15,7 @@ type AttemptRef = { id: string; status: string };
  * item itself otherwise. `anchor` is the id of a top-level block of a
  * material to scroll to (a section a material link points at).
  */
-export function courseItemHref({
+function courseItemHref({
   courseId,
   courseItemId,
   attempt,

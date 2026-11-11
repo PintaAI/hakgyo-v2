@@ -105,7 +105,7 @@ export function contentNoticeItemId(
  * Whether an unread Pembaruan indicator already stands for the notice, so
  * the bell does not count the same news twice.
  */
-export function isCoveredByIndicator(
+function isCoveredByIndicator(
   notice: SyncNotice,
   /** `${kind}:${entityId}` of every unread indicator. */
   unreadIndicators: ReadonlySet<string>,

@@ -2,7 +2,7 @@ import { matchesAnswer } from "@hakgyo/shared";
 
 export type VocabularySpeechMode = "KR" | "ID";
 
-export const VOCABULARY_SPEECH_LANG: Record<VocabularySpeechMode, string> = {
+const VOCABULARY_SPEECH_LANG: Record<VocabularySpeechMode, string> = {
   KR: "ko-KR",
   ID: "id-ID",
 };
@@ -27,11 +27,4 @@ export function matchSpeechAlternative(
     if (matchesAnswer(candidate, written)) return candidate;
   }
   return null;
-}
-
-export function isSpeechAnswerCorrect(
-  expected: string | readonly string[],
-  transcripts: readonly string[],
-): boolean {
-  return matchSpeechAlternative(expected, transcripts) !== null;
 }

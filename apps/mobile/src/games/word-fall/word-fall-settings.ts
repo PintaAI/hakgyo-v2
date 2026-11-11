@@ -7,12 +7,12 @@ import type { WordFallAnswerMode } from "./engine";
  * Hujan Kata's settings, chosen in Latihan's source sheet and kept on this
  * device: the language answers are typed in and the starting level.
  */
-export type WordFallSettings = {
+type WordFallSettings = {
   answerMode: WordFallAnswerMode;
   startLevel: number;
 };
 
-export const MAX_START_LEVEL = 10;
+const MAX_START_LEVEL = 10;
 export const START_LEVEL_OPTIONS = Array.from(
   { length: MAX_START_LEVEL },
   (_, index) => index + 1,
@@ -21,7 +21,7 @@ export const START_LEVEL_OPTIONS = Array.from(
 const KEY = "hakgyo:word-fall-settings:v1";
 const DEFAULTS: WordFallSettings = { answerMode: "ID", startLevel: 1 };
 
-export function readWordFallSettings(): WordFallSettings {
+function readWordFallSettings(): WordFallSettings {
   try {
     const raw = Storage.getItemSync(KEY);
     const saved: unknown = raw ? JSON.parse(raw) : null;

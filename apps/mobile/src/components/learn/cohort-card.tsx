@@ -144,7 +144,7 @@ function isUpcomingEvent(event: CohortEvent, now: number) {
   );
 }
 
-export async function openExternalLink(
+async function openExternalLink(
   value: string,
   kind: "zoom" | "googleMeet" | "whatsapp",
 ) {

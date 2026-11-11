@@ -12,7 +12,7 @@ const KEEP_STUDYING =
   "Kamu tetap bisa belajar seperti biasa. Progres tersimpan di perangkat ini dan disinkronkan setelah pemeliharaan selesai.";
 
 /** Indonesian notice text; times are in WIB (see `maintenanceSchedule`). */
-export function maintenanceBannerText(state: MaintenanceState) {
+function maintenanceBannerText(state: MaintenanceState) {
   if (state.mode === "scheduled") {
     return {
       title: "Pemeliharaan terjadwal",

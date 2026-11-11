@@ -32,7 +32,7 @@ const introImage = require("../../../assets/games/hangeul-intro.png");
 const introImageAsset = Asset.fromModule(introImage);
 void introImageAsset.downloadAsync().catch(() => undefined);
 
-type Phase = "intro" | "learn" | "quiz" | "complete";
+type Phase = "learn" | "quiz" | "complete";
 
 function ProgressBar({ progress }: { progress: number }) {
   const { colors } = useAppTheme();
@@ -792,7 +792,6 @@ const styles = StyleSheet.create({
   lessonActionsSingle: { flexDirection: "column" },
   lessonActionSingle: { alignItems: "stretch", width: "100%" },
   heroImage: { alignSelf: "center", height: 190, width: "78%" },
-  heroImageLarge: { alignSelf: "center", height: 280, width: "100%" },
   centeredCopy: { alignItems: "center", gap: 8 },
   eyebrow: {
     fontSize: 12,
@@ -908,26 +907,6 @@ const styles = StyleSheet.create({
     gap: 10,
     justifyContent: "center",
   },
-  cheatSheetLetterCard: {
-    alignItems: "center",
-    borderRadius: 16,
-    minHeight: 112,
-    padding: 12,
-    width: "48%",
-  },
-  cheatSheetLetter: { fontSize: 32, fontWeight: "900", textAlign: "center" },
-  cheatSheetLetters: {
-    fontSize: 13,
-    fontWeight: "700",
-    lineHeight: 20,
-    textAlign: "center",
-  },
-  cheatSheetNote: {
-    fontSize: 11,
-    lineHeight: 15,
-    marginTop: 3,
-    textAlign: "center",
-  },
   cheatSheetModalContent: { padding: 20, paddingBottom: 36 },
   cheatSheetModalBody: { gap: 18 },
   cheatSheetModalHeader: {
@@ -955,7 +934,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: "100%",
   },
-  modalCloseFallback: { fontSize: 22, fontWeight: "700", lineHeight: 24 },
   toolbarTrigger: {
     alignItems: "center",
     borderRadius: 999,

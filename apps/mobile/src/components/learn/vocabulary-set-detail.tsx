@@ -423,8 +423,6 @@ export function VocabularySetDetail({
           // Room under the "next" row for the pull indicator.
           <View className="mb-20 mt-5">
             <LearningFooterView
-              courseId={courseId}
-              courseItemId={courseItemId}
               learning={learning}
               compact
               continueButton="screenReader"

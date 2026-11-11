@@ -24,7 +24,7 @@ import {
   readQueuedOperation,
   upgradeRequiredFromError,
 } from "./engine";
-import { createMemoryStore } from "./memory-store";
+import { createMemoryStore } from "./memory-store.testutil";
 import type { SyncNotice } from "./notices";
 import { syncQueryKeys } from "./query-keys";
 import type {

@@ -18,7 +18,7 @@ import {
 import { Action, Card, Eyebrow } from "../components/learning-ui";
 import { getLearningItemTypeMeta } from "../lib/learning-item-type";
 
-export type GameResultProps = {
+type GameResultProps = {
   eyebrow: string;
   title: string;
   description?: string;
@@ -221,8 +221,6 @@ export function GameResult({
       courseItemId ? (
         <View className="gap-2">
           <LearningFooterView
-            courseId={courseId}
-            courseItemId={courseItemId}
             learning={learning}
             compact
             continueButton="screenReader"

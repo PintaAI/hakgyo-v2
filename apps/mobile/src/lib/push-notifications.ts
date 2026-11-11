@@ -12,7 +12,7 @@ const PROMPTED_KEY = "hakgyo.push.prompted";
 export const PUSH_STORAGE_KEYS = [DEVICE_ID_KEY, OPT_OUT_KEY, PROMPTED_KEY];
 
 /** Android channel every server push targets (`channelId` in the sender). */
-export const DEFAULT_CHANNEL_ID = "default";
+const DEFAULT_CHANNEL_ID = "default";
 
 /**
  * Stable per-install id sent as `deviceId` to `notification.registerDevice`.

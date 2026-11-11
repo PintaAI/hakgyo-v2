@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { useSyncIndex } from "../sync/hooks";
@@ -15,18 +15,21 @@ import { api } from "./trpc";
  */
 export function useSubmitHangeulPlacement() {
   const { activeOrganizationId } = useAppTheme();
-  const index = useSyncIndex(activeOrganizationId);
-  const mutation = api.preferences.passHangeulPlacement.useMutation();
+  const { refetch } = useSyncIndex(activeOrganizationId);
+  const { mutate } = api.preferences.passHangeulPlacement.useMutation();
+  // Read once: onboarding, the only place that sets it, runs signed out, so
+  // it cannot change while this (signed-in) layout is mounted.
+  const [passed] = useState(hasPassedHangeulPlacement);
   const started = useRef(false);
 
   useEffect(() => {
-    if (started.current || !hasPassedHangeulPlacement()) return;
+    if (started.current || !passed) return;
     started.current = true;
-    mutation.mutate(undefined, {
+    mutate(undefined, {
       onSuccess: async () => {
         await clearHangeulPlacement();
-        void index.refetch();
+        void refetch();
       },
     });
-  }, [index, mutation]);
+  }, [passed, mutate, refetch]);
 }

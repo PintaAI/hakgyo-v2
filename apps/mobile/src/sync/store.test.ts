@@ -300,7 +300,7 @@ describe("mobile sync SQLite store", () => {
   });
 
   test("memory store wipes operations, dead letters and cached data", async () => {
-    const { createMemoryStore } = await import("./memory-store");
+    const { createMemoryStore } = await import("./memory-store.testutil");
     const store = createMemoryStore();
     await store.setMeta("user-1", "key", "value");
     await store.setMeta("user-2", "key", "value");

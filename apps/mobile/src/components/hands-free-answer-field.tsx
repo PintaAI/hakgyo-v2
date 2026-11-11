@@ -1,5 +1,5 @@
 import type { ReactNode, Ref } from "react";
-import { Pressable, Text, View, type TextInput } from "react-native";
+import { Pressable, View, type TextInput } from "react-native";
 import Animated, {
   type AnimatedStyle,
   type SharedValue,
@@ -57,7 +57,7 @@ function FieldIconButton({
   );
 }
 
-export type AnswerAction = {
+type AnswerAction = {
   kind: "check" | "next";
   accessibilityLabel: string;
   busy: boolean;

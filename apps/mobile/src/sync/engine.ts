@@ -48,9 +48,9 @@ import type {
 } from "./types";
 
 /** Operations per commit request. */
-export const COMMIT_BATCH_SIZE = 50;
+const COMMIT_BATCH_SIZE = 50;
 /** Server limit for attempts in one VOCABULARY_SESSION_COMPLETED operation. */
-export const MAX_VOCABULARY_ATTEMPTS_PER_OPERATION = 500;
+const MAX_VOCABULARY_ATTEMPTS_PER_OPERATION = 500;
 // Retrying these is not expected to succeed. The operation stays queued (a
 // racing replay or a server-side recovery may still settle it) and moves to
 // the dead-letter list only once it keeps failing, so it cannot block every
@@ -64,7 +64,7 @@ export const DEAD_LETTER_MIN_AGE_MS = 24 * 60 * 60 * 1000;
 /** A stored bundle older than this is refreshed even when its revision matches. */
 export const BUNDLE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 /** Default poll spacing when the manifest did not suggest one. */
-export const DEFAULT_CHECK_AFTER_MS = 60_000;
+const DEFAULT_CHECK_AFTER_MS = 60_000;
 /**
  * Pause after a maintenance rejection when the server did not announce an
  * end; with an announced end, sync waits until then.

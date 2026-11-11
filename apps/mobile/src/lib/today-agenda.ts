@@ -43,7 +43,7 @@ export type AgendaItem<M, E, C> =
     };
 
 /** How far ahead the agenda looks for meetings and scheduled assessments. */
-export const AGENDA_HORIZON_MS = 7 * 24 * 3_600_000;
+const AGENDA_HORIZON_MS = 7 * 24 * 3_600_000;
 export const AGENDA_LIMIT = 4;
 
 const RANK = {

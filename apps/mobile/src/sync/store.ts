@@ -15,7 +15,7 @@ import type { MobileSyncOperation } from "./types";
 
 const DATABASE_NAME = "hakgyo-sync.db";
 /** Dead-lettered operations kept per user; older entries are dropped. */
-export const MAX_DEAD_LETTERS = 50;
+const MAX_DEAD_LETTERS = 50;
 
 export type MobileSyncDeadLetter = {
   operation: MobileSyncOperation;

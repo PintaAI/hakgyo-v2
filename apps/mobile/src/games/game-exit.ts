@@ -7,9 +7,9 @@ export type GameSource = {
   courseId?: string;
 };
 
-export const PRACTICE_TAB_HREF = "/(home)/(tabs)/assessments";
+const PRACTICE_TAB_HREF = "/(home)/(tabs)/assessments";
 
-export type GameExitAction =
+type GameExitAction =
   | { type: "dismissTo"; href: typeof PRACTICE_TAB_HREF }
   | { type: "back" }
   | {
