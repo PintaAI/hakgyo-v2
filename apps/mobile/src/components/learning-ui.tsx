@@ -27,6 +27,7 @@ import {
   usePullShortContent,
   type usePullToContinue,
 } from "./learn/pull-to-continue";
+import { useDemoScroll } from "../demo/demo-scroll";
 import { userErrorMessage } from "../lib/error-message";
 import { TourScrollContext } from "../tour/tour-provider";
 import { useAppTheme } from "../providers/AppThemeProvider";
@@ -119,6 +120,7 @@ export function StudyScreen({
   // Tours scroll a target into view through this ref.
   const ownScrollRef = useRef<ScrollView>(null);
   const scrollRef = scrollViewRef ?? ownScrollRef;
+  useDemoScroll(scrollRef);
   const [keyboardVerticalOffset, setKeyboardVerticalOffset] = useState(0);
   const behavior = bleedTop ? "never" : contentInsetAdjustmentBehavior;
   const shortContent = usePullShortContent(pullToContinue?.atEnd);
@@ -155,6 +157,11 @@ export function StudyScreen({
       ref={scrollRef}
       className="flex-1"
       contentInsetAdjustmentBehavior={behavior}
+      // iOS clamps `scrollTo` to `contentInset`, which leaves out the
+      // automatic header inset: the keyboard inset adjustment (Cari) and
+      // tours would otherwise push the top of the page under a transparent
+      // header.
+      scrollToOverflowEnabled
       automaticallyAdjustContentInsets={!bleedTop && behavior !== "never"}
       automaticallyAdjustKeyboardInsets={automaticallyAdjustKeyboardInsets}
       keyboardShouldPersistTaps="handled"
@@ -187,6 +194,7 @@ export function StudyScreen({
         ref={scrollRef}
         className="flex-1"
         contentInsetAdjustmentBehavior={behavior}
+        scrollToOverflowEnabled
         automaticallyAdjustContentInsets={!bleedTop && behavior !== "never"}
         keyboardShouldPersistTaps="handled"
         onScroll={pullToContinue.onScroll}

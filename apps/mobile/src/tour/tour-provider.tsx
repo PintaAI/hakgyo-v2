@@ -29,14 +29,20 @@ import {
   type TourTargetId,
 } from "./tours";
 
-type TargetEntry = {
+export type TargetEntry = {
   ref: RefObject<View | null>;
   /** The screen's scroll view, to bring the target into view first. */
   scrollRef: RefObject<ScrollView | null> | null;
+  /** What a scripted demo's tap on the target does, if anything. */
+  press: RefObject<(() => void) | undefined>;
 };
 
 type TourContextValue = {
   register: (id: TourTargetId, entry: TargetEntry) => () => void;
+  /** The registered target on the focused screen (for `src/demo`). */
+  getTarget: (id: TourTargetId) => TargetEntry | undefined;
+  /** While paused, no tour starts (a scripted demo is running). */
+  setPaused: (paused: boolean) => void;
   start: (id: TourId) => void;
   /** Shows every tour again on its screen ("Lihat tur aplikasi"). */
   replay: () => Promise<void>;
@@ -119,6 +125,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
   // Set from `start` until the tour ends: the first step is located before
   // `active` is set, and a second start in between must not run.
   const running = useRef<TourId | null>(null);
+  const paused = useRef(false);
 
   /**
    * Where the step's target is. A target that has to scroll into view gets
@@ -220,7 +227,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const start = useCallback(
     (id: TourId) => {
-      if (running.current) return;
+      if (running.current || paused.current) return;
       running.current = id;
       // Steps whose target is not on this screen (no cohorts yet, no class
       // tasks) are left out, so the counter only counts what can show.
@@ -262,15 +269,25 @@ export function TourProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const getTarget = useCallback(
+    (id: TourTargetId) => targets.current.get(id),
+    [],
+  );
+  const setPaused = useCallback((next: boolean) => {
+    paused.current = next;
+  }, []);
+
   const value = useMemo<TourContextValue>(
     () => ({
       register,
+      getTarget,
+      setPaused,
       start,
       replay,
       activeId: active?.id ?? null,
       replayCount,
     }),
-    [active?.id, register, replay, replayCount, start],
+    [active?.id, getTarget, register, replay, replayCount, setPaused, start],
   );
 
   const step = active
@@ -305,16 +322,30 @@ function useTour() {
  * (with `collapsable={false}`). Registered only while the screen is
  * focused: every tab mounts its own header, and the focused one counts.
  */
-export function useTourTarget(id: TourTargetId, enabled = true) {
+export function useTourTarget(
+  id: TourTargetId,
+  enabled = true,
+  onDemoPress?: () => void,
+) {
   const { register } = useTour();
   const scrollRef = useContext(TourScrollContext);
   const ref = useRef<View>(null);
+  const press = useRef(onDemoPress);
+  useEffect(() => {
+    press.current = onDemoPress;
+  });
   const focused = useIsFocused();
   useEffect(() => {
     if (!focused || !enabled) return;
-    return register(id, { ref, scrollRef });
+    return register(id, { ref, scrollRef, press });
   }, [enabled, focused, id, register, scrollRef]);
   return ref;
+}
+
+/** Reads targets and holds tours back, for the scripted demo (`src/demo`). */
+export function useTourControl() {
+  const { getTarget, setPaused } = useTour();
+  return useMemo(() => ({ getTarget, setPaused }), [getTarget, setPaused]);
 }
 
 /** Delay after a screen settles before its tour starts. */

@@ -49,6 +49,8 @@ export function nativeAnchorRect(anchor: NativeAnchor, layout: Layout): Rect {
       );
     case "native:settings":
       return headerButton(window.width - HEADER_MARGIN - HEADER_BUTTON);
+    case "native:back":
+      return headerButton(HEADER_MARGIN);
     case "native:header-action": {
       // A text button at the right of the header ("Selesaikan tugas").
       const width = 170;

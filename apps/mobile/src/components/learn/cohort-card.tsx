@@ -820,7 +820,11 @@ export function CohortCard({
 
       <View className="gap-4 p-4">
         {hero ? (
-          <TourTarget id="learn.next" enabled={tourTarget}>
+          <TourTarget
+            id="learn.next"
+            enabled={tourTarget}
+            onDemoPress={hero.onPress}
+          >
             <HeroBlock hero={hero} />
           </TourTarget>
         ) : null}

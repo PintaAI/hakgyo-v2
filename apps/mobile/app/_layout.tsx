@@ -29,6 +29,7 @@ import {
   MobileSyncProvider,
   useMobileSync,
 } from "../src/providers/MobileSyncProvider";
+import { DemoProvider } from "../src/demo/demo-provider";
 import { TourProvider } from "../src/tour/tour-provider";
 import "../global.css";
 
@@ -220,239 +221,245 @@ function RootNavigator() {
           <PushNotificationsProvider>
             <DrawerProvider enabled={Boolean(session)}>
               <TourProvider>
-                <Stack
-                  screenOptions={{
-                    contentStyle: { backgroundColor: colors.background },
-                    headerShown: false,
-                    headerStyle: { backgroundColor: colors.background },
-                    headerTintColor: colors.foreground,
-                  }}
-                >
-                  <Stack.Screen name="index" options={{ headerShown: false }} />
-                  <Stack.Screen
-                    name="courses/[courseId]"
-                    options={{
+                <DemoProvider>
+                  <Stack
+                    screenOptions={{
+                      contentStyle: { backgroundColor: colors.background },
                       headerShown: false,
-                      ...formSheetOptions({
-                        detents: [1],
-                        grabber: false,
-                        expandsWhenScrolledToEdge: true,
-                      }),
+                      headerStyle: { backgroundColor: colors.background },
+                      headerTintColor: colors.foreground,
                     }}
-                  />
-
-                  <Stack.Protected guard={!session}>
-                    <Stack.Screen name="(onboarding)" />
+                  >
                     <Stack.Screen
-                      name="auth"
-                      options={formSheetOptions({
-                        detents: "fitToContents",
-                        transparentHeader: true,
-                        systemCornerRadius: true,
-                      })}
+                      name="index"
+                      options={{ headerShown: false }}
                     />
-                  </Stack.Protected>
-
-                  <Stack.Protected guard={Boolean(session)}>
                     <Stack.Screen
-                      name="assessment-questions"
+                      name="courses/[courseId]"
                       options={{
                         headerShown: false,
                         ...formSheetOptions({
-                          detents: [0.55, 0.9],
-                          expandsWhenScrolledToEdge: true,
-                        }),
-                      }}
-                    />
-                    <Stack.Screen name="(home)" />
-                    <Stack.Screen
-                      name="profile"
-                      options={{
-                        headerShown: false,
-                        // Android has no page sheet; it falls back to a modal.
-                        presentation: "pageSheet",
-                      }}
-                    />
-                    <Stack.Screen
-                      name="practice-source"
-                      options={{
-                        headerShown: false,
-                        // Opaque on both platforms: the Hakgyo hero at the top
-                        // fades into the page colour.
-                        contentStyle: { backgroundColor: colors.background },
-                        // Half height, growing to full while the list scrolls.
-                        ...formSheetOptions({
-                          detents: [0.6, 1],
-                          expandsWhenScrolledToEdge: true,
-                        }),
-                      }}
-                    />
-                    <Stack.Screen
-                      name="game-result"
-                      options={{
-                        headerShown: false,
-                        contentStyle: { backgroundColor: colors.background },
-                        ...formSheetOptions({
-                          detents: [0.75, 1],
-                          expandsWhenScrolledToEdge: true,
-                        }),
-                      }}
-                    />
-                    <Stack.Screen
-                      name="organization-switcher"
-                      options={{
-                        headerShown: Platform.OS === "ios",
-                        headerBackVisible: false,
-                        headerShadowVisible: false,
-                        headerStyle: { backgroundColor: "transparent" },
-                        title: "Pilih organisasi",
-                        // iOS shows the native sheet material through; Android
-                        // sheets have none and need an opaque surface.
-                        contentStyle: {
-                          backgroundColor:
-                            Platform.OS === "ios"
-                              ? "transparent"
-                              : colors.background,
-                        },
-                        ...formSheetOptions({
-                          detents: [0.55, 0.9],
-                          grabber: false,
-                          expandsWhenScrolledToEdge: true,
-                        }),
-                      }}
-                      listeners={{
-                        transitionEnd: (event) => {
-                          if (!event.data.closing) void refreshOrganizations();
-                        },
-                      }}
-                    />
-                    <Stack.Screen
-                      name="sync-status"
-                      options={{
-                        headerShown: Platform.OS === "ios",
-                        headerBackVisible: false,
-                        headerShadowVisible: false,
-                        headerStyle: { backgroundColor: "transparent" },
-                        title: "Status sinkron",
-                        contentStyle: {
-                          backgroundColor:
-                            Platform.OS === "ios"
-                              ? "transparent"
-                              : colors.background,
-                        },
-                        ...formSheetOptions({
-                          detents: [0.6, 0.95],
+                          detents: [1],
                           grabber: false,
                           expandsWhenScrolledToEdge: true,
                         }),
                       }}
                     />
-                    {/* Assessment screens leave only by the back button: an edge
+
+                    <Stack.Protected guard={!session}>
+                      <Stack.Screen name="(onboarding)" />
+                      <Stack.Screen
+                        name="auth"
+                        options={formSheetOptions({
+                          detents: "fitToContents",
+                          transparentHeader: true,
+                          systemCornerRadius: true,
+                        })}
+                      />
+                    </Stack.Protected>
+
+                    <Stack.Protected guard={Boolean(session)}>
+                      <Stack.Screen
+                        name="assessment-questions"
+                        options={{
+                          headerShown: false,
+                          ...formSheetOptions({
+                            detents: [0.55, 0.9],
+                            expandsWhenScrolledToEdge: true,
+                          }),
+                        }}
+                      />
+                      <Stack.Screen name="(home)" />
+                      <Stack.Screen
+                        name="profile"
+                        options={{
+                          headerShown: false,
+                          // Android has no page sheet; it falls back to a modal.
+                          presentation: "pageSheet",
+                        }}
+                      />
+                      <Stack.Screen
+                        name="practice-source"
+                        options={{
+                          headerShown: false,
+                          // Opaque on both platforms: the Hakgyo hero at the top
+                          // fades into the page colour.
+                          contentStyle: { backgroundColor: colors.background },
+                          // Half height, growing to full while the list scrolls.
+                          ...formSheetOptions({
+                            detents: [0.6, 1],
+                            expandsWhenScrolledToEdge: true,
+                          }),
+                        }}
+                      />
+                      <Stack.Screen
+                        name="game-result"
+                        options={{
+                          headerShown: false,
+                          contentStyle: { backgroundColor: colors.background },
+                          ...formSheetOptions({
+                            detents: [0.75, 1],
+                            expandsWhenScrolledToEdge: true,
+                          }),
+                        }}
+                      />
+                      <Stack.Screen
+                        name="organization-switcher"
+                        options={{
+                          headerShown: Platform.OS === "ios",
+                          headerBackVisible: false,
+                          headerShadowVisible: false,
+                          headerStyle: { backgroundColor: "transparent" },
+                          title: "Pilih organisasi",
+                          // iOS shows the native sheet material through; Android
+                          // sheets have none and need an opaque surface.
+                          contentStyle: {
+                            backgroundColor:
+                              Platform.OS === "ios"
+                                ? "transparent"
+                                : colors.background,
+                          },
+                          ...formSheetOptions({
+                            detents: [0.55, 0.9],
+                            grabber: false,
+                            expandsWhenScrolledToEdge: true,
+                          }),
+                        }}
+                        listeners={{
+                          transitionEnd: (event) => {
+                            if (!event.data.closing)
+                              void refreshOrganizations();
+                          },
+                        }}
+                      />
+                      <Stack.Screen
+                        name="sync-status"
+                        options={{
+                          headerShown: Platform.OS === "ios",
+                          headerBackVisible: false,
+                          headerShadowVisible: false,
+                          headerStyle: { backgroundColor: "transparent" },
+                          title: "Status sinkron",
+                          contentStyle: {
+                            backgroundColor:
+                              Platform.OS === "ios"
+                                ? "transparent"
+                                : colors.background,
+                          },
+                          ...formSheetOptions({
+                            detents: [0.6, 0.95],
+                            grabber: false,
+                            expandsWhenScrolledToEdge: true,
+                          }),
+                        }}
+                      />
+                      {/* Assessment screens leave only by the back button: an edge
                       swipe must not end up leaving mid-attempt, and on the
                       attempt it would compete with swiping questions. */}
-                    <Stack.Screen
-                      name="events/[eventId]"
-                      options={{
-                        animation: transition,
-                        gestureEnabled: false,
-                        fullScreenGestureEnabled: false,
-                      }}
-                    />
-                    <Stack.Screen
-                      name="events/[eventId]/result"
-                      options={{
-                        headerShown: false,
-                        ...formSheetOptions({
-                          detents: [0.6, 0.95],
-                          expandsWhenScrolledToEdge: true,
-                        }),
-                      }}
-                    />
-                    <Stack.Screen name="vocabulary/[vocabularySetId]" />
-                    <Stack.Screen
-                      name="vocabulary/[vocabularySetId]/items/[entryId]"
-                      options={{
-                        headerShown: false,
-                        contentStyle: { backgroundColor: colors.background },
-                        // As tall as the word needs; a long one scrolls.
-                        ...formSheetOptions({ detents: "fitToContents" }),
-                      }}
-                    />
-                    <Stack.Screen
-                      name="games/[gameKey]"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="vocabulary/[vocabularySetId]/lesson"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="courses/[courseId]/items/[courseItemId]"
-                      options={{
-                        headerShown: true,
-                        headerTitle: "",
-                        animation: transition,
-                      }}
-                    />
-                    <Stack.Screen
-                      name="courses/[courseId]/chapter-complete"
-                      options={{
-                        headerShown: false,
-                        // Opaque: the Hakgyo hero at the top fades into the
-                        // page colour.
-                        contentStyle: { backgroundColor: colors.background },
-                        ...formSheetOptions({ detents: "fitToContents" }),
-                      }}
-                    />
-                    <Stack.Screen
-                      name="courses/[courseId]/items/[courseItemId]/result"
-                      options={{
-                        headerShown: false,
-                        ...formSheetOptions({
-                          detents: [0.6, 0.95],
-                          expandsWhenScrolledToEdge: true,
-                        }),
-                      }}
-                    />
-                    <Stack.Screen
-                      name="material-link"
-                      options={{
-                        headerShown: false,
-                        contentStyle: {
-                          backgroundColor:
-                            Platform.OS === "ios"
-                              ? "transparent"
-                              : colors.background,
-                        },
-                        ...formSheetOptions({
-                          detents: "fitToContents",
-                          systemCornerRadius: true,
-                        }),
-                      }}
-                    />
-                    <Stack.Screen
-                      name="courses/[courseId]/items/[courseItemId]/attempts/[attemptId]"
-                      options={{
-                        headerShown: true,
-                        animation: transition,
-                        gestureEnabled: false,
-                        fullScreenGestureEnabled: false,
-                      }}
-                    />
-                    <Stack.Screen
-                      name="event-attempts/[attemptId]"
-                      options={{
-                        headerShown: true,
-                        animation: transition,
-                        gestureEnabled: false,
-                        fullScreenGestureEnabled: false,
-                      }}
-                    />
-                  </Stack.Protected>
-                </Stack>
-                {session ? <WhatsNewPrompt /> : null}
-                {/* Not under ForcedUpdateGate, which runs its own update. */}
-                <OtaUpdateWatcher />
+                      <Stack.Screen
+                        name="events/[eventId]"
+                        options={{
+                          animation: transition,
+                          gestureEnabled: false,
+                          fullScreenGestureEnabled: false,
+                        }}
+                      />
+                      <Stack.Screen
+                        name="events/[eventId]/result"
+                        options={{
+                          headerShown: false,
+                          ...formSheetOptions({
+                            detents: [0.6, 0.95],
+                            expandsWhenScrolledToEdge: true,
+                          }),
+                        }}
+                      />
+                      <Stack.Screen name="vocabulary/[vocabularySetId]" />
+                      <Stack.Screen
+                        name="vocabulary/[vocabularySetId]/items/[entryId]"
+                        options={{
+                          headerShown: false,
+                          contentStyle: { backgroundColor: colors.background },
+                          // As tall as the word needs; a long one scrolls.
+                          ...formSheetOptions({ detents: "fitToContents" }),
+                        }}
+                      />
+                      <Stack.Screen
+                        name="games/[gameKey]"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="vocabulary/[vocabularySetId]/lesson"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="courses/[courseId]/items/[courseItemId]"
+                        options={{
+                          headerShown: true,
+                          headerTitle: "",
+                          animation: transition,
+                        }}
+                      />
+                      <Stack.Screen
+                        name="courses/[courseId]/chapter-complete"
+                        options={{
+                          headerShown: false,
+                          // Opaque: the Hakgyo hero at the top fades into the
+                          // page colour.
+                          contentStyle: { backgroundColor: colors.background },
+                          ...formSheetOptions({ detents: "fitToContents" }),
+                        }}
+                      />
+                      <Stack.Screen
+                        name="courses/[courseId]/items/[courseItemId]/result"
+                        options={{
+                          headerShown: false,
+                          ...formSheetOptions({
+                            detents: [0.6, 0.95],
+                            expandsWhenScrolledToEdge: true,
+                          }),
+                        }}
+                      />
+                      <Stack.Screen
+                        name="material-link"
+                        options={{
+                          headerShown: false,
+                          contentStyle: {
+                            backgroundColor:
+                              Platform.OS === "ios"
+                                ? "transparent"
+                                : colors.background,
+                          },
+                          ...formSheetOptions({
+                            detents: "fitToContents",
+                            systemCornerRadius: true,
+                          }),
+                        }}
+                      />
+                      <Stack.Screen
+                        name="courses/[courseId]/items/[courseItemId]/attempts/[attemptId]"
+                        options={{
+                          headerShown: true,
+                          animation: transition,
+                          gestureEnabled: false,
+                          fullScreenGestureEnabled: false,
+                        }}
+                      />
+                      <Stack.Screen
+                        name="event-attempts/[attemptId]"
+                        options={{
+                          headerShown: true,
+                          animation: transition,
+                          gestureEnabled: false,
+                          fullScreenGestureEnabled: false,
+                        }}
+                      />
+                    </Stack.Protected>
+                  </Stack>
+                  {session ? <WhatsNewPrompt /> : null}
+                  {/* Not under ForcedUpdateGate, which runs its own update. */}
+                  <OtaUpdateWatcher />
+                </DemoProvider>
               </TourProvider>
             </DrawerProvider>
           </PushNotificationsProvider>
