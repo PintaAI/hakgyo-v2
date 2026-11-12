@@ -10,9 +10,9 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { GlassBox } from "../../components/GlassBox";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
+import { useOutcomeMotion } from "../game-motion";
 import { blockText, type HangulBlock } from "./hangul-composer";
 
 function ErrorFlash({ errorCount }: { errorCount: number }) {
@@ -72,12 +72,17 @@ function AnimatedBlock({
 
   return (
     <View>
-      <GlassBox
-        glassEffectStyle="clear"
-        tintColor={withOpacity(colors.primary, correct ? 0.2 : 0.06)}
+      {/* A plain surface, not glass: a native glass view per block is the
+          pattern that made long quizzes lag. */}
+      <View
         style={[
           styles.block,
-          { borderColor: active || correct ? colors.primary : colors.border },
+          {
+            backgroundColor: correct
+              ? withOpacity(colors.primary, 0.16)
+              : colors.card,
+            borderColor: active || correct ? colors.primary : colors.border,
+          },
         ]}
       >
         <View
@@ -97,7 +102,7 @@ function AnimatedBlock({
           </Animated.View>
           <ErrorFlash errorCount={active ? errorCount : 0} />
         </View>
-      </GlassBox>
+      </View>
       <Text style={[styles.blockCaption, { color: colors.mutedForeground }]}>
         {characters.join(" + ") || "spasi"}
       </Text>
@@ -115,27 +120,7 @@ export function SyllableStage({
   errorCount: number;
 }) {
   const { colors } = useAppTheme();
-  const shake = useSharedValue(0);
-  const celebration = useSharedValue(1);
-  useEffect(() => {
-    if (errorCount)
-      shake.value = withSequence(
-        withTiming(-7, { duration: 60 }),
-        withTiming(7, { duration: 70 }),
-        withTiming(-4, { duration: 60 }),
-        withTiming(0, { duration: 60 }),
-      );
-  }, [errorCount, shake]);
-  useEffect(() => {
-    if (correct)
-      celebration.value = withSequence(
-        withTiming(1.05, { duration: 140 }),
-        withSpring(1),
-      );
-  }, [correct, celebration]);
-  const style = useAnimatedStyle(() => ({
-    transform: [{ translateX: shake.value }, { scale: celebration.value }],
-  }));
+  const style = useOutcomeMotion({ wrongCount: errorCount, correct });
   return (
     <Animated.View style={style}>
       <View style={styles.stage}>
@@ -185,7 +170,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  block: { width: 164, height: 164, borderWidth: 1, borderRadius: 28 },
+  block: {
+    width: 164,
+    height: 164,
+    borderWidth: 1,
+    borderRadius: 28,
+    overflow: "hidden",
+  },
   blockContent: {
     width: 160,
     height: 160,

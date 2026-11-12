@@ -1,9 +1,8 @@
 import type { HangeulGameStage } from "@hakgyo/shared/hangeul";
-import { Stack, useFocusEffect } from "expo-router";
+import { Stack } from "expo-router";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import {
   AccessibilityInfo,
-  BackHandler,
   Modal,
   Pressable,
   ScrollView,
@@ -11,22 +10,16 @@ import {
   Text,
   View,
 } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { StudyAction } from "../../components/study-glass";
-import { GlassBox } from "../../components/GlassBox";
+import { Action } from "../../components/learning-ui";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { toolbarIcons } from "../../theme/toolbar-icons";
 import { gameLeaveLabel, type GameSource } from "../game-exit";
-import { GameModal } from "../game-modals";
-import { leaveGame } from "../game-navigation";
-import { GameBackToolbar } from "../game-screens";
+import { leaveGame, useGameExitGuard } from "../game-navigation";
+import { GameResultSheet } from "../game-result";
+import { GameRoundHeader } from "../game-round";
 import { composeHangul, syllableKeys } from "./hangul-composer";
 import { HangeulKeyboard } from "./hangeul-keyboard";
 import {
@@ -73,26 +66,23 @@ function SyllableHintModal({
             <Text style={[styles.modalHeading, { color: colors.foreground }]}>
               Petunjuk 한글
             </Text>
-            <GlassBox
-              isInteractive
-              glassEffectStyle="clear"
-              tintColor={withOpacity(colors.mutedForeground, 0.12)}
-              style={styles.modalCloseGlass}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Tutup petunjuk"
+              hitSlop={8}
+              onPress={onClose}
+              style={[
+                styles.modalCloseButton,
+                { backgroundColor: colors.muted },
+              ]}
             >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Tutup petunjuk"
-                onPress={onClose}
-                style={styles.modalCloseButton}
-              >
-                <SymbolIcon
-                  name="xmark"
-                  size={16}
-                  tintColor={colors.foreground}
-                  weight="bold"
-                />
-              </Pressable>
-            </GlassBox>
+              <SymbolIcon
+                name="xmark"
+                size={16}
+                tintColor={colors.foreground}
+                weight="bold"
+              />
+            </Pressable>
           </View>
 
           <View style={styles.hintTarget}>
@@ -166,9 +156,7 @@ function SyllableHintModal({
             </Text>
           </View>
 
-          <StudyAction accessibilityLabel="Kembali ke game" onPress={onClose}>
-            Kembali ke game
-          </StudyAction>
+          <Action onPress={onClose}>Kembali ke game</Action>
         </View>
       </ScrollView>
     </Modal>
@@ -202,7 +190,6 @@ export function SyllableForgeScreen({
       phase: "playing" as const,
     }),
   );
-  const [showExit, setShowExit] = useState(false);
   const [showHintModal, setShowHintModal] = useState(false);
   const leave = useCallback(() => leaveGame(source), [source]);
   const leaveLabel = gameLeaveLabel(source);
@@ -218,12 +205,6 @@ export function SyllableForgeScreen({
   const correct = session.phase === "correct";
   const completed =
     session.index + (correct || session.phase === "complete" ? 1 : 0);
-  const progress = useSharedValue(0);
-  useEffect(() => {
-    progress.value = withTiming(completed / challenges.length, {
-      duration: 280,
-    });
-  }, [completed, progress]);
   useEffect(() => {
     setShowHintModal(false);
   }, [session.index]);
@@ -232,19 +213,14 @@ export function SyllableForgeScreen({
     const timer = setTimeout(() => dispatch({ type: "reject-typo" }), 420);
     return () => clearTimeout(timer);
   }, [session.feedback, session.errors]);
-  const progressStyle = useAnimatedStyle(() => ({
-    width: `${progress.value * 100}%`,
-  }));
 
-  // Nothing to lose yet (first block, nothing typed) or done: leave at once.
-  const nothingToLose =
-    session.phase === "intro" ||
-    session.phase === "complete" ||
-    (session.index === 0 && session.keys.length === 0);
-  const requestLeave = useCallback(() => {
-    if (nothingToLose) leave();
-    else setShowExit(true);
-  }, [leave, nothingToLose]);
+  // Nothing is saved, so leaving needs no confirmation; the guard sends
+  // every back action (button, swipe, Android back) to the right place.
+  const exit = useGameExitGuard({
+    active: session.phase !== "complete",
+    locked: false,
+    onExit: leave,
+  });
 
   // A right block moves on by itself after a moment; "Lanjut" skips the
   // wait.
@@ -263,15 +239,6 @@ export function SyllableForgeScreen({
   );
   const deleteKey = useCallback(() => dispatch({ type: "delete" }), []);
   const nextChallenge = useCallback(() => dispatch({ type: "next" }), []);
-  useFocusEffect(
-    useCallback(() => {
-      const listener = BackHandler.addEventListener("hardwareBackPress", () => {
-        requestLeave();
-        return true;
-      });
-      return () => listener.remove();
-    }, [requestLeave]),
-  );
 
   const feedback = correct
     ? `Tepat! ${challenge.target} berhasil terbentuk.`
@@ -288,62 +255,28 @@ export function SyllableForgeScreen({
     if (correct) hapticSuccess();
     else if (session.feedback === "incorrect") hapticError();
   }, [correct, session.feedback]);
+  const allCorrect = session.independent === challenges.length;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <GameBackToolbar
-        accessibilityLabel={source?.sourceCourseItemId ? leaveLabel : undefined}
-        onPress={requestLeave}
-      />
-      {session.phase === "playing" ? (
-        <Stack.Toolbar placement="right">
-          <Stack.Toolbar.Button
-            accessibilityLabel="Buka petunjuk susun Hangeul"
-            disabled={session.feedback === "incorrect"}
-            icon={toolbarIcons.hint}
-            onPress={openHint}
-          />
-        </Stack.Toolbar>
-      ) : null}
-      <Stack.Screen
-        options={{
-          headerBackButtonDisplayMode: "minimal",
-          headerBackVisible: false,
-          headerShown: true,
-          gestureEnabled: false,
-          title: "Susun 한글",
-        }}
-      />
-      <View
-        accessibilityRole="progressbar"
-        accessibilityLabel="Blok selesai"
-        accessibilityValue={{
-          min: 0,
-          max: challenges.length,
-          now: completed,
-        }}
-        style={[styles.progressTrack, { backgroundColor: colors.border }]}
+      <GameRoundHeader
+        onBack={exit}
+        stats={[{ value: `${completed}/${challenges.length}` }]}
+        statsLabel={`${completed} dari ${challenges.length} blok selesai`}
       >
-        <Animated.View
-          style={[
-            styles.progressFill,
-            { backgroundColor: colors.primary },
-            progressStyle,
-          ]}
+        <Stack.Toolbar.Button
+          accessibilityLabel="Buka petunjuk susun Hangeul"
+          disabled={
+            session.phase !== "playing" || session.feedback === "incorrect"
+          }
+          icon={toolbarIcons.hint}
+          onPress={openHint}
         />
-      </View>
+      </GameRoundHeader>
       <View style={styles.content}>
-        <View style={styles.lessonRow}>
-          <Text style={[styles.smallLabel, { color: colors.mutedForeground }]}>
-            {challenge.family}
-          </Text>
-          <Text style={[styles.smallLabel, { color: colors.mutedForeground }]}>
-            {session.index + 1}/{challenges.length}
-          </Text>
-        </View>
         <View style={styles.prompt}>
           <Text style={[styles.eyebrow, { color: colors.primary }]}>
-            SUSUN BLOK INI
+            {challenge.family.toUpperCase()}
           </Text>
           <View style={styles.targetRow}>
             <Text
@@ -400,9 +333,7 @@ export function SyllableForgeScreen({
           onKey={enterKey}
           onDelete={deleteKey}
           disabled={
-            session.phase !== "playing" ||
-            session.feedback === "incorrect" ||
-            showExit
+            session.phase !== "playing" || session.feedback === "incorrect"
           }
           empty={!session.keys.length}
           suggestedKey={
@@ -413,11 +344,11 @@ export function SyllableForgeScreen({
         />
         <View style={styles.nextActionSlot}>
           {correct ? (
-            <StudyAction onPress={nextChallenge}>
+            <Action onPress={nextChallenge}>
               {session.index === challenges.length - 1
                 ? "Lihat hasil"
                 : "Lanjut"}
-            </StudyAction>
+            </Action>
           ) : null}
         </View>
       </View>
@@ -432,47 +363,39 @@ export function SyllableForgeScreen({
         onClose={() => setShowHintModal(false)}
         visible={session.phase === "playing" && showHintModal}
       />
-      <GameModal
-        gameKey="syllable-forge"
-        visible={session.phase === "complete"}
-        eyebrow="LATIHAN SELESAI"
-        title="Blok demi blok, bisa!"
-        detail={`Kamu berhasil menyusun ${challenges.length} blok Hangeul.`}
-        content={
-          <View style={styles.result}>
-            <Text style={[styles.resultNumber, { color: colors.primary }]}>
-              {session.independent}/{challenges.length}
-            </Text>
-            <Text style={[styles.modalCopy, { color: colors.mutedForeground }]}>
-              Tepat pada percobaan pertama tanpa petunjuk.{"\n"}Ulangi latihan
-              untuk makin mengenali susunannya.
-            </Text>
-          </View>
-        }
-        primaryLabel="Main lagi"
-        secondaryLabel={leaveLabel}
-        onPrimary={() => dispatch({ type: "start" })}
-        onSecondary={leave}
-      />
-      <GameModal
-        gameKey="syllable-forge"
-        visible={showExit}
-        eyebrow="JEDA SEBENTAR"
-        title="Keluar dari latihan?"
-        detail="Progres sesi ini belum disimpan. Kamu bisa melanjutkan menyusun atau mulai lagi nanti."
-        primaryLabel="Lanjut bermain"
-        secondaryLabel="Keluar"
-        onPrimary={() => setShowExit(false)}
-        onSecondary={leave}
-      />
+      {session.phase === "complete" ? (
+        <GameResultSheet
+          eyebrow="Susun 한글"
+          title={allCorrect ? "Mantap, semua tepat!" : "Blok demi blok, bisa!"}
+          description="Tepat pada percobaan pertama tanpa petunjuk. Ulangi untuk makin mengenali susunannya."
+          mark={{
+            value: `${session.independent}/${challenges.length}`,
+            label: "tepat",
+          }}
+          done={allCorrect}
+          celebrate={allCorrect}
+          facts={[
+            {
+              icon: "character.book.closed.fill",
+              text: `${challenges.length} blok disusun`,
+            },
+          ]}
+          primary={{
+            eyebrow: "Main lagi",
+            title: `${challenges.length} blok`,
+            meta: "Ulangi dari blok pertama",
+            pill: "Mulai",
+            onPress: () => dispatch({ type: "start" }),
+          }}
+          secondary={{ label: leaveLabel, onPress: leave }}
+        />
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  progressTrack: { height: 4, overflow: "hidden" },
-  progressFill: { height: "100%" },
   content: {
     flex: 1,
     padding: 20,
@@ -482,8 +405,6 @@ const styles = StyleSheet.create({
     maxWidth: 640,
     alignSelf: "center",
   },
-  lessonRow: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
-  smallLabel: { fontSize: 12, fontWeight: "600" },
   prompt: { alignItems: "center", gap: 6 },
   eyebrow: { fontSize: 10, letterSpacing: 2, fontWeight: "800" },
   targetRow: { flexDirection: "row", alignItems: "center", gap: 16 },
@@ -521,19 +442,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   modalHeading: { fontSize: 24, fontWeight: "900", lineHeight: 30 },
-  modalCloseGlass: {
+  modalCloseButton: {
     alignItems: "center",
     borderRadius: 999,
     height: 40,
     justifyContent: "center",
-    overflow: "hidden",
     width: 40,
-  },
-  modalCloseButton: {
-    alignItems: "center",
-    height: "100%",
-    justifyContent: "center",
-    width: "100%",
   },
   hintTarget: { alignItems: "center", gap: 4 },
   hintTargetGlyph: { fontSize: 72, fontWeight: "600", lineHeight: 86 },
@@ -553,7 +467,4 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   nextActionSlot: { minHeight: 48 },
-  modalCopy: { fontSize: 14, lineHeight: 22, textAlign: "center" },
-  result: { alignItems: "center", gap: 10 },
-  resultNumber: { fontSize: 46, fontWeight: "800" },
 });
