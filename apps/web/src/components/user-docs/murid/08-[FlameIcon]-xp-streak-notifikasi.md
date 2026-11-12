@@ -53,3 +53,13 @@ Di iPhone atau iPad, buka Hakgyo di Safari, ketuk **Bagikan**, pilih **Tambah ke
 2. Nyalakan **Notifikasi push**.
 
 Aplikasi juga akan menanyakan izin notifikasi saat pertama kali kamu membuka tab **Latihan** atau sebuah latihan kelas. Daftar pembaruan terbaru bisa dilihat di tab **Belajar**.
+
+### Pengingat belajar harian
+
+Aplikasi ponsel bisa mengingatkanmu belajar setiap hari. Kamu memilih mau belajar berapa menit sehari (5, 10, 15, atau 20 menit) dan jam pengingatnya: **Pagi** (07.00), **Siang** (12.00), **Malam** (19.00), atau **Atur** jam sendiri.
+
+- Saat pertama kali membuka aplikasi, halaman **Pantau progress belajarmu dengan jelas** menawarkan pengingat ini. Ketuk **Ingatkan aku tiap hari**, lalu izinkan notifikasi. Ketuk **Nanti saja** jika belum mau.
+- Untuk mengubah atau mematikannya, buka **Profil**, **Pengaturan**, lalu **Pengingat belajar**.
+- Pengingat dikirim oleh ponselmu sendiri, jadi tetap muncul walau sedang offline. Pengaturannya tersimpan di ponsel itu saja, tidak ikut ke ponsel lain.
+- Jika hari itu kamu sudah mendapat XP, pengingat hari itu tidak muncul.
+- Jika kamu tidak membuka aplikasi selama 30 hari, pengingat berhenti sampai aplikasi dibuka lagi.

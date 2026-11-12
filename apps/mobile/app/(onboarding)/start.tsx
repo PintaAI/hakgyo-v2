@@ -50,6 +50,11 @@ import {
   type VocabularyPracticeDeckCard,
   type VocabularyPracticeDeckHandle,
 } from "../../src/components/vocabulary-practice-deck";
+import { OnboardingProfilePreview } from "../../src/components/onboarding-profile-preview";
+import {
+  StudyReminderPicker,
+  type StudyReminderChoice,
+} from "../../src/components/study-reminder-picker";
 import { markDeckTutorialSeen } from "../../src/lib/deck-tutorial";
 import { hasPassedHangeulPlacement } from "../../src/lib/hangeul-placement";
 import {
@@ -57,7 +62,12 @@ import {
   hasSignedInBefore,
   markOnboardingSeen,
 } from "../../src/lib/onboarding";
-import { getStreakProgressDays } from "../../src/lib/streak";
+import {
+  enableStudyReminder,
+  getStudyReminder,
+  updateStudyReminder,
+} from "../../src/lib/study-reminder";
+import { formatReminderTime } from "../../src/lib/study-reminder-plan";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
 import { BRAND_BLUE, withOpacity } from "../../src/theme/colors";
 import { AppIcon } from "../../src/components/ui/app-icon";
@@ -85,9 +95,9 @@ const SLIDES: Slide[] = [
   },
   {
     key: "progress",
-    title: "Belajar sedikit, tapi rutin",
+    title: "Pantau progress belajarmu dengan jelas",
     description:
-      "Tiap materi dan kosakata memberi XP. Belajar setiap hari menjaga streak dan membuka lencana.",
+      "Streak, XP, dan kosakata yang kamu kuasai tercatat di profilmu. Pasang pengingat biar rutin.",
   },
   {
     key: "level",
@@ -127,28 +137,6 @@ const SAMPLE_DECK_CARDS: VocabularyPracticeDeckCard[] = [
   { id: "onboarding-hakgyo", prompt: "학교", answer: "Sekolah" },
   { id: "onboarding-chingu", prompt: "친구", answer: "Teman" },
 ];
-
-function toDateKey(date: Date) {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-function sampleStreakDays() {
-  const today = new Date();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-  const activeDates = Array.from({ length: 4 }, (_, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - index);
-    return toDateKey(date);
-  });
-  return getStreakProgressDays({
-    activeDates,
-    startsOn: toDateKey(monday),
-    today: toDateKey(today),
-  });
-}
 
 /** 학교, the word the app is named after, and how each block reads. */
 const HAKGYO_SYLLABLES = [
@@ -196,7 +184,6 @@ function Entrance({
   delay = 0,
   duration = 400,
   fromY = 0,
-  play = true,
   className,
   style,
   children,
@@ -205,8 +192,6 @@ function Entrance({
   duration?: number;
   /** Where the content starts, in points below (positive) its place. */
   fromY?: number;
-  /** Holds the entrance (content hidden) until true. */
-  play?: boolean;
   className?: string;
   style?: StyleProp<ViewStyle>;
   children: ReactNode;
@@ -219,12 +204,11 @@ function Entrance({
       progress.value = 1;
       return;
     }
-    if (!play) return;
     progress.value = withDelay(
       delay,
       withTiming(1, { duration, easing: Easing.out(Easing.cubic) }),
     );
-  }, [delay, duration, play, progress, reducedMotion]);
+  }, [delay, duration, progress, reducedMotion]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
@@ -473,140 +457,6 @@ function VocabularyPreview({
         {!busy && !finished ? <DeckTutorialOverlay step={step} /> : null}
       </View>
       <DeckTutorialCoach step={step} />
-    </View>
-  );
-}
-
-/** A sample day, at the real rates in `DEFAULT_REWARD_RULES`. */
-const SAMPLE_XP_LEDGER = [
-  { label: "Materi selesai", detail: "Perkenalan diri", xp: 20 },
-  { label: "Jawaban kosakata benar", detail: "12 × 5 XP", xp: 60 },
-];
-const SAMPLE_STREAK = 4;
-/** The next streak badge, `STREAK_7`. */
-const NEXT_STREAK_BADGE = 7;
-
-function StreakWeek() {
-  const { colors } = useAppTheme();
-  const [days] = useState(sampleStreakDays);
-
-  return (
-    <View className="flex-row">
-      {days.map((day) => (
-        <View className="flex-1 items-center gap-1.5" key={day.dateKey}>
-          <Text className="text-[11px] font-bold uppercase text-muted-foreground">
-            {day.weekday}
-          </Text>
-          <View
-            className={`size-9 items-center justify-center rounded-full border ${day.today ? "border-foreground" : "border-transparent"} ${day.active ? "bg-primary/10" : "bg-muted"}`}
-          >
-            {day.active ? (
-              <SymbolIcon
-                name="flame.fill"
-                size={18}
-                tintColor={colors.primary}
-                weight="semibold"
-              />
-            ) : (
-              <Text
-                className={`text-xs font-bold text-muted-foreground ${day.future ? "opacity-40" : ""}`}
-              >
-                {day.dateNumber}
-              </Text>
-            )}
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-/**
- * The streak up top, the day's XP as a ledger, and how far the next badge
- * is. The ledger writes itself in once the slide is first reached.
- */
-function ProgressPreview({ play }: { play: boolean }) {
-  const { colors } = useAppTheme();
-  const total = SAMPLE_XP_LEDGER.reduce((sum, row) => sum + row.xp, 0);
-
-  return (
-    <View
-      accessibilityLabel={`Contoh: streak ${SAMPLE_STREAK} hari, ${total} XP hari ini dari satu materi dan 12 jawaban kosakata, dan lencana Streak ${NEXT_STREAK_BADGE} hari tinggal ${NEXT_STREAK_BADGE - SAMPLE_STREAK} hari lagi.`}
-      accessible
-      className="gap-5"
-      pointerEvents="none"
-    >
-      <View className="gap-3">
-        <View className="flex-row items-end gap-3">
-          <Text
-            className="font-black text-foreground"
-            style={{ fontSize: 72, lineHeight: 76 }}
-          >
-            {SAMPLE_STREAK}
-          </Text>
-          <Text className="pb-3 text-lg font-bold text-foreground">
-            hari streak
-          </Text>
-        </View>
-        <StreakWeek />
-      </View>
-
-      <View className="border-t border-border">
-        {SAMPLE_XP_LEDGER.map((row, index) => (
-          <Entrance
-            className="flex-row items-center gap-3 border-b border-border py-3"
-            delay={index * 180}
-            fromY={8}
-            key={row.label}
-            play={play}
-          >
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-foreground">
-                {row.label}
-              </Text>
-              <Text className="text-xs text-muted-foreground">
-                {row.detail}
-              </Text>
-            </View>
-            <Text
-              className="text-sm font-black"
-              style={{ color: colors.primary }}
-            >
-              +{row.xp} XP
-            </Text>
-          </Entrance>
-        ))}
-        <Entrance
-          className="flex-row items-baseline justify-between pt-3"
-          delay={SAMPLE_XP_LEDGER.length * 180}
-          play={play}
-        >
-          <Text className="text-sm font-semibold text-muted-foreground">
-            Hari ini
-          </Text>
-          <Text className="text-xl font-black text-foreground">{total} XP</Text>
-        </Entrance>
-      </View>
-
-      <View className="flex-row items-center gap-4">
-        <View className="flex-1">
-          <Text className="text-xs font-semibold text-muted-foreground">
-            Lencana berikutnya
-          </Text>
-          <Text className="text-sm font-bold text-foreground">
-            Streak {NEXT_STREAK_BADGE} hari ·{" "}
-            {NEXT_STREAK_BADGE - SAMPLE_STREAK} hari lagi
-          </Text>
-        </View>
-        <View className="flex-row gap-1">
-          {Array.from({ length: NEXT_STREAK_BADGE }, (_, index) => (
-            <View
-              className={`h-2 w-3 rounded-full ${index < SAMPLE_STREAK ? "bg-primary" : "bg-muted"}`}
-              key={index}
-            />
-          ))}
-        </View>
-      </View>
     </View>
   );
 }
@@ -867,20 +717,27 @@ function SlidePreview({
   scrollGesture,
   placementPassed,
   returning,
-  progressReached,
+  reminder,
+  onReminderChange,
 }: {
   slide: Slide;
   scrollGesture: NativeGesture;
   placementPassed: boolean;
   returning: boolean;
-  progressReached: boolean;
+  reminder: StudyReminderChoice;
+  onReminderChange: (choice: StudyReminderChoice) => void;
 }) {
   if (slide.key === "features") return <HakgyoWordmark />;
   if (slide.key === "vocabulary")
     return <VocabularyPreview scrollGesture={scrollGesture} />;
   if (slide.key === "level")
     return returning ? null : <LevelTestPreview passed={placementPassed} />;
-  return <ProgressPreview play={progressReached} />;
+  return (
+    <>
+      <OnboardingProfilePreview />
+      <StudyReminderPicker onChange={onReminderChange} value={reminder} />
+    </>
+  );
 }
 
 export default function OnboardingScreen() {
@@ -918,17 +775,39 @@ export default function OnboardingScreen() {
     if (isLastPage) markOnboardingSeen();
   }, [isLastPage]);
 
-  // The progress slide's ledger plays the first time the slide comes in.
-  const progressPage = SLIDES.findIndex((slide) => slide.key === "progress");
-  const [progressReached, setProgressReached] = useState(
-    initialPage >= progressPage,
-  );
-  useEffect(() => {
-    if (page === progressPage) setProgressReached(true);
-  }, [page, progressPage]);
-
   const goToPage = (nextPage: number) => {
     pagerRef.current?.scrollToIndex({ index: nextPage, animated: true });
+  };
+
+  // The daily study reminder the progress slide sets up. Once it is on,
+  // changes to the minutes or time are saved straight away.
+  const isReminderPage = SLIDES[page]?.key === "progress";
+  const [reminder, setReminder] = useState(getStudyReminder);
+  const [enablingReminder, setEnablingReminder] = useState(false);
+  const changeReminder = (choice: StudyReminderChoice) => {
+    const next = { ...reminder, ...choice };
+    setReminder(next);
+    if (next.enabled) {
+      void updateStudyReminder(next, { studiedToday: false }).catch(
+        () => undefined,
+      );
+    }
+  };
+  const enableReminder = async () => {
+    setEnablingReminder(true);
+    try {
+      const permission = await enableStudyReminder(reminder, {
+        studiedToday: false,
+      });
+      if (permission === "granted") goToPage(page + 1);
+    } catch {
+      // Saved but not scheduled: the signed-in app schedules it on launch.
+    } finally {
+      // Saved only once permitted; keep the unsaved choice either way.
+      const { enabled } = getStudyReminder();
+      setReminder((current) => ({ ...current, enabled }));
+      setEnablingReminder(false);
+    }
   };
 
   // The page nearest the scroll offset. Following it mid-swipe, rather than
@@ -991,7 +870,7 @@ export default function OnboardingScreen() {
           className="flex-1"
           onLayout={(event) => setListTop(event.nativeEvent.layout.y)}
           data={SLIDES}
-          extraData={{ placementPassed, progressReached }}
+          extraData={{ placementPassed, reminder }}
           getItemLayout={(_, index) => ({
             length: width,
             offset: width * index,
@@ -1015,15 +894,21 @@ export default function OnboardingScreen() {
                 }
                 description={copy.description}
                 eyebrow={copy.eyebrow}
-                // Under the app name on the first slide, so one step smaller.
-                size={slide.key === "features" ? "md" : "lg"}
+                // Under the app name on the first slide, and above the phone
+                // and the reminder choices on the progress one: a step smaller.
+                size={
+                  slide.key === "features" || slide.key === "progress"
+                    ? "md"
+                    : "lg"
+                }
                 title={copy.title}
               />
             );
             const preview = (
               <SlidePreview
+                onReminderChange={changeReminder}
                 placementPassed={placementPassed}
-                progressReached={progressReached}
+                reminder={reminder}
                 returning={returning}
                 scrollGesture={scrollGesture}
                 slide={slide}
@@ -1061,7 +946,7 @@ export default function OnboardingScreen() {
             }
             return (
               <View
-                className={`flex-1 px-5 ${slide.key === "level" ? "gap-6" : slide.key === "vocabulary" ? "gap-5 pt-4" : "gap-6 pt-4"}`}
+                className={`flex-1 px-5 ${slide.key === "level" ? "gap-6" : slide.key === "vocabulary" ? "gap-5 pt-4" : "gap-4 pt-4"}`}
                 style={
                   slide.key === "level"
                     ? {
@@ -1134,12 +1019,45 @@ export default function OnboardingScreen() {
               </>
             )}
           </Animated.View>
+        ) : isReminderPage && !reminder.enabled ? (
+          <Animated.View
+            className="gap-2"
+            entering={FadeIn.duration(FOOTER_MS)}
+            exiting={FadeOut.duration(FOOTER_MS / 2)}
+            key="reminder"
+          >
+            <Action
+              leadingIcon="alarm.fill"
+              loading={enablingReminder}
+              onPress={() => void enableReminder()}
+            >
+              Ingatkan aku tiap hari
+            </Action>
+            <Action variant="link" onPress={() => goToPage(page + 1)}>
+              Nanti saja
+            </Action>
+          </Animated.View>
         ) : (
           <Animated.View
             entering={FadeIn.duration(FOOTER_MS)}
             exiting={FadeOut.duration(FOOTER_MS / 2)}
+            className="gap-2"
             key="next"
           >
+            {isReminderPage ? (
+              <View className="flex-row items-center justify-center gap-1.5">
+                <SymbolIcon
+                  name="checkmark.circle.fill"
+                  size={14}
+                  tintColor={BRAND_BLUE}
+                  weight="semibold"
+                />
+                <Text className="text-xs font-semibold text-muted-foreground">
+                  Pengingat aktif tiap hari jam{" "}
+                  {formatReminderTime(reminder.hour, reminder.minute)}
+                </Text>
+              </View>
+            ) : null}
             <Action onPress={() => goToPage(page + 1)}>Lanjut</Action>
           </Animated.View>
         )}

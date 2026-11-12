@@ -1,7 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { supportEmail } from "@hakgyo/shared";
 import { reloadAppAsync } from "expo";
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import {
+  router,
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+} from "expo-router";
 import * as Updates from "expo-updates";
 import * as WebBrowser from "expo-web-browser";
 import { useUpdates } from "expo-updates";
@@ -30,6 +35,8 @@ import { apiUrl } from "../../src/config";
 import { authClient } from "../../src/lib/auth-client";
 import { openSyncStatus } from "../../src/lib/navigation";
 import { forgetSecureStorage } from "../../src/lib/reset-app";
+import { getStudyReminder } from "../../src/lib/study-reminder";
+import { studyReminderSummary } from "../../src/lib/study-reminder-plan";
 import {
   APP_VERSION,
   installedReleaseNotes,
@@ -109,6 +116,15 @@ export default function ProfileScreen() {
     getLocalDataStats,
   } = useMobileSync();
   const push = usePushNotifications();
+  // Read again on return from the Pengingat belajar page, which changes it.
+  const [reminderSummary, setReminderSummary] = useState(() =>
+    studyReminderSummary(getStudyReminder()),
+  );
+  useFocusEffect(
+    useCallback(() => {
+      setReminderSummary(studyReminderSummary(getStudyReminder()));
+    }, []),
+  );
   const [isResetting, setIsResetting] = useState(false);
   const [localStats, setLocalStats] = useState<LocalDataStats | null>(null);
   const [resyncReport, setResyncReport] = useState<ResyncReport | null>(null);
@@ -428,6 +444,12 @@ export default function ProfileScreen() {
                   }
                   void push.setEnabled(enabled);
                 }}
+              />
+              <SettingsRow
+                label="Pengingat belajar"
+                detail={reminderSummary}
+                symbol="alarm.fill"
+                onPress={() => router.push("/profile/study-reminder")}
               />
               <SettingsRow
                 label="Pengingat dan peringatan"
