@@ -6,6 +6,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { openAssessmentEvent, openCourseItem } from "../lib/navigation";
 import { canOpenModule } from "../lib/study";
 import { isGameKey, type GameKey } from "../games/catalog";
+import { GameIconTile } from "../games/game-icon-tile";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { dateLabel } from "../lib/study";
 import { closesLabel } from "./learn/cohort-card";
@@ -132,27 +133,34 @@ export function selectedTool(key: string | null | undefined) {
   return tools.find((tool) => tool.key === key);
 }
 
-export function GameIcon({ tool, size = 44 }: { tool: Tool; size?: number }) {
+/**
+ * The game's themed icon tile (`GameIconTile`), with its symbol as the
+ * fallback when the icon cannot be drawn.
+ */
+export function GameIcon({ tool, size = 56 }: { tool: Tool; size?: number }) {
   const { colors } = useAppTheme();
-  const glyph = colors.primary;
   return (
-    <View
-      className="items-center justify-center rounded-full bg-primary/10"
-      style={{ width: size, height: size }}
-    >
-      {tool.textIcon ? (
-        <Text className="text-base font-black" style={{ color: glyph }}>
-          {tool.fallback}
-        </Text>
-      ) : (
-        <SymbolIcon
-          name={tool.icon}
-          size={Math.round(size * 0.42)}
-          tintColor={glyph}
-          weight="bold"
-        />
-      )}
-    </View>
+    <GameIconTile
+      iconKey={tool.key}
+      size={size}
+      fallback={
+        tool.textIcon ? (
+          <Text
+            className="text-base font-black"
+            style={{ color: colors.primary }}
+          >
+            {tool.fallback}
+          </Text>
+        ) : (
+          <SymbolIcon
+            name={tool.icon}
+            size={Math.round(size * 0.42)}
+            tintColor={colors.primary}
+            weight="bold"
+          />
+        )
+      }
+    />
   );
 }
 
@@ -195,7 +203,7 @@ function GameTile({
       >
         {fullWidth ? (
           <>
-            <GameIcon size={44} tool={tool} />
+            <GameIcon tool={tool} />
             <View className="min-w-0 flex-1 gap-0.5">
               <Text
                 className="text-[15px] font-bold text-foreground"
@@ -212,7 +220,7 @@ function GameTile({
         ) : (
           <>
             <View className="flex-row items-start justify-between gap-2">
-              <GameIcon size={44} tool={tool} />
+              <GameIcon tool={tool} />
               {badge}
             </View>
             <View className="gap-0.5">

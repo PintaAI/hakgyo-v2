@@ -1,5 +1,4 @@
 import { HANGEUL_MASTERY_COURSE_ID } from "@hakgyo/shared/hangeul";
-import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
@@ -28,7 +27,6 @@ import {
 } from "../src/components/practice-hub";
 import { SymbolIcon } from "../src/components/ui/symbol-icon";
 import { isGameKey, type GameKey } from "../src/games/catalog";
-import { gameHeroAssets } from "../src/games/game-modals";
 import { LevelSelector } from "../src/games/word-fall/word-fall-screen";
 import { useWordFallSettings } from "../src/games/word-fall/word-fall-settings";
 import { authClient } from "../src/lib/auth-client";
@@ -343,21 +341,9 @@ export default function PracticeSourceSheet() {
       {/* The game's illustration, title and how to play, which its start
           screen used to show: picking a source starts the game at once. */}
       <HakgyoHero inSheet>
-        {gameKey ? (
-          <Image
-            accessibilityIgnoresInvertColors
-            cachePolicy="memory-disk"
-            contentFit="contain"
-            priority="high"
-            source={gameHeroAssets[gameKey]}
-            style={{ width: "100%", height: 110 }}
-            transition={0}
-          />
-        ) : (
-          <View className="items-center">
-            <GameIcon size={72} tool={tool} />
-          </View>
-        )}
+        <View className="items-center">
+          <GameIcon size={72} tool={tool} />
+        </View>
         <HeroTitle
           eyebrow={isQuiz ? "Latihan soal" : "Game kosakata"}
           title={tool.title}
