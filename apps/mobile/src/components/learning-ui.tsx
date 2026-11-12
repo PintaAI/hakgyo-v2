@@ -155,6 +155,11 @@ export function StudyScreen({
       ref={scrollRef}
       className="flex-1"
       contentInsetAdjustmentBehavior={behavior}
+      // iOS clamps `scrollTo` to `contentInset`, which leaves out the
+      // automatic header inset: the keyboard inset adjustment (Cari) and
+      // tours would otherwise push the top of the page under a transparent
+      // header.
+      scrollToOverflowEnabled
       automaticallyAdjustContentInsets={!bleedTop && behavior !== "never"}
       automaticallyAdjustKeyboardInsets={automaticallyAdjustKeyboardInsets}
       keyboardShouldPersistTaps="handled"
@@ -187,6 +192,7 @@ export function StudyScreen({
         ref={scrollRef}
         className="flex-1"
         contentInsetAdjustmentBehavior={behavior}
+        scrollToOverflowEnabled
         automaticallyAdjustContentInsets={!bleedTop && behavior !== "never"}
         keyboardShouldPersistTaps="handled"
         onScroll={pullToContinue.onScroll}
