@@ -3,6 +3,8 @@ export const DEFAULT_REWARD_RULES = {
   ASSESSMENT_SUBMITTED: { xp: 10, contributesToStreak: true },
   ASSESSMENT_PASSED: { xp: 40, contributesToStreak: true },
   VOCABULARY_REVIEWED: { xp: 5, contributesToStreak: true },
+  /** Its XP comes from the stage reached (`placementXp`); callers pass it. */
+  PLACEMENT_PASSED: { xp: 0, contributesToStreak: true },
 } as const;
 
 export type GamificationAction = keyof typeof DEFAULT_REWARD_RULES;

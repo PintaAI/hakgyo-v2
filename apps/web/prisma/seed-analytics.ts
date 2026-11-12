@@ -683,7 +683,7 @@ async function main() {
   };
   const record = (
     userId: string,
-    action: GamificationAction,
+    action: keyof typeof xp,
     occurredAt: Date,
     key: string,
   ) => {

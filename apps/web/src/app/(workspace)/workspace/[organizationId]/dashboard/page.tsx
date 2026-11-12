@@ -78,6 +78,7 @@ const activityLabels = {
   ASSESSMENT_SUBMITTED: "Mengumpulkan tugas",
   ASSESSMENT_PASSED: "Lulus tugas",
   VOCABULARY_REVIEWED: "Meninjau kosakata",
+  PLACEMENT_PASSED: "Tes penempatan",
 } as const;
 
 async function TeacherDashboard({

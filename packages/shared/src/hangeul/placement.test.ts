@@ -1,10 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  createHangeulPlacementTest,
-  HANGEUL_PLACEMENT_QUESTION_COUNT,
-  hasPassedHangeulPlacement,
-} from "./placement";
+import { createHangeulStageQuestion } from "./placement";
 import { romanizeHangeulSyllable } from "./romanize";
 
 /** A seeded generator, so a failure can be reproduced. */
@@ -16,12 +12,11 @@ function seeded(seed: number) {
   };
 }
 
-describe("createHangeulPlacementTest", () => {
+describe("createHangeulStageQuestion", () => {
   test("every question has four distinct choices with exactly one answer", () => {
     for (let seed = 1; seed <= 300; seed += 1) {
-      const questions = createHangeulPlacementTest(seeded(seed));
-      expect(questions).toHaveLength(HANGEUL_PLACEMENT_QUESTION_COUNT);
-      for (const question of questions) {
+      for (const stage of [1, 2] as const) {
+        const question = createHangeulStageQuestion(stage, seeded(seed));
         expect(question.choices).toHaveLength(4);
         expect(new Set(question.choices).size).toBe(4);
         expect(question.choices).toContain(question.answer);
@@ -44,15 +39,13 @@ describe("createHangeulPlacementTest", () => {
     }
   });
 
-  test("alternates reading and writing questions", () => {
-    const kinds = createHangeulPlacementTest(seeded(7)).map(
-      (question) => question.kind,
+  test("mixes reading and writing questions", () => {
+    const kinds = new Set(
+      Array.from(
+        { length: 20 },
+        (_, seed) => createHangeulStageQuestion(1, seeded(seed + 1)).kind,
+      ),
     );
-    expect(kinds.slice(0, 4)).toEqual(["read", "write", "read", "write"]);
+    expect(kinds).toEqual(new Set(["read", "write"]));
   });
-});
-
-test("passing takes eight correct answers", () => {
-  expect(hasPassedHangeulPlacement(7)).toBe(false);
-  expect(hasPassedHangeulPlacement(8)).toBe(true);
 });

@@ -13,6 +13,7 @@ Cara mendapat XP:
 | Menyelesaikan sebuah materi | 20 |
 | Setiap jawaban kosakata yang benar | 5 |
 | Menyelesaikan kumpulan kosakata (semua kata sudah dipelajari) | 5 |
+| Tes level di layar perkenalan aplikasi (sekali per akun) | 100–1.000, sesuai tahap yang lolos |
 
 Hal yang perlu diketahui:
 
@@ -21,6 +22,23 @@ Hal yang perlu diketahui:
 - Latihan soal di **Soal harian** tidak memberi XP.
 - Streak tetap aman selama kamu mendapat XP hari ini atau kemarin. Jika sehari penuh terlewat, streak dimulai lagi dari awal.
 - Minggu dihitung mulai hari Senin.
+
+### Level
+
+Level dihitung dari total XP-mu dan tampil di samping namamu di halaman **Profil** di aplikasi.
+
+| Level | Total XP |
+|---|---|
+| 1 | 0 |
+| 2 | 200 |
+| 3 | 600 |
+| 4 | 1.200 |
+| 5 | 2.000 |
+| 6 | 3.000 |
+| 7 | 4.400 |
+| 8 | 6.000 |
+
+Setelah level 8, setiap level berikutnya butuh 2.000 XP lagi.
 
 Di aplikasi ponsel, tab **Profil** juga menampilkan total XP, jumlah kosakata, aktivitas terbaru, dan pencapaian seperti **Langkah pertama** dan streak beberapa hari. Setelah menyelesaikan kurikulum Hangeul Mastery, kamu juga mendapat lencana **Hangeul Mastery** di sana. Lihat [Hangeul Mastery](/docs/murid/hangeul-mastery).
 

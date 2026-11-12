@@ -1,13 +1,9 @@
-// The short reading test a learner can take during mobile onboarding. Passing
-// it earns the Hangeul Mastery badge, which hides the course like finishing it
-// does. The test is graded on the device; it only decides whether a learner
-// skips a free course, so the server trusts the result.
+// Hangeul reading questions for the first two stages of the onboarding
+// placement test (`../placement`): stage 1 draws from the course's first five
+// steps, stage 2 from the last five, up to batchim.
 
 import { composeHangeulSyllable } from "./compose";
 import { romanizeHangeulSyllable } from "./romanize";
-
-export const HANGEUL_PLACEMENT_QUESTION_COUNT = 10;
-export const HANGEUL_PLACEMENT_PASS_SCORE = 8;
 
 export type HangeulPlacementQuestion = {
   /** `read`: a syllable, pick its romanization. `write`: the reverse. */
@@ -144,13 +140,21 @@ function question(
   };
 }
 
-/** A fresh test: one question per course step, reading and writing mixed. */
-export function createHangeulPlacementTest(random: () => number = Math.random) {
-  return steps.map((pool, index) =>
-    question(pool, index % 2 === 0 ? "read" : "write", random),
-  );
-}
+/** The course steps each placement stage draws from. */
+const STAGE_STEPS = { 1: steps.slice(0, 5), 2: steps.slice(5) } as const;
 
-export function hasPassedHangeulPlacement(correctCount: number) {
-  return correctCount >= HANGEUL_PLACEMENT_PASS_SCORE;
+/**
+ * One reading or writing question from a random step of placement `stage`
+ * (1: vowels and core consonants, 2: aspirated and tense consonants,
+ * compound vowels and batchim).
+ */
+export function createHangeulStageQuestion(
+  stage: 1 | 2,
+  random: () => number = Math.random,
+): HangeulPlacementQuestion {
+  return question(
+    pick(STAGE_STEPS[stage], random),
+    random() < 0.5 ? "read" : "write",
+    random,
+  );
 }

@@ -12,6 +12,8 @@ import { loadStreakRuns } from "./streak";
 
 type RecordActivityInput = {
   action: GamificationAction;
+  /** Replaces the action's fixed reward, for actions whose XP varies. */
+  xp?: number;
   idempotencyKey: string;
   metadata?: Prisma.InputJsonValue;
   organizationId: string;
@@ -22,6 +24,8 @@ type RecordActivityInput = {
 
 type RecordActivitiesInput = {
   action: GamificationAction;
+  /** Replaces the action's fixed reward, for actions whose XP varies. */
+  xp?: number;
   activities: Array<{
     idempotencyKey: string;
     metadata?: Prisma.InputJsonValue;
@@ -70,7 +74,8 @@ export async function recordGamificationActivities(
       })
     )?.timeZone ??
     "UTC";
-  const reward = getRewardForAction(input.action);
+  const rule = getRewardForAction(input.action);
+  const reward = { ...rule, xp: input.xp ?? rule.xp };
   const activityDateKey = getLocalDateKey(occurredAt, timeZone);
   const activityDate = new Date(`${activityDateKey}T00:00:00.000Z`);
 

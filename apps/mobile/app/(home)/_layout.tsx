@@ -2,13 +2,13 @@ import { Stack } from "expo-router";
 import { useEffect } from "react";
 
 import { markSignedInBefore } from "../../src/lib/onboarding";
-import { useSubmitHangeulPlacement } from "../../src/lib/use-hangeul-placement";
+import { useSubmitPlacement } from "../../src/lib/use-submit-placement";
 import { useStudyReminderSchedule } from "../../src/lib/use-study-reminder-schedule";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
 
 export default function HomeLayout() {
   const { colors } = useAppTheme();
-  useSubmitHangeulPlacement();
+  useSubmitPlacement();
   useStudyReminderSchedule();
   // Only signed-in sessions reach this layout.
   useEffect(() => {

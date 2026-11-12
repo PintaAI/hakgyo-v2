@@ -1,3 +1,10 @@
+import {
+  PLACEMENT_HANGEUL_STAGE,
+  PLACEMENT_STAGES,
+  placementXp,
+  type PlacementStage,
+} from "@hakgyo/shared/placement";
+import { levelForXp } from "@hakgyo/shared/xp-level";
 import { router, useFocusEffect } from "expo-router";
 import {
   useCallback,
@@ -56,7 +63,10 @@ import {
   type StudyReminderChoice,
 } from "../../src/components/study-reminder-picker";
 import { markDeckTutorialSeen } from "../../src/lib/deck-tutorial";
-import { hasPassedHangeulPlacement } from "../../src/lib/hangeul-placement";
+import {
+  getPendingPlacementStage,
+  getPlacementGoal,
+} from "../../src/lib/placement-result";
 import {
   hasSeenOnboarding,
   hasSignedInBefore,
@@ -101,9 +111,10 @@ const SLIDES: Slide[] = [
   },
   {
     key: "level",
-    eyebrow: "SKIP YANG BASIC",
-    title: "Udah bisa baca Hangeul?",
-    description: "10 soal, 2 menit. Lulus? Hangeul dasar langsung beres.",
+    eyebrow: "TES LEVEL",
+    title: "Mulai dari levelmu",
+    description:
+      "2 pertanyaan singkat, lalu tes yang menyesuaikan. Yang udah bisa langsung lompat dan dapat XP.",
   },
 ];
 
@@ -117,16 +128,6 @@ const RETURNING_LAST_SLIDE: Omit<Slide, "key"> = {
   description:
     "Masuk lagi untuk melanjutkan kelas, streak, dan kosakatamu. Semua progres tersimpan di akunmu.",
 };
-
-// What passing marks completed in Hangeul Mastery, rounded down so the copy
-// survives small course edits (31 materials, 169 words, 10 quizzes when
-// written).
-const LEVEL_UNLOCKS = [
-  { value: "30+", label: "materi" },
-  { value: "160+", label: "kosakata" },
-  { value: "10", label: "kuis" },
-  { value: "1", label: "lencana" },
-];
 
 /** The Latihan tab's vocabulary games, as `practice-hub.tsx` names them. */
 const GAMES = ["Kartu", "Hujan Kata", "Susun makna", "Cocokkan"];
@@ -461,29 +462,17 @@ function VocabularyPreview({
   );
 }
 
-function LevelUnlocks() {
-  return (
-    <View className="flex-row">
-      {LEVEL_UNLOCKS.map((unlock) => (
-        <View className="flex-1 items-center gap-0.5" key={unlock.label}>
-          <Text className="text-xl font-black text-foreground">
-            {unlock.value}
-          </Text>
-          <Text className="text-xs font-semibold text-muted-foreground">
-            {unlock.label}
-          </Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function LevelTestPreview({ passed }: { passed: boolean }) {
+/**
+ * The placement ladder with each stage's XP, or, once the test is taken, the
+ * stage reached and the level it starts the learner at.
+ */
+function LevelTestPreview({ stage }: { stage: PlacementStage }) {
   const { colors } = useAppTheme();
 
-  if (passed) {
+  if (stage > 0) {
+    const xp = placementXp(stage);
     return (
-      <View className="items-center gap-5 pt-2">
+      <View className="items-center gap-4 pt-2">
         <SymbolIcon
           name="checkmark.seal.fill"
           size={44}
@@ -491,41 +480,56 @@ function LevelTestPreview({ passed }: { passed: boolean }) {
         />
         <View className="items-center gap-1.5">
           <Text className="text-center text-xl font-black tracking-tight text-foreground">
-            Lulus! Hangeul dasar: skip
+            Lolos sampai tahap {stage}: Lv {levelForXp(xp).level}
           </Text>
           <Text className="text-center text-sm leading-6 text-muted-foreground">
-            Daftar atau masuk biar semua ini langsung nyangkut di akunmu.
+            Daftar atau masuk biar +{xp.toLocaleString("id-ID")} XP
+            {stage >= PLACEMENT_HANGEUL_STAGE
+              ? " dan lencana Hangeul Mastery"
+              : ""}{" "}
+            langsung nyangkut di akunmu.
           </Text>
+          {getPlacementGoal() === "eps" ? (
+            <Text className="text-center text-sm leading-6 text-muted-foreground">
+              Belajar di LPK? Minta link undangan kelas ke gurumu.
+            </Text>
+          ) : null}
         </View>
-        <LevelUnlocks />
       </View>
     );
   }
 
   return (
-    <View className="gap-6">
-      <View className="items-center gap-1">
-        <Text className="text-sm font-semibold text-muted-foreground">
-          Bisa baca ini tanpa nyontek?
-        </Text>
-        <Text className="text-6xl font-black text-foreground">한국어</Text>
-        <View className="flex-row items-center gap-1.5">
-          <SymbolIcon
-            name="lock.fill"
-            size={11}
-            tintColor={colors.mutedForeground}
-          />
-          <Text className="text-xs font-semibold text-muted-foreground">
-            Jawabannya ada di dalam tes
+    <View
+      accessibilityLabel="Tahap tes: Hangeul dasar, bisa baca Hangeul, kosakata dasar, kalimat. Tiap tahap yang lolos memberi XP."
+      accessible
+      className="border-t border-border"
+    >
+      {PLACEMENT_STAGES.map((row) => (
+        <View
+          className="flex-row items-center gap-3 border-b border-border py-2.5"
+          key={row.stage}
+        >
+          <View className="size-6 items-center justify-center rounded-full bg-muted">
+            <Text className="text-xs font-black text-foreground">
+              {row.stage}
+            </Text>
+          </View>
+          <Text className="flex-1 text-sm font-semibold text-foreground">
+            {row.title}
+          </Text>
+          {row.stage === PLACEMENT_HANGEUL_STAGE ? (
+            <SymbolIcon
+              name="checkmark.seal.fill"
+              size={14}
+              tintColor={colors.primary}
+            />
+          ) : null}
+          <Text className="text-sm font-bold text-muted-foreground">
+            +{row.xp.toLocaleString("id-ID")} XP
           </Text>
         </View>
-      </View>
-      <View className="gap-3">
-        <Text className="text-center text-xs font-bold uppercase tracking-[2px] text-muted-foreground">
-          Lulus = langsung kebuka
-        </Text>
-        <LevelUnlocks />
-      </View>
+      ))}
     </View>
   );
 }
@@ -691,17 +695,17 @@ function MovingAppIcon({
 function LevelTestButton() {
   return (
     <Pressable
-      accessibilityHint="Tes membaca Hangeul, 10 soal"
+      accessibilityHint="Tes level yang menyesuaikan, maksimal 12 soal"
       accessibilityRole="button"
       className="min-h-12 flex-row items-center justify-center gap-2 rounded-2xl px-5 py-3 active:opacity-80"
-      onPress={() => router.push("/(onboarding)/hangeul-test")}
+      onPress={() => router.push("/(onboarding)/placement")}
       style={{
         borderCurve: "continuous",
         backgroundColor: BRAND_BLUE,
         experimental_backgroundImage: `linear-gradient(135deg, #4A93FF, ${BRAND_BLUE})`,
       }}
     >
-      <Text className="text-base font-bold text-white">Gas, tes sekarang</Text>
+      <Text className="text-base font-bold text-white">Gas, cek levelku</Text>
       <SymbolIcon
         name="arrow.right"
         size={16}
@@ -715,14 +719,14 @@ function LevelTestButton() {
 function SlidePreview({
   slide,
   scrollGesture,
-  placementPassed,
+  placementStage,
   returning,
   reminder,
   onReminderChange,
 }: {
   slide: Slide;
   scrollGesture: NativeGesture;
-  placementPassed: boolean;
+  placementStage: PlacementStage;
   returning: boolean;
   reminder: StudyReminderChoice;
   onReminderChange: (choice: StudyReminderChoice) => void;
@@ -731,7 +735,7 @@ function SlidePreview({
   if (slide.key === "vocabulary")
     return <VocabularyPreview scrollGesture={scrollGesture} />;
   if (slide.key === "level")
-    return returning ? null : <LevelTestPreview passed={placementPassed} />;
+    return returning ? null : <LevelTestPreview stage={placementStage} />;
   return (
     <>
       <OnboardingProfilePreview />
@@ -755,8 +759,8 @@ export default function OnboardingScreen() {
   // touches fail there and fall through to the pager.
   const [scrollGesture] = useState(() => Gesture.Native());
   const isLastPage = page === lastPage;
-  const [placementPassed, setPlacementPassed] = useState(
-    hasPassedHangeulPlacement,
+  const [placementStage, setPlacementStage] = useState(
+    getPendingPlacementStage,
   );
   // Fixed for the visit: only the signed-in app sets it.
   const [returning] = useState(hasSignedInBefore);
@@ -767,7 +771,7 @@ export default function OnboardingScreen() {
   // The test runs on its own screen; read its result on the way back.
   useFocusEffect(
     useCallback(() => {
-      setPlacementPassed(hasPassedHangeulPlacement());
+      setPlacementStage(getPendingPlacementStage());
     }, []),
   );
 
@@ -870,7 +874,7 @@ export default function OnboardingScreen() {
           className="flex-1"
           onLayout={(event) => setListTop(event.nativeEvent.layout.y)}
           data={SLIDES}
-          extraData={{ placementPassed, reminder }}
+          extraData={{ placementStage, reminder }}
           getItemLayout={(_, index) => ({
             length: width,
             offset: width * index,
@@ -907,7 +911,7 @@ export default function OnboardingScreen() {
             const preview = (
               <SlidePreview
                 onReminderChange={changeReminder}
-                placementPassed={placementPassed}
+                placementStage={placementStage}
                 reminder={reminder}
                 returning={returning}
                 scrollGesture={scrollGesture}
@@ -996,13 +1000,13 @@ export default function OnboardingScreen() {
                 </Action>
               </>
             ) : null}
-            {returning || placementPassed ? null : (
+            {returning || placementStage > 0 ? null : (
               <>
                 <LevelTestButton />
                 <View className="flex-row items-center gap-3 py-1">
                   <View className="h-px flex-1 bg-border" />
                   <Text className="text-xs font-semibold text-muted-foreground">
-                    Belum bisa? Lanjut di bawah ini
+                    Atau langsung daftar
                   </Text>
                   <View className="h-px flex-1 bg-border" />
                 </View>

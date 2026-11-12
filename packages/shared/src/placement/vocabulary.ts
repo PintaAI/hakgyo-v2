@@ -1,0 +1,48 @@
+// Words from the Hangeul Mastery vocabulary sets (apps/web/scripts/hangeul-mastery/content),
+// with one plain meaning each: the placement test's stage 3. Concrete everyday words whose
+// meanings cannot be mistaken for one another.
+
+export const PLACEMENT_VOCABULARY: readonly {
+  term: string;
+  meaning: string;
+}[] = [
+  { term: "우유", meaning: "susu" },
+  { term: "어머니", meaning: "ibu" },
+  { term: "아버지", meaning: "ayah" },
+  { term: "나무", meaning: "pohon" },
+  { term: "비", meaning: "hujan" },
+  { term: "나비", meaning: "kupu-kupu" },
+  { term: "고기", meaning: "daging" },
+  { term: "도시", meaning: "kota" },
+  { term: "가수", meaning: "penyanyi" },
+  { term: "아기", meaning: "bayi" },
+  { term: "누구", meaning: "siapa" },
+  { term: "가다", meaning: "pergi" },
+  { term: "사다", meaning: "membeli" },
+  { term: "하나", meaning: "satu" },
+  { term: "나라", meaning: "negara" },
+  { term: "교사", meaning: "guru" },
+  { term: "개", meaning: "anjing" },
+  { term: "가게", meaning: "toko" },
+  { term: "코", meaning: "hidung" },
+  { term: "치마", meaning: "rok" },
+  { term: "표", meaning: "tiket" },
+  { term: "오토바이", meaning: "sepeda motor" },
+  { term: "아프다", meaning: "sakit" },
+  { term: "비싸다", meaning: "mahal" },
+  { term: "바쁘다", meaning: "sibuk" },
+  { term: "기쁘다", meaning: "senang" },
+  { term: "회의", meaning: "rapat" },
+  { term: "귀", meaning: "telinga" },
+  { term: "의사", meaning: "dokter" },
+  { term: "사랑", meaning: "cinta" },
+  { term: "이름", meaning: "nama" },
+  { term: "친구", meaning: "teman" },
+  { term: "학생", meaning: "siswa" },
+  { term: "책", meaning: "buku" },
+  { term: "빵", meaning: "roti" },
+  { term: "시간", meaning: "waktu" },
+  { term: "공장", meaning: "pabrik" },
+  { term: "옷", meaning: "baju" },
+  { term: "앞", meaning: "depan" },
+];

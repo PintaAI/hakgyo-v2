@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { awardHangeulMasteryFromPlacement } from "~/server/foundation/hangeul-mastery-completion";
+import {
+  PLACEMENT_HANGEUL_STAGE,
+  type PlacementStage,
+} from "@hakgyo/shared/placement";
+
+import { applyPlacementResult } from "~/server/foundation/placement";
 import {
   getHangeulVisibility,
   setShowHangeulAfterMastery,
@@ -17,11 +22,20 @@ export const preferencesRouter = createTRPCRouter({
     .mutation(({ ctx, input }) =>
       setShowHangeulAfterMastery(ctx.db, ctx.actorUserId, input.show),
     ),
-  /** The learner passed the Hangeul reading test in mobile onboarding. */
-  passHangeulPlacement: protectedProcedure.mutation(async ({ ctx }) => {
-    await ctx.db.$transaction((tx) =>
-      awardHangeulMasteryFromPlacement(tx, { userId: ctx.actorUserId }),
-    );
-    return getHangeulVisibility(ctx.db, ctx.actorUserId);
-  }),
+  /**
+   * The result of the mobile onboarding placement test: the highest stage
+   * passed (1–4). App versions from before the staged test send no input,
+   * for their Hangeul pass, which is stage 2.
+   */
+  passHangeulPlacement: protectedProcedure
+    .input(z.object({ stage: z.number().int().min(1).max(4) }).optional())
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.$transaction((tx) =>
+        applyPlacementResult(tx, {
+          userId: ctx.actorUserId,
+          stage: (input?.stage ?? PLACEMENT_HANGEUL_STAGE) as PlacementStage,
+        }),
+      );
+      return getHangeulVisibility(ctx.db, ctx.actorUserId);
+    }),
 });
