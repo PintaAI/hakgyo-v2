@@ -42,6 +42,7 @@ import {
   type VocabularyPracticeDeckCard,
   type VocabularyPracticeDeckHandle,
 } from "./vocabulary-practice-deck";
+import { hapticError, hapticSuccess } from "../lib/haptics";
 
 type ProgressEvidence = RouterOutputs["learning"]["getVocabularyProgress"];
 
@@ -260,6 +261,8 @@ export function VocabularySession({
     const correct = isStudyMode
       ? isDefinitionCorrect(currentWord, submittedAnswer)
       : isVocabularyAnswerCorrect(submittedAnswer, currentWord.term);
+    if (correct) hapticSuccess();
+    else hapticError();
     setFeedback({
       correct,
       saved: false,

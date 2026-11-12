@@ -22,6 +22,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
+import { hapticSelection } from "../../lib/haptics";
 import { formatCountdown } from "../../lib/reading-time";
 import { useScreenActive } from "../../lib/use-screen-active";
 import { useAppTheme } from "../../providers/AppThemeProvider";
@@ -132,6 +133,16 @@ export function usePullToContinue({
   const releasing = useSharedValue(false);
   /** 0 in place, 1 fallen away after a release (see `DROP`). */
   const drop = useSharedValue(0);
+
+  // A light buzz as the pull snaps in past the threshold, on the edge only:
+  // the lock holds through small moves, so it does not repeat.
+  useAnimatedReaction(
+    () => locked.value,
+    (now, previous) => {
+      if (now && previous === false) scheduleOnRN(hapticSelection);
+    },
+    [locked],
+  );
 
   // The latest callback, behind a stable function: the gesture is built once,
   // so a re-render during a pull never resets it.

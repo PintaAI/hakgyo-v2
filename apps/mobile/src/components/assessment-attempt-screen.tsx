@@ -60,6 +60,7 @@ import { useAutoTour } from "../tour/tour-provider";
 import { TourTarget } from "../tour/tour-target";
 import { useMobileSyncActions } from "../providers/MobileSyncProvider";
 import { useLearnerAttempt } from "../sync/hooks";
+import { hapticError, hapticSelection, hapticTap } from "../lib/haptics";
 
 type Answer = { content?: string; optionIds: string[] };
 
@@ -797,6 +798,7 @@ function AssessmentAttemptContent({
     optionId: string,
   ) {
     if (busy || expired || result || isAnswerLocked(target)) return;
+    hapticSelection();
     setAnswers((current) => {
       const existing = current[target.id] ?? { optionIds: [] };
       const optionIds =
@@ -932,6 +934,7 @@ function AssessmentAttemptContent({
             failure?.message ??
               "Tugas tersimpan di perangkat ini, tetapi ditolak oleh server.",
           );
+          if (!autoSubmitted.current) hapticError();
           return;
         }
       } else {
@@ -958,8 +961,11 @@ function AssessmentAttemptContent({
           utils.assessment.invalidate(undefined, { refetchType: "none" }),
         ]);
       }
+      // Sent, not yet graded: a light tap. A submit the timer made is silent.
+      if (!autoSubmitted.current) hapticTap();
       leaveToDetail();
     } catch (cause) {
+      if (!autoSubmitted.current) hapticError();
       setSubmitError(
         cause instanceof Error
           ? cause.message

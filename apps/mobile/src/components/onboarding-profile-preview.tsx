@@ -4,7 +4,8 @@ import { Platform, Text, View, useWindowDimensions } from "react-native";
 import { localDateKey } from "../lib/optimistic-gamification";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
-import { ProfileHero } from "./profile-learner";
+import { ConfettiBurst } from "./learn/confetti";
+import { MilestoneTrail, ProfileHero } from "./profile-learner";
 import { SymbolIcon } from "./ui/symbol-icon";
 import { WeeklyStreakView } from "./weekly-streak";
 
@@ -29,6 +30,20 @@ const SAMPLE_LEARNER = {
 };
 const SAMPLE_STREAK = 4;
 const SAMPLE_WEEK_XP = 380;
+/** Newest first, as Profil lists them. */
+const SAMPLE_ACHIEVEMENTS = [
+  { code: "XP_1000", daysAgo: 0 },
+  { code: "STREAK_3", daysAgo: 1 },
+  { code: "FIRST_ACTIVITY", daysAgo: 6 },
+];
+
+function sampleAchievements() {
+  return SAMPLE_ACHIEVEMENTS.map(({ code, daysAgo }) => {
+    const earnedAt = new Date();
+    earnedAt.setDate(earnedAt.getDate() - daysAgo);
+    return { code, earnedAt };
+  });
+}
 
 /** This week with the last `SAMPLE_STREAK` days active, today included. */
 function sampleWeek() {
@@ -110,10 +125,19 @@ function ProfileChrome() {
  * a screenshot, its lower part fading into the page. Fills the height it is
  * given and crops the rest.
  */
-export function OnboardingProfilePreview() {
+export function OnboardingProfilePreview({
+  celebrate = false,
+}: {
+  /** Bursts confetti over the phone, for example once a reminder is set. */
+  celebrate?: boolean;
+}) {
   const { colors } = useAppTheme();
+  const [size, setSize] = useState<{ width: number; height: number } | null>(
+    null,
+  );
   const { width } = useWindowDimensions();
   const [week] = useState(sampleWeek);
+  const [achievements] = useState(sampleAchievements);
   const frameWidth = Math.min(Math.round(width * 0.66), 280);
   const bezel = Math.round(frameWidth * BEZEL_RATIO);
   const screenWidth = frameWidth - bezel * 2;
@@ -125,6 +149,10 @@ export function OnboardingProfilePreview() {
       accessibilityLabel={`Contoh halaman Profil: ${SAMPLE_LEARNER.stats.vocabularyMastered} kosakata, ${SAMPLE_LEARNER.stats.totalXp} XP, streak ${SAMPLE_STREAK} hari.`}
       accessible
       className="flex-1 overflow-hidden"
+      onLayout={(event) => {
+        const { width: boxWidth, height } = event.nativeEvent.layout;
+        setSize({ width: boxWidth, height });
+      }}
       pointerEvents="none"
     >
       <View className="items-center pt-1">
@@ -172,6 +200,13 @@ export function OnboardingProfilePreview() {
                     currentStreak={SAMPLE_STREAK}
                     weeklyActivity={week}
                   />
+                  {/* Runs under the fade, so the screen never ends blank. */}
+                  <MilestoneTrail
+                    achievements={achievements}
+                    error={null}
+                    isPending={false}
+                    onRetry={() => undefined}
+                  />
                 </View>
               </View>
               {/* Dynamic Island on iOS, a punch-hole camera on Android. */}
@@ -204,6 +239,16 @@ export function OnboardingProfilePreview() {
           experimental_backgroundImage: `linear-gradient(to bottom, ${withOpacity(colors.background, 0)}, ${colors.background})`,
         }}
       />
+      {size ? (
+        <ConfettiBurst
+          colors={[colors.primary, "#F2C14E", "#F472B6", "#34D399", "#60A5FA"]}
+          delayMs={0}
+          fire={celebrate}
+          height={size.height}
+          spread={2.2}
+          width={size.width}
+        />
+      ) : null}
     </View>
   );
 }

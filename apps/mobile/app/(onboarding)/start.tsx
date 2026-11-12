@@ -77,6 +77,7 @@ import {
   getStudyReminder,
   updateStudyReminder,
 } from "../../src/lib/study-reminder";
+import { hapticError, hapticSuccess, hapticTap } from "../../src/lib/haptics";
 import { formatReminderTime } from "../../src/lib/study-reminder-plan";
 import { useAppTheme } from "../../src/providers/AppThemeProvider";
 import { BRAND_BLUE, withOpacity } from "../../src/theme/colors";
@@ -698,7 +699,10 @@ function LevelTestButton() {
       accessibilityHint="Tes level yang menyesuaikan, maksimal 12 soal"
       accessibilityRole="button"
       className="min-h-12 flex-row items-center justify-center gap-2 rounded-2xl px-5 py-3 active:opacity-80"
-      onPress={() => router.push("/(onboarding)/placement")}
+      onPress={() => {
+        hapticTap();
+        router.push("/(onboarding)/placement");
+      }}
       style={{
         borderCurve: "continuous",
         backgroundColor: BRAND_BLUE,
@@ -722,6 +726,7 @@ function SlidePreview({
   placementStage,
   returning,
   reminder,
+  reminderCelebrate,
   onReminderChange,
 }: {
   slide: Slide;
@@ -729,6 +734,7 @@ function SlidePreview({
   placementStage: PlacementStage;
   returning: boolean;
   reminder: StudyReminderChoice;
+  reminderCelebrate: boolean;
   onReminderChange: (choice: StudyReminderChoice) => void;
 }) {
   if (slide.key === "features") return <HakgyoWordmark />;
@@ -738,7 +744,7 @@ function SlidePreview({
     return returning ? null : <LevelTestPreview stage={placementStage} />;
   return (
     <>
-      <OnboardingProfilePreview />
+      <OnboardingProfilePreview celebrate={reminderCelebrate} />
       <StudyReminderPicker onChange={onReminderChange} value={reminder} />
     </>
   );
@@ -788,6 +794,7 @@ export default function OnboardingScreen() {
   const isReminderPage = SLIDES[page]?.key === "progress";
   const [reminder, setReminder] = useState(getStudyReminder);
   const [enablingReminder, setEnablingReminder] = useState(false);
+  const [reminderCelebrate, setReminderCelebrate] = useState(false);
   const changeReminder = (choice: StudyReminderChoice) => {
     const next = { ...reminder, ...choice };
     setReminder(next);
@@ -803,7 +810,14 @@ export default function OnboardingScreen() {
       const permission = await enableStudyReminder(reminder, {
         studiedToday: false,
       });
-      if (permission === "granted") goToPage(page + 1);
+      if (permission === "granted") {
+        // Stays on the slide: confetti over the phone, and the footer turns
+        // into "Pengingat aktif" with Lanjut.
+        hapticSuccess();
+        setReminderCelebrate(true);
+      } else {
+        hapticError();
+      }
     } catch {
       // Saved but not scheduled: the signed-in app schedules it on launch.
     } finally {
@@ -874,7 +888,7 @@ export default function OnboardingScreen() {
           className="flex-1"
           onLayout={(event) => setListTop(event.nativeEvent.layout.y)}
           data={SLIDES}
-          extraData={{ placementStage, reminder }}
+          extraData={{ placementStage, reminder, reminderCelebrate }}
           getItemLayout={(_, index) => ({
             length: width,
             offset: width * index,
@@ -913,6 +927,7 @@ export default function OnboardingScreen() {
                 onReminderChange={changeReminder}
                 placementStage={placementStage}
                 reminder={reminder}
+                reminderCelebrate={reminderCelebrate}
                 returning={returning}
                 scrollGesture={scrollGesture}
                 slide={slide}
@@ -950,7 +965,7 @@ export default function OnboardingScreen() {
             }
             return (
               <View
-                className={`flex-1 px-5 ${slide.key === "level" ? "gap-6" : slide.key === "vocabulary" ? "gap-5 pt-4" : "gap-4 pt-4"}`}
+                className={`flex-1 px-5 ${slide.key === "level" ? "gap-6" : slide.key === "vocabulary" ? "gap-5 pt-4" : "gap-4 pb-5 pt-4"}`}
                 style={
                   slide.key === "level"
                     ? {
@@ -1062,7 +1077,14 @@ export default function OnboardingScreen() {
                 </Text>
               </View>
             ) : null}
-            <Action onPress={() => goToPage(page + 1)}>Lanjut</Action>
+            <Action
+              onPress={() => {
+                hapticTap();
+                goToPage(page + 1);
+              }}
+            >
+              Lanjut
+            </Action>
           </Animated.View>
         )}
       </Animated.View>

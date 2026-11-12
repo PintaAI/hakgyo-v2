@@ -26,6 +26,7 @@ import {
   sentenceHint,
   type SentenceSourceWord,
 } from "./engine";
+import { hapticError, hapticSelection, hapticSuccess } from "../../lib/haptics";
 
 export function SentenceBuilderScreen({
   words,
@@ -129,6 +130,12 @@ export function SentenceBuilderScreen({
         "Urutan belum tepat. Ketuk kata untuk mengubah jawaban.",
       );
   }, [challenge, correct, session.feedback]);
+
+  // Once per outcome: only the outcome changes these.
+  useEffect(() => {
+    if (correct) hapticSuccess();
+    else if (session.feedback === "incorrect") hapticError();
+  }, [correct, session.feedback]);
 
   const reviewChallenges = session.challenges.filter((item) =>
     session.reviewIds.includes(item.id),
@@ -256,9 +263,10 @@ export function SentenceBuilderScreen({
                       key={index}
                       accessibilityLabel={`Posisi ${index + 1}, ${word}. Ketuk untuk melepas.`}
                       accessibilityRole="button"
-                      onPress={() =>
-                        dispatch({ type: "remove", tileIndex: tileIndex! })
-                      }
+                      onPress={() => {
+                        hapticSelection();
+                        dispatch({ type: "remove", tileIndex: tileIndex! });
+                      }}
                       style={[
                         styles.chip,
                         {
@@ -328,9 +336,10 @@ export function SentenceBuilderScreen({
                       accessibilityRole="button"
                       accessibilityState={{ disabled: selected || isFull }}
                       disabled={selected || isFull}
-                      onPress={() =>
-                        dispatch({ type: "add", tileIndex: index })
-                      }
+                      onPress={() => {
+                        hapticSelection();
+                        dispatch({ type: "add", tileIndex: index });
+                      }}
                       style={({ pressed }) => [
                         styles.chip,
                         {

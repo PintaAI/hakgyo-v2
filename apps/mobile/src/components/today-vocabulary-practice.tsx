@@ -30,6 +30,7 @@ import {
   VocabularyPracticeDeck,
   type VocabularyPracticeDeckHandle,
 } from "./vocabulary-practice-deck";
+import { hapticError, hapticSuccess } from "../lib/haptics";
 
 type VocabularyCard =
   RouterOutputs["practice"]["getVocabularyPool"]["items"][number];
@@ -147,6 +148,8 @@ export function TodayVocabularyPractice({
       : value;
     if (spokenDisplay) setAnswer(matched);
     const correct = isAnswerCorrect(matched);
+    if (correct) hapticSuccess();
+    else hapticError();
     setFeedback({ correct, saved: false });
 
     await saveAnswer(correct);

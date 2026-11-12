@@ -38,6 +38,7 @@ import {
   stepRope,
   type ChainLinkLayout,
 } from "./rope";
+import { hapticError, hapticSelection, hapticSuccess } from "../../lib/haptics";
 
 type Phase = "ready" | "running" | "complete";
 type Size = { width: number; height: number };
@@ -393,6 +394,8 @@ export function VocabularyMatchScreen({
     (termId: string, definitionId: string) => {
       if (phase !== "running" || !round || matches[termId] || saving) return;
       if (!definitionId || !isVocabularyMatch(termId, definitionId)) {
+        // A rope dropped on nothing is not an answer; only a wrong pair buzzes.
+        if (definitionId) hapticError();
         setStreak(0);
         setWrongId(definitionId || termId);
         if (!pendingResults[termId]) {
@@ -404,6 +407,7 @@ export function VocabularyMatchScreen({
         return;
       }
 
+      hapticSuccess();
       clearLiveRope();
       setSelectedTermId(null);
       setWrongId(null);
@@ -666,6 +670,7 @@ export function VocabularyMatchScreen({
                 disabled={matched || phase !== "running"}
                 key={word.id}
                 onPress={() => {
+                  if (!selected) hapticSelection();
                   setSelectedTermId(word.id);
                   beginRope(index);
                 }}

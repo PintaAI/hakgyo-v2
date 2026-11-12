@@ -165,6 +165,12 @@ function screenHarness(kind: "today" | "course") {
     },
     "../lib/vocabulary-practice": vocabularyPractice,
     "../lib/vocabulary-speech": vocabularySpeech,
+    "../lib/haptics": {
+      hapticError: () => undefined,
+      hapticSelection: () => undefined,
+      hapticSuccess: () => undefined,
+      hapticTap: () => undefined,
+    },
     "../lib/use-hands-free-speech": {
       useHandsFreeSpeech: () => ({
         handsFree: false,

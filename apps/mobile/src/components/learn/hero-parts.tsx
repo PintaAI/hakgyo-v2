@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { hapticSuccess } from "../../lib/haptics";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { Eyebrow } from "../ui/eyebrow";
@@ -33,6 +34,17 @@ export function HeroMark({
   celebrate?: boolean;
 }) {
   const { colors } = useAppTheme();
+  // One success buzz with the burst, timed to its default 250 ms delay. The
+  // ref keeps a re-published sheet (game result) from buzzing twice.
+  const celebrated = useRef(false);
+  useEffect(() => {
+    if (!celebrate || celebrated.current) return;
+    const timer = setTimeout(() => {
+      celebrated.current = true;
+      hapticSuccess();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [celebrate]);
   return (
     <View className="items-center">
       <View style={FAN_BOX}>
