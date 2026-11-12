@@ -14,6 +14,10 @@
  * A set already played in this game today drops to the end unless it has
  * words due. Susun makna only suggests sets with example sentences.
  *
+ * Archived courses (Hangeul Mastery, classes under Diarsipkan on Belajar)
+ * are never suggested, not even for review; their sets and quizzes stay in
+ * the sheet's full list. Class tugas are suggested whatever the class.
+ *
  * Quiz, in order: open class tugas (in progress, then closing soonest), a
  * quiz left in progress, a quiz to retry, then the next quiz to take (the
  * current chapter first).
@@ -105,11 +109,14 @@ export function suggestVocabularySets<T extends PracticeSourceItem>(input: {
   gameKey: string | undefined;
   lastPlayed: LastPlayedRef | undefined;
   now: number;
+  /** Courses the learner archived: left out of the suggestions. */
+  archivedCourseIds?: ReadonlySet<string>;
 }): Suggestion<T>[] {
   const { items, summaries, now } = input;
   const summaryOf = (item: T) => summaries?.[item.id];
   // Susun makna needs example sentences; unknown summaries stay in.
   const playable = items.filter((item) => {
+    if (input.archivedCourseIds?.has(item.courseId)) return false;
     if (input.gameKey !== "sentences") return true;
     const summary = summaryOf(item);
     return !summary || summary.withExamples > 0;
@@ -214,8 +221,13 @@ export function suggestQuizzes<
   currentModuleByCourse: Readonly<Record<string, string | undefined>>;
   now: number;
   closesLabel: (closesAt: Date) => string;
+  /** Courses the learner archived: their quizzes are left out. */
+  archivedCourseIds?: ReadonlySet<string>;
 }): QuizSuggestion<T, E>[] {
   const { now } = input;
+  const quizzes = input.quizzes.filter(
+    (item) => !input.archivedCourseIds?.has(item.courseId),
+  );
   const startable = input.events.filter(
     (event) =>
       !(
@@ -256,13 +268,13 @@ export function suggestQuizzes<
     label,
     reason,
   });
-  const inProgress = input.quizzes
+  const inProgress = quizzes
     .filter((item) => item.attempt?.status === "IN_PROGRESS")
     .map((item) => quiz(item, "Lanjutkan", "Belum selesai · lanjutkan"));
-  const retry = input.quizzes
+  const retry = quizzes
     .filter((item) => !item.isCompleted && item.attempt?.status === "GRADED")
     .map((item) => quiz(item, "Coba lagi", "Belum lulus · coba lagi"));
-  const untouched = input.quizzes.filter(
+  const untouched = quizzes.filter(
     (item) => !item.isCompleted && !item.attempt,
   );
   const current = untouched

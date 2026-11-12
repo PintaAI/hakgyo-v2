@@ -34,6 +34,8 @@ Di tab **Latihan**, ketuk sebuah permainan, misalnya **Kartu** atau **Hujan Kata
 4. Set baru berikutnya di kurikulummu.
 5. Jika semua sudah selesai, set yang paling lama tidak kamu latih.
 
+Kelas yang sudah kamu arsipkan, termasuk **Hangeul Mastery**, tidak dipilihkan lagi, meskipun ada katanya yang perlu diulang. Set-nya tetap ada di **Cari set** jika ingin kamu mainkan.
+
 Bagian atas lembar menjelaskan cara bermain permainan itu. Untuk **Hujan Kata**, pilih juga bahasa jawaban dan **Level awal** di sana; pilihanmu tersimpan untuk permainan berikutnya. Ketuk **Main** untuk langsung bermain. Permainan dimulai tanpa layar pembuka; Hujan Kata menghitung mundur 3-2-1 dulu sebelum kata mulai jatuh. Di bawahnya, **Rekomendasi** berisi dua pilihan lain. Untuk memilih sendiri, pilih **Cari set** (untuk Quiz: **Cari tugas**), lalu cari atau saring daftarnya. Untuk **Quiz**, Hakgyo lebih dulu memilihkan latihan atau tryout kelas yang sedang dibuka, lalu quiz yang belum selesai atau belum lulus. Geser lembarnya ke bawah untuk menutupnya.
 
 Sebelum kamu mengetik di tab **Cari**, muncul **Pencarian terakhir** dan **Terakhir dibuka**. Ketuk sebuah pencarian untuk mencarinya lagi, atau tekan lama untuk menghapusnya; **Hapus** menghapus semua riwayat pencarian. Riwayat ini hanya tersimpan di ponselmu dan hanya menyimpan 8 pencarian dan 10 hasil terakhir.
