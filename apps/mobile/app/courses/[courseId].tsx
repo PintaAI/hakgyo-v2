@@ -1,29 +1,25 @@
 import { HANGEUL_MASTERY_COURSE_ID } from "@hakgyo/shared/hangeul";
 import { router, useLocalSearchParams } from "expo-router";
-import { Image } from "expo-image";
 import { useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
 
+import { HeroTile } from "../../src/components/hero-tile";
+import { HakgyoHero } from "../../src/components/learn/hakgyo-hero";
 import {
-  Card,
-  Eyebrow,
-  FullBleed,
-  FullScreenState,
-  ProgressBar,
-  StudyScreen,
-  TintedAction,
-} from "../../src/components/learning-ui";
+  FactChips,
+  HeroMark,
+  HeroMarkValue,
+  HeroTitle,
+} from "../../src/components/learn/hero-parts";
+import { FullScreenState, StudyScreen } from "../../src/components/learning-ui";
 import { HangeulMasteryBadge } from "../../src/components/hangeul-mastery-medal";
 import { CourseOutlineList } from "../../src/components/learn/course-outline-list";
 import { CourseOfflineCard } from "../../src/components/offline-download";
 import { openCourseItem } from "../../src/lib/navigation";
 import { getCourseResumeItem } from "../../src/lib/course-learning-path";
 import { authClient } from "../../src/lib/auth-client";
-import { useAppTheme } from "../../src/providers/AppThemeProvider";
 import { hangeulCompletionBadgeCopy } from "../../src/lib/hangeul-visibility";
 import { useHangeulBadgeState } from "../../src/lib/use-cohort-archive";
 import { useCourseOfflineMedia, useCourseOutline } from "../../src/sync/hooks";
-import { withOpacity } from "../../src/theme/colors";
 import { firstParam } from "../../src/lib/route-params";
 
 export default function CourseDetailScreen() {
@@ -31,7 +27,6 @@ export default function CourseDetailScreen() {
   const courseId = firstParam(params.courseId);
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
-  const { colors } = useAppTheme();
   const isHangeulCourse = courseId === HANGEUL_MASTERY_COURSE_ID;
   // The badge copy once the course is finished: claim, archived or shown.
   const hangeulBadge = useHangeulBadgeState();
@@ -91,71 +86,60 @@ export default function CourseDetailScreen() {
     );
   }
 
+  const resumeModuleIndex = resumeItem
+    ? course.modules.findIndex((module) =>
+        module.items.some((item) => item.id === resumeItem.id),
+      )
+    : -1;
+  const resumeModule = course.modules[resumeModuleIndex];
+  const courseCompleted =
+    allItems.length > 0 && completedCount === allItems.length;
+  const percent = allItems.length
+    ? Math.round((completedCount / allItems.length) * 100)
+    : 0;
+
   return (
     <StudyScreen
       bleedTop
-      contentClassName="gap-8"
+      contentClassName="gap-6"
       contentInsetAdjustmentBehavior="never"
       headerShown={false}
       title=""
     >
-      <FullBleed>
-        <View className="overflow-hidden bg-muted">
-          {course.thumbnailUrl ? (
-            <>
-              <Image
-                accessibilityIgnoresInvertColors
-                blurRadius={5}
-                cachePolicy="memory-disk"
-                className="absolute inset-0 z-0 h-full w-full"
-                contentFit="cover"
-                source={{ uri: course.thumbnailUrl }}
-                style={StyleSheet.absoluteFill}
-                transition={0}
-              />
-              <View
-                className="absolute inset-0 z-10"
-                style={{
-                  backgroundColor: withOpacity(colors.background, 0.72),
-                }}
-              />
-            </>
-          ) : null}
-          <View className="relative z-20 justify-end gap-2 px-5 pb-6 pt-6">
-            <View className="gap-2">
-              <Eyebrow size="md" className="text-center">
-                {course.organization.name}
-              </Eyebrow>
-              <Text className="text-3xl font-black leading-9 tracking-tight text-foreground">
-                {course.title}
-              </Text>
-              {course.description ? (
-                <Text
-                  className="text-sm leading-5 text-muted-foreground"
-                  numberOfLines={3}
-                >
-                  {course.description}
-                </Text>
-              ) : null}
-              <Text className="mt-1 text-xs font-semibold text-muted-foreground">
-                {completedCount} dari {allItems.length} selesai
-              </Text>
-            </View>
-          </View>
-          <ProgressBar
-            className="absolute bottom-0 left-0 right-0 z-30"
-            max={allItems.length}
-            size="sm"
-            square
-            value={completedCount}
-          />
-        </View>
-      </FullBleed>
+      <HakgyoHero inSheet onClose={goBack} closeLabel="Tutup kurikulum">
+        <HeroMark
+          done={courseCompleted}
+          face={<HeroMarkValue value={`${percent}%`} label="selesai" />}
+        />
+        <HeroTitle
+          eyebrow={course.organization.name}
+          title={course.title}
+          description={course.description}
+        />
+        <FactChips
+          facts={[
+            {
+              icon: courseCompleted ? "trophy.fill" : "checkmark.circle.fill",
+              text: courseCompleted
+                ? "Kurikulum selesai"
+                : `${completedCount} dari ${allItems.length} selesai`,
+            },
+            { icon: "book.closed.fill", text: `${course.modules.length} bab` },
+          ]}
+        />
+      </HakgyoHero>
 
       {resumeItem ? (
-        <TintedAction
-          accessibilityHint={`Buka ${resumeItem.title}`}
+        <HeroTile
           eyebrow={completedCount ? "Lanjutkan belajar" : "Mulai belajar"}
+          title={resumeItem.title}
+          meta={
+            resumeModule
+              ? `Bab ${resumeModuleIndex + 1} · ${resumeModule.title}`
+              : course.title
+          }
+          pill={completedCount ? "Lanjutkan" : "Mulai"}
+          accessibilityHint={`Buka ${resumeItem.title}`}
           onPress={() =>
             openCourseItem(
               {
@@ -166,24 +150,10 @@ export default function CourseDetailScreen() {
               { replace: true },
             )
           }
-          title={resumeItem.title}
         />
-      ) : allItems.length > 0 && completedCount === allItems.length ? (
-        <Card className="gap-2 p-5" tone="primary">
-          <Text className="text-xl font-black text-foreground">
-            🏆 Kurikulum selesai!
-          </Text>
-          <Text className="text-sm leading-6 text-muted-foreground">
-            Kamu berhasil! Semua aktivitas sudah selesai — buka lagi materi di
-            bawah kapan pun kamu ingin mengulang.
-          </Text>
-        </Card>
       ) : null}
 
-      {isHangeulCourse &&
-      !resumeItem &&
-      allItems.length > 0 &&
-      completedCount === allItems.length ? (
+      {isHangeulCourse && !resumeItem && courseCompleted ? (
         <HangeulMasteryBadge {...hangeulCompletionBadgeCopy(hangeulBadge)} />
       ) : null}
 

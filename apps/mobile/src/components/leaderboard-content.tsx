@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 
 import {
   formatXp,
@@ -9,8 +9,9 @@ import {
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
 import { AppSegmentedControl } from "./app-segmented-control";
-import { Avatar, EmptyState, QueryState, SectionHeader } from "./learning-ui";
-import { SymbolIcon } from "./ui/symbol-icon";
+import { HakgyoHero } from "./learn/hakgyo-hero";
+import { HeroMark, HeroMarkValue, HeroTitle } from "./learn/hero-parts";
+import { Avatar, EmptyState, QueryState } from "./learning-ui";
 
 type Entry = WeeklyLeaderboard["entries"][number];
 
@@ -59,86 +60,81 @@ function LeaderboardRow({ entry }: { entry: Entry }) {
   );
 }
 
-/** Where the learner stands and what the next rank takes. */
-function MyStanding({ data }: { data: WeeklyLeaderboard }) {
-  const { me, participants } = data;
+/** The hero's title and line: where the learner stands, what the next rank takes. */
+function standing(data: WeeklyLeaderboard | undefined) {
+  const me = data?.me;
+  if (!data) return { title: "Peringkat minggu ini", description: null };
   if (!me) {
-    return (
-      <View className="gap-1">
-        <Text className="text-lg font-black text-foreground">
-          Belum ada XP minggu ini
-        </Text>
-        <Text className="text-sm leading-5 text-muted-foreground">
-          Selesaikan satu materi, permainan, atau latihan untuk masuk peringkat.
-        </Text>
-      </View>
-    );
+    return {
+      title: "Belum ada XP minggu ini",
+      description:
+        "Selesaikan satu materi, permainan, atau latihan untuk masuk peringkat.",
+    };
   }
-  return (
-    <View className="gap-1">
-      <Text className="text-3xl font-black tabular-nums text-foreground">
-        #{me.rank.toLocaleString("id-ID")}
-        <Text className="text-base font-bold text-muted-foreground">
-          {` dari ${participants.toLocaleString("id-ID")} murid`}
-        </Text>
-      </Text>
-      <Text className="text-sm leading-5 text-muted-foreground">
-        {me.xpToNextRank === null
-          ? `Kamu di puncak dengan ${formatXp(me.xp)}. Pertahankan sampai Minggu!`
-          : `${formatXp(me.xpToNextRank)} lagi untuk naik ke #${(me.rank - 1).toLocaleString("id-ID")}.`}
-      </Text>
-    </View>
-  );
+  if (me.xpToNextRank === null) {
+    return {
+      title: "Kamu di puncak",
+      description: `Pertahankan ${formatXp(me.xp)} sampai Minggu.`,
+    };
+  }
+  return {
+    title: `${formatXp(me.xpToNextRank)} lagi ke #${(me.rank - 1).toLocaleString("id-ID")}`,
+    description: `Kamu sudah mengumpulkan ${formatXp(me.xp)} sejak Senin.`,
+  };
 }
 
 /**
  * This week's XP ranking (Monday to Sunday, WIB), for everyone or the active
- * organization: the learner's standing, the top 100, and the learner's own
- * row below them when they rank lower.
+ * organization: the learner's standing in the Hakgyo hero, then the top 100,
+ * and the learner's own row below them when they rank lower.
  */
 export function LeaderboardContent({ onClose }: { onClose: () => void }) {
-  const { activeBrand, activeOrganizationId, colors } = useAppTheme();
+  const { activeBrand, activeOrganizationId } = useAppTheme();
   const [scope, setScope] = useState(0);
   const organizationScope = SCOPES[scope] === "Lembaga" && activeOrganizationId;
   const query = useWeeklyLeaderboard(
     organizationScope ? activeOrganizationId : null,
   );
   const data = query.data;
-  const meBelow =
-    data?.me && !data.entries.some((entry) => entry.isMe) ? data.me : null;
+  const me = data?.me ?? null;
+  const meBelow = me && !data?.entries.some((entry) => entry.isMe) ? me : null;
+  const { title, description } = standing(data);
 
   return (
     <ScrollView
       className="flex-1"
-      contentContainerClassName="flex-grow gap-5 px-5 pb-8 pt-4"
-      contentInsetAdjustmentBehavior="automatic"
+      contentContainerClassName="flex-grow gap-5 px-5 pb-8"
       showsVerticalScrollIndicator={false}
     >
-      {Platform.OS !== "ios" ? (
-        <SectionHeader
-          title="Peringkat minggu ini"
-          trailing={
-            <Pressable
-              accessibilityLabel="Tutup peringkat"
-              accessibilityRole="button"
-              className="rounded-full px-3 py-2 active:opacity-60"
-              onPress={onClose}
-            >
-              <SymbolIcon name="xmark" size={20} tintColor={colors.primary} />
-            </Pressable>
+      <HakgyoHero inSheet onClose={onClose} closeLabel="Tutup peringkat">
+        <HeroMark
+          done={me?.rank === 1}
+          face={
+            <HeroMarkValue
+              value={me ? `#${me.rank.toLocaleString("id-ID")}` : "–"}
+              label={
+                me
+                  ? `dari ${data?.participants.toLocaleString("id-ID")} murid`
+                  : "belum ada XP"
+              }
+            />
           }
         />
-      ) : null}
-
-      {activeOrganizationId ? (
-        <AppSegmentedControl
-          values={[...SCOPES]}
-          selectedIndex={scope}
-          onIndexChange={setScope}
+        <HeroTitle
+          eyebrow="Peringkat minggu ini"
+          title={title}
+          description={description}
         />
-      ) : null}
+        {activeOrganizationId ? (
+          <AppSegmentedControl
+            values={[...SCOPES]}
+            selectedIndex={scope}
+            onIndexChange={setScope}
+          />
+        ) : null}
+      </HakgyoHero>
 
-      <Text className="text-xs leading-4 text-muted-foreground">
+      <Text className="-mt-2 text-xs leading-4 text-muted-foreground">
         {organizationScope
           ? `XP yang dikumpulkan di ${activeBrand.name} sejak Senin.`
           : "XP dari semua murid Hakgyo sejak Senin."}{" "}
@@ -153,31 +149,28 @@ export function LeaderboardContent({ onClose }: { onClose: () => void }) {
       />
 
       {data ? (
-        <>
-          <MyStanding data={data} />
-          {data.entries.length ? (
-            <View className="overflow-hidden rounded-2xl border border-border">
-              {data.entries.map((entry, index) => (
-                <View key={entry.rank}>
-                  {index > 0 ? <View className="ml-16 h-px bg-border" /> : null}
-                  <LeaderboardRow entry={entry} />
-                </View>
-              ))}
-              {meBelow ? (
-                <>
-                  <Text className="border-t border-border py-1 text-center text-muted-foreground">
-                    ⋯
-                  </Text>
-                  <LeaderboardRow entry={meBelow} />
-                </>
-              ) : null}
-            </View>
-          ) : (
-            <EmptyState title="Belum ada peringkat">
-              Belum ada yang mengumpulkan XP minggu ini. Jadilah yang pertama!
-            </EmptyState>
-          )}
-        </>
+        data.entries.length ? (
+          <View className="overflow-hidden rounded-2xl border border-border">
+            {data.entries.map((entry, index) => (
+              <View key={entry.rank}>
+                {index > 0 ? <View className="ml-16 h-px bg-border" /> : null}
+                <LeaderboardRow entry={entry} />
+              </View>
+            ))}
+            {meBelow ? (
+              <>
+                <Text className="border-t border-border py-1 text-center text-muted-foreground">
+                  ⋯
+                </Text>
+                <LeaderboardRow entry={meBelow} />
+              </>
+            ) : null}
+          </View>
+        ) : (
+          <EmptyState title="Belum ada peringkat">
+            Belum ada yang mengumpulkan XP minggu ini. Jadilah yang pertama!
+          </EmptyState>
+        )
       ) : null}
     </ScrollView>
   );

@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { DoodleBackground } from "../doodle-background";
+import { SymbolIcon } from "../ui/symbol-icon";
 
 const ios = Platform.OS === "ios";
 
@@ -28,11 +29,19 @@ export function HakgyoHero({
   children,
   className = "",
   inSheet = false,
+  onClose,
+  closeLabel = "Tutup",
 }: {
   children: ReactNode;
   className?: string;
   /** At the top of a sheet: no status bar or navigation bar to clear. */
   inSheet?: boolean;
+  /**
+   * Closes the sheet. iOS closes a sheet by its grabber, so only Android
+   * shows the button, in the hero's top corner.
+   */
+  onClose?: () => void;
+  closeLabel?: string;
 }) {
   const insets = useSafeAreaInsets();
   const { colors, colorScheme } = useAppTheme();
@@ -65,6 +74,17 @@ export function HakgyoHero({
         ]}
       />
       <View className="gap-6">{children}</View>
+      {onClose && !ios ? (
+        <Pressable
+          accessibilityLabel={closeLabel}
+          accessibilityRole="button"
+          className="absolute right-5 top-4 size-8 items-center justify-center rounded-full bg-muted active:opacity-70"
+          hitSlop={8}
+          onPress={onClose}
+        >
+          <SymbolIcon name="xmark" size={14} tintColor={colors.foreground} />
+        </Pressable>
+      ) : null}
     </View>
   );
 }

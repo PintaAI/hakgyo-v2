@@ -5,7 +5,6 @@ import { Platform, View } from "react-native";
 import { useUpdatesBadgeCount } from "../lib/sidebar-indicators";
 import { useDrawer } from "../providers/DrawerProvider";
 import { toolbarIcons } from "../theme/toolbar-icons";
-import { DoodleBackground } from "./doodle-background";
 import { MaintenanceBanner } from "./maintenance-banner";
 import { PageTitle, StudyScreen } from "./learning-ui";
 import type { PageTitleIcon } from "./ui/page-title";
@@ -173,14 +172,17 @@ function TabActions({
 
 /**
  * The scaffold of a tab root: the header actions and a `StudyScreen`, with an
- * optional in-content title and doodle background. Every other prop goes to
- * `StudyScreen`.
+ * optional in-content title. Every other prop goes to `StudyScreen`.
+ *
+ * The `StudyScreen` scroll view must stay the first native view of the
+ * screen: react-native-screens finds it by following first subviews to apply
+ * `scrollEdgeEffects`. Draw a screen background behind the tab's stack
+ * instead (Hari Ini's doodles live in its layout).
  */
 export function TabScreen({
   title,
   titleIcon,
   right = "organization",
-  doodle = false,
   overlay,
   children,
   ...screenProps
@@ -195,8 +197,6 @@ export function TabScreen({
    * updates), or the updates button alone.
    */
   right?: "organization" | "updates";
-  /** Draw the doodle pattern behind the content (only Hari Ini does). */
-  doodle?: boolean;
   /** Stays in place over the content while it scrolls, below the actions. */
   overlay?: ReactNode;
   children: ReactNode;
@@ -205,7 +205,6 @@ export function TabScreen({
   const floating = Boolean(screenProps.bleedTop);
   return (
     <>
-      {doodle ? <DoodleBackground /> : null}
       <TabToolbar right={right} />
       <StudyScreen {...screenProps} title="" headerShown={ios}>
         {floating ? null : <TabActions right={right} floating={false} />}
