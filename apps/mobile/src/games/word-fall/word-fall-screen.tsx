@@ -852,6 +852,8 @@ export function WordFallScreen({
   onSessionStart,
   courseId,
   sourceCourseItemId,
+  vocabularySetId,
+  sessionXp,
   lesson,
 }: {
   words: readonly WordFallWord[];
@@ -864,6 +866,10 @@ export function WordFallScreen({
   onSessionStart: () => string;
   courseId?: string;
   sourceCourseItemId?: string;
+  /** The set played, which keeps the top score. */
+  vocabularySetId?: string;
+  /** XP the session has earned (the game route's reporter). */
+  sessionXp?: () => number;
   /** Played as a round of a vocabulary lesson. */
   lesson?: GameLesson;
 }) {
@@ -1996,6 +2002,13 @@ export function WordFallScreen({
         <GameResultSheet
           courseId={courseId}
           courseItemId={sourceCourseItemId}
+          xp={sessionXp?.()}
+          // Endless: the top score on this set is the record to beat.
+          best={
+            vocabularySetId
+              ? { scope: `word-fall:${vocabularySetId}`, value: score }
+              : undefined
+          }
           eyebrow="Hujan kata"
           title={`Sampai level ${level}`}
           mark={{ value: String(score), label: "poin" }}

@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { runInNewContext } from "node:vm";
 import * as jsx from "react/jsx-runtime";
 import * as shared from "@hakgyo/shared";
+import * as sessionXp from "../lib/session-xp";
 import * as todayPractice from "../lib/today-vocabulary-practice";
 import * as vocabularyPractice from "../lib/vocabulary-practice";
 import * as vocabularySpeech from "../lib/vocabulary-speech";
@@ -158,6 +159,7 @@ function screenHarness(kind: "today" | "course") {
         recordVocabularyAttempt: record,
       }),
     },
+    "../lib/session-xp": sessionXp,
     "../lib/today-vocabulary-practice": todayPractice,
     "../lib/local-sample": {
       localSample: (values: unknown[], _seed: string, limit: number) =>

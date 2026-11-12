@@ -40,6 +40,12 @@ Level dihitung dari total XP-mu dan tampil di samping namamu di halaman **Profil
 
 Setelah level 8, setiap level berikutnya butuh 2.000 XP lagi.
 
+### XP dan rekor di akhir game
+
+Di aplikasi ponsel, halaman hasil setiap game menampilkan XP yang kamu dapat dari ronde itu, misalnya **+45 XP**. Satu kata hanya memberi XP sekali per ronde, yaitu jika jawaban pertamamu untuk kata itu benar.
+
+Halaman hasil juga menampilkan rekor pribadimu untuk game dan set kosakata itu: skor tertinggi di **Hujan Kata** dan **Cocokkan**, atau jumlah jawaban tepat di **Kartu**, **Susun makna**, **Susun kata**, dan **Susun 한글**. Jika kamu memecahkannya, muncul **Rekor baru!** Rekor disimpan di ponselmu saja, jadi tidak ikut pindah ke ponsel lain.
+
 ### Peringkat minggu ini
 
 Di aplikasi ponsel, XP minggu ini di samping streak (di **Hari ini** dan **Profil**) juga menampilkan peringkatmu di antara semua murid Hakgyo, misalnya **#37 · 1.240 XP**. Ketuk untuk membuka **Peringkat minggu ini**.

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import type { RouterOutputs } from "@hakgyo/api";
 
 import { useAppTheme } from "../providers/AppThemeProvider";
+import { SessionXp } from "./session-xp";
 import { useMobileSyncActions } from "../providers/MobileSyncProvider";
 
 export type VocabularyAttemptEvidence =
@@ -159,13 +160,20 @@ export function useVocabularyGameReporter(input: {
   vocabularySetId: string;
 }) {
   const reporter = useVocabularyProgressReporter({ ...input, reactive: false });
+  const sessionRewards = useRef(new SessionXp());
   return {
     onAttempt: async (
       ...args: Parameters<typeof reporter.report>
     ): Promise<void> => {
       await reporter.report(...args);
+      sessionRewards.current.add(args[0]);
     },
     onComplete: reporter.finishSession,
-    onSessionStart: reporter.startSession,
+    onSessionStart: () => {
+      sessionRewards.current = new SessionXp();
+      return reporter.startSession();
+    },
+    /** XP this session has earned so far, for the round's result. */
+    sessionXp: () => sessionRewards.current.xp,
   };
 }

@@ -365,6 +365,11 @@ export function SyllableForgeScreen({
       />
       {session.phase === "complete" ? (
         <GameResultSheet
+          best={{
+            scope: `syllable-forge:${stage?.id ?? "all"}`,
+            value: session.independent,
+            max: challenges.length,
+          }}
           eyebrow="Susun 한글"
           title={allCorrect ? "Mantap, semua tepat!" : "Blok demi blok, bisa!"}
           description="Tepat pada percobaan pertama tanpa petunjuk. Ulangi untuk makin mengenali susunannya."

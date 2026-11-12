@@ -31,6 +31,18 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    id: "2026-11-12.2",
+    version: "1.0.2",
+    date: "2026-11-12",
+    title: "Game lebih seru",
+    items: [
+      "Akhir setiap game kini menampilkan XP yang kamu dapat dan rekor pribadimu. Pecahkan rekornya!",
+      "Hujan Kata punya kapal baru, kata berbentuk kartu, dan percikan saat kata hancur.",
+      "Di Susun makna, kata yang kamu pilih terbang ke tempatnya.",
+      "Susun kata, Susun 한글, dan Hangeul kini tampil seperti game lainnya.",
+    ],
+  },
+  {
     id: "2026-11-12",
     version: "1.0.2",
     date: "2026-11-12",

@@ -316,6 +316,11 @@ export function WordBuilderScreen({
 
       {session.phase === "complete" ? (
         <GameResultSheet
+          best={{
+            scope: `word-builder:${stage?.id ?? "all"}`,
+            value: session.independent,
+            max: words.length,
+          }}
           eyebrow="Susun kata"
           title={allCorrect ? "Mantap, semua tepat!" : "Kata demi kata, bisa!"}
           description="Tepat pada percobaan pertama tanpa petunjuk."

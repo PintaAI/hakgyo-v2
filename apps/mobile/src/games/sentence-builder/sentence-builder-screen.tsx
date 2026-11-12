@@ -41,6 +41,8 @@ export function SentenceBuilderScreen({
   onSessionStart,
   courseId,
   sourceCourseItemId,
+  vocabularySetId,
+  sessionXp,
   lesson,
 }: {
   words: readonly SentenceSourceWord[];
@@ -50,6 +52,10 @@ export function SentenceBuilderScreen({
   onSessionStart: () => void;
   courseId?: string;
   sourceCourseItemId?: string;
+  /** The set played, which keeps the personal best. */
+  vocabularySetId?: string;
+  /** XP the session has earned (the game route's reporter). */
+  sessionXp?: () => number;
   /** Played as a round of a vocabulary lesson. */
   lesson?: GameLesson;
 }) {
@@ -517,6 +523,16 @@ export function SentenceBuilderScreen({
         <GameResultSheet
           courseId={courseId}
           courseItemId={sourceCourseItemId}
+          xp={sessionXp?.()}
+          best={
+            vocabularySetId
+              ? {
+                  scope: `sentences:${vocabularySetId}`,
+                  value: session.independent,
+                  max: total,
+                }
+              : undefined
+          }
           eyebrow="Susun makna"
           title={
             allCorrect ? "Mantap, semua tepat!" : "Kalimat demi kalimat, bisa!"
