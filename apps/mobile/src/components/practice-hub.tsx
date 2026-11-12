@@ -1,4 +1,5 @@
 import type { RouterOutputs } from "@hakgyo/api";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
@@ -6,6 +7,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { openAssessmentEvent, openCourseItem } from "../lib/navigation";
 import { canOpenModule } from "../lib/study";
 import { isGameKey, type GameKey } from "../games/catalog";
+import { gameIconPalette, gameIconUri, hasGameIcon } from "../games/game-icons";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { dateLabel } from "../lib/study";
 import { closesLabel } from "./learn/cohort-card";
@@ -132,8 +134,33 @@ export function selectedTool(key: string | null | undefined) {
   return tools.find((tool) => tool.key === key);
 }
 
+/**
+ * The game's flat icon in the theme's colors (`src/games/game-icons.ts`),
+ * or the symbol in a tinted circle when it has none or cannot be drawn.
+ */
 export function GameIcon({ tool, size = 44 }: { tool: Tool; size?: number }) {
   const { colors } = useAppTheme();
+  const [artFailed, setArtFailed] = useState(false);
+  const artUri = useMemo(
+    () =>
+      hasGameIcon(tool.key)
+        ? gameIconUri(tool.key, gameIconPalette(colors.primary))
+        : null,
+    [colors.primary, tool.key],
+  );
+  if (artUri && !artFailed) {
+    return (
+      <Image
+        accessible={false}
+        cachePolicy="memory"
+        contentFit="contain"
+        onError={() => setArtFailed(true)}
+        source={{ uri: artUri }}
+        style={{ width: size, height: size }}
+        transition={0}
+      />
+    );
+  }
   const glyph = colors.primary;
   return (
     <View
@@ -212,7 +239,7 @@ function GameTile({
         ) : (
           <>
             <View className="flex-row items-start justify-between gap-2">
-              <GameIcon size={44} tool={tool} />
+              <GameIcon size={48} tool={tool} />
               {badge}
             </View>
             <View className="gap-0.5">
