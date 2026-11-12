@@ -24,6 +24,7 @@ import {
 import { CourseBadges } from "../../src/components/course-badges";
 import { FontSizeSetting } from "../../src/components/font-size-setting";
 import { useUserRefresh } from "../../src/lib/use-user-refresh";
+import { useDemo } from "../../src/demo/demo-provider";
 import {
   SettingsRow,
   SettingsSection,
@@ -126,6 +127,7 @@ export default function ProfileScreen() {
       setReminderSummary(studyReminderSummary(getStudyReminder()));
     }, []),
   );
+  const demo = useDemo();
   const [isResetting, setIsResetting] = useState(false);
   const [localStats, setLocalStats] = useState<LocalDataStats | null>(null);
   const [resyncReport, setResyncReport] = useState<ResyncReport | null>(null);
@@ -514,6 +516,15 @@ export default function ProfileScreen() {
 
             {SHOW_DEVELOPER_TOOLS ? (
               <SettingsSection title="Pengembangan">
+                <SettingsRow
+                  label="Jalankan demo"
+                  subtitle="Mulai rekam layar dulu. Aplikasi lalu berjalan sendiri: Hari Ini, Belajar, Latihan, Cari, dan Profil."
+                  detail={demo.running ? "Berjalan…" : undefined}
+                  symbol="play.fill"
+                  onPress={() => {
+                    if (!demo.running) demo.start("tour");
+                  }}
+                />
                 <SettingsRow
                   label="Reset aplikasi"
                   subtitle="Mulai lagi seperti baru dipasang"

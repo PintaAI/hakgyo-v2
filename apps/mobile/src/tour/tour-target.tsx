@@ -8,15 +8,18 @@ import type { TourTargetId } from "./tours";
 export function TourTarget({
   id,
   enabled = true,
+  onDemoPress,
   children,
   ...props
 }: ViewProps & {
   id: TourTargetId;
   /** Off for copies a tour must not point at (pages out of view). */
   enabled?: boolean;
+  /** What a scripted demo's tap on this target does (`src/demo`). */
+  onDemoPress?: () => void;
   children: ReactNode;
 }) {
-  const ref = useTourTarget(id, enabled);
+  const ref = useTourTarget(id, enabled, onDemoPress);
   return (
     <View ref={ref} collapsable={false} {...props}>
       {children}

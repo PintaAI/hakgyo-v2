@@ -62,6 +62,7 @@ import {
 } from "../../../../src/components/learn/assessment-overview";
 import { AssessmentResult } from "../../../../src/components/learn/assessment-result";
 import { HeroTile } from "../../../../src/components/hero-tile";
+import { useDemoScroll } from "../../../../src/demo/demo-scroll";
 import { useCelebration } from "../../../../src/lib/tugas-celebrations";
 import { authClient } from "../../../../src/lib/auth-client";
 import { userErrorMessage } from "../../../../src/lib/error-message";
@@ -190,6 +191,7 @@ function CourseItemContent({
   // Anchor jumps: block offsets within the rendered material, the material's
   // offset within the scroll content, and the anchor still being aimed at.
   const scrollRef = useRef<ScrollView>(null);
+  useDemoScroll(scrollRef);
   const blockOffsets = useRef(new Map<string, number>());
   const materialTop = useRef(0);
   const pendingAnchor = useRef<string | null>(anchor);

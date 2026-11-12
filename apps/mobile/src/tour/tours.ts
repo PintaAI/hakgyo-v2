@@ -8,6 +8,8 @@ import { Platform } from "react-native";
 export type NativeAnchor =
   | "native:sidebar"
   | "native:settings"
+  | "native:back"
+  | "native:tab:home"
   | "native:tab:learn"
   | "native:tab:assessments"
   | "native:tab:search"

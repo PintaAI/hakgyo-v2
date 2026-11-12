@@ -27,6 +27,7 @@ import {
   usePullShortContent,
   type usePullToContinue,
 } from "./learn/pull-to-continue";
+import { useDemoScroll } from "../demo/demo-scroll";
 import { userErrorMessage } from "../lib/error-message";
 import { TourScrollContext } from "../tour/tour-provider";
 import { useAppTheme } from "../providers/AppThemeProvider";
@@ -119,6 +120,7 @@ export function StudyScreen({
   // Tours scroll a target into view through this ref.
   const ownScrollRef = useRef<ScrollView>(null);
   const scrollRef = scrollViewRef ?? ownScrollRef;
+  useDemoScroll(scrollRef);
   const [keyboardVerticalOffset, setKeyboardVerticalOffset] = useState(0);
   const behavior = bleedTop ? "never" : contentInsetAdjustmentBehavior;
   const shortContent = usePullShortContent(pullToContinue?.atEnd);
