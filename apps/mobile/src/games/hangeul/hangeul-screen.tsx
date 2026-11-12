@@ -1,7 +1,5 @@
 import type { HangeulGameStage } from "@hakgyo/shared/hangeul";
 import { Stack } from "expo-router";
-import { Asset } from "expo-asset";
-import { Image } from "expo-image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
@@ -18,6 +16,7 @@ import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { gameLeaveLabel, type GameSource } from "../game-exit";
 import { leaveGame } from "../game-navigation";
+import { GameIconTile } from "../game-icon-tile";
 import { GameBackToolbar, GamePage } from "../game-screens";
 import {
   getHangeulLetter,
@@ -28,10 +27,6 @@ import {
 import { hangeulLessonPlan, type HangeulFamilyGroup } from "./hangeul-stage";
 import { SymbolIcon } from "../../components/ui/symbol-icon";
 import { hapticError, hapticSuccess } from "../../lib/haptics";
-
-const introImage = require("../../../assets/games/hangeul-intro.png");
-const introImageAsset = Asset.fromModule(introImage);
-void introImageAsset.downloadAsync().catch(() => undefined);
 
 type Phase = "learn" | "quiz" | "complete";
 
@@ -130,14 +125,9 @@ function OverviewStep() {
   const { colors } = useAppTheme();
   return (
     <View style={styles.stepContent}>
-      <Image
-        cachePolicy="memory-disk"
-        contentFit="contain"
-        priority="high"
-        source={introImage}
-        style={styles.heroImage}
-        transition={0}
-      />
+      <View style={styles.heroIcon}>
+        <GameIconTile iconKey="stroke-master" size={128} />
+      </View>
       <View style={styles.centeredCopy}>
         <Text
           style={[
@@ -731,14 +721,9 @@ export function HangeulScreen({
 
         {phase === "complete" ? (
           <View style={styles.stepContent}>
-            <Image
-              cachePolicy="memory-disk"
-              contentFit="contain"
-              priority="high"
-              source={introImage}
-              style={styles.heroImage}
-              transition={0}
-            />
+            <View style={styles.heroIcon}>
+              <GameIconTile iconKey="stroke-master" size={128} />
+            </View>
             <View style={styles.centeredCopy}>
               <Text style={[styles.eyebrow, { color: colors.primary }]}>
                 {quizLength}/{quizLength} DIKENALI
@@ -798,7 +783,7 @@ const styles = StyleSheet.create({
   lessonAction: { alignItems: "stretch", width: "49%" },
   lessonActionsSingle: { flexDirection: "column" },
   lessonActionSingle: { alignItems: "stretch", width: "100%" },
-  heroImage: { alignSelf: "center", height: 190, width: "78%" },
+  heroIcon: { alignSelf: "center", paddingVertical: 12 },
   centeredCopy: { alignItems: "center", gap: 8 },
   eyebrow: {
     fontSize: 12,

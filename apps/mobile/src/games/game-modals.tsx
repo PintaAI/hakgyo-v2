@@ -20,17 +20,6 @@ const gameSymbols = {
 } satisfies Record<GameKey, SymbolName>;
 
 /**
- * The illustration of each game, shown at the top of Latihan's source sheet.
- * Only the vocabulary games open that sheet; Hangeul games start directly.
- */
-export const gameHeroAssets: Partial<Record<GameKey, number>> = {
-  cards: require("../../assets/games/cards-intro.png"),
-  "word-fall": require("../../assets/games/word-fall-intro.png"),
-  sentences: require("../../assets/games/sentences-intro.png"),
-  match: require("../../assets/games/match-intro.png"),
-} satisfies Record<"cards" | "word-fall" | "sentences" | "match", number>;
-
-/**
  * The sheet a Hangeul game's round ends on. Vocabulary games end (and Hujan
  * Kata pauses) on `GameResult` instead.
  */
