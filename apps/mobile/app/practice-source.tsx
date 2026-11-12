@@ -1,3 +1,4 @@
+import { HANGEUL_MASTERY_COURSE_ID } from "@hakgyo/shared/hangeul";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -43,6 +44,11 @@ import {
   suggestVocabularySets,
 } from "../src/lib/practice-suggestions";
 import { firstParam } from "../src/lib/route-params";
+import { isHangeulMastered } from "../src/lib/hangeul-visibility";
+import {
+  useCohortArchive,
+  useHangeulArchived,
+} from "../src/lib/use-cohort-archive";
 import { usePracticeSources } from "../src/lib/use-practice-sources";
 import { useAppTheme } from "../src/providers/AppThemeProvider";
 import { withOpacity } from "../src/theme/colors";
@@ -214,6 +220,18 @@ export default function PracticeSourceSheet() {
     return byCourse;
   }, [courses, outlines]);
   const summaries = index.data?.vocabularySummaries;
+  // Archived courses stay in the full list but are never suggested: classes
+  // under Diarsipkan on Belajar, and Hangeul Mastery once it is archived.
+  const archive = useCohortArchive(now);
+  const hangeulArchived = useHangeulArchived(isHangeulMastered(index.data));
+  const archivedCourseIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const cohort of index.data?.cohorts ?? []) {
+      if (archive.states.get(cohort.id)?.archived) ids.add(cohort.course.id);
+    }
+    if (hangeulArchived) ids.add(HANGEUL_MASTERY_COURSE_ID);
+    return ids;
+  }, [archive.states, hangeulArchived, index.data?.cohorts]);
 
   if (!tool) return null;
   const toolKey = tool.key;
@@ -248,6 +266,7 @@ export default function PracticeSourceSheet() {
         currentModuleByCourse,
         now,
         closesLabel: (closesAt) => closesLabel(closesAt, now),
+        archivedCourseIds,
       }).map((suggestion) =>
         suggestion.kind === "event"
           ? {
@@ -288,6 +307,7 @@ export default function PracticeSourceSheet() {
         gameKey,
         lastPlayed,
         now,
+        archivedCourseIds,
       }).map((suggestion) => {
         const summary = summaries?.[suggestion.item.id];
         return {

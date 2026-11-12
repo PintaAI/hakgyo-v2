@@ -148,6 +148,47 @@ describe("suggestVocabularySets", () => {
   });
 });
 
+describe("archived courses", () => {
+  const hangeul = {
+    ...set("h1", "hm1", true),
+    key: "hangeul:h1",
+    courseId: "hangeul",
+  };
+
+  test("never suggests an archived course's sets, even with words due", () => {
+    const picks = suggestVocabularySets({
+      ...base,
+      items: [hangeul, set("a", "m1", true)],
+      summaries: { h1: summary({ due: 8 }), a: summary() },
+      archivedCourseIds: new Set(["hangeul"]),
+    });
+    expect(picks.map((pick) => pick.item.id)).toEqual(["a"]);
+  });
+
+  test("suggests nothing when every set is archived", () => {
+    expect(
+      suggestVocabularySets({
+        ...base,
+        items: [hangeul],
+        summaries: { h1: summary({ due: 8 }) },
+        archivedCourseIds: new Set(["hangeul"]),
+      }),
+    ).toEqual([]);
+  });
+
+  test("leaves out an archived course's quizzes but keeps class tugas", () => {
+    const picks = suggestQuizzes({
+      quizzes: [{ ...hangeul, isCompleted: false }],
+      events: [{ id: "e1", closesAt: null, attempts: [] }],
+      currentModuleByCourse: { hangeul: "hm1" },
+      now: NOW,
+      closesLabel: () => "",
+      archivedCourseIds: new Set(["hangeul"]),
+    });
+    expect(picks.map((pick) => pick.item.key)).toEqual(["event:e1"]);
+  });
+});
+
 describe("suggestQuizzes", () => {
   const closesLabel = () => "ditutup dalam 2 hari";
   const quiz = (
