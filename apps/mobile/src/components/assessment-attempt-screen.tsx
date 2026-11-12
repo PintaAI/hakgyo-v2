@@ -13,6 +13,8 @@ import {
   sectionRules,
   sectionTimeline,
   sectionView,
+  unseenNotice,
+  unseenQuestions,
   type AttemptLogEntry,
   type TimelineEntry,
 } from "@hakgyo/shared";
@@ -708,22 +710,56 @@ function AssessmentAttemptContent({
     logSectionEntry("SECTION_STARTED", view.sectionId);
   }
 
+  // Questions never opened that the learner can still open: finishing offers
+  // to go to them first (the button itself always shows).
+  const unseen = unseenQuestions({
+    indexes: sectionIndexes,
+    current: currentIndex,
+    navigation: activeSection?.navigation,
+    isSeen: (index) =>
+      seenQuestionIds.has(assessment.data?.questions[index]?.id ?? ""),
+  });
+
+  /**
+   * A finish confirmation's buttons: with questions still unopened, going to
+   * the first of them comes first and finishing is the second choice.
+   */
+  function finishButtons(finishLabel: string, onFinish: () => void) {
+    const firstUnseen = unseen[0];
+    if (firstUnseen === undefined) {
+      return [
+        { text: "Periksa lagi", style: "cancel" as const },
+        { text: finishLabel, onPress: onFinish },
+      ];
+    }
+    // Android lays three buttons out as neutral, negative and positive, the
+    // last one emphasised; iOS bolds the preferred one.
+    return [
+      { text: "Batal", style: "cancel" as const },
+      { text: `Tetap ${finishLabel.toLowerCase()}`, onPress: onFinish },
+      {
+        text: "Buka soal yang belum dilihat",
+        isPreferred: true,
+        onPress: () => void moveTo(firstUnseen),
+      },
+    ];
+  }
+
   function confirmFinishSection() {
     if (view?.mode !== "answering" || !activeSection) return;
     const sectionId = view.sectionId;
     Alert.alert(
       `Selesaikan ${activeSection.title}?`,
-      `${sectionAnswered} dari ${sectionIndexes.length} soal di bagian ini dijawab. Bagian yang sudah selesai tidak bisa dibuka lagi.`,
       [
-        { text: "Periksa lagi", style: "cancel" },
-        {
-          text: "Selesai bagian",
-          onPress: () => {
-            logAnswerChanges(answers);
-            logSectionEntry("SECTION_ENDED", sectionId);
-          },
-        },
-      ],
+        unseenNotice(unseen.length, true),
+        `${sectionAnswered} dari ${sectionIndexes.length} soal di bagian ini dijawab. Bagian yang sudah selesai tidak bisa dibuka lagi.`,
+      ]
+        .filter(Boolean)
+        .join(" "),
+      finishButtons("Selesai bagian", () => {
+        logAnswerChanges(answers);
+        logSectionEntry("SECTION_ENDED", sectionId);
+      }),
     );
   }
 
@@ -947,15 +983,27 @@ function AssessmentAttemptContent({
         : "tugas";
 
   function confirmSubmit() {
+    if (expired) {
+      Alert.alert(
+        `Selesaikan ${kindLabel}?`,
+        "Waktu habis. Jawaban yang kamu isi sebelum waktu habis akan dikirim dan dinilai.",
+        [
+          { text: "Periksa lagi", style: "cancel" },
+          { text: "Selesaikan", onPress: () => void submit() },
+        ],
+      );
+      return;
+    }
     Alert.alert(
       `Selesaikan ${kindLabel}?`,
-      expired
-        ? "Waktu habis. Jawaban yang kamu isi sebelum waktu habis akan dikirim dan dinilai."
-        : `Apakah kamu yakin ingin menyelesaikan ${kindLabel} ini dan mengirim jawaban? ${answeredCount} dari ${assessment.data?.questions.length ?? 0} soal dijawab. Jawaban yang dikirim tidak dapat diubah.`,
       [
-        { text: "Periksa lagi", style: "cancel" },
-        { text: "Selesaikan", onPress: () => void submit() },
-      ],
+        `Apakah kamu yakin ingin menyelesaikan ${kindLabel} ini dan mengirim jawaban?`,
+        unseenNotice(unseen.length, Boolean(activeSection)),
+        `${answeredCount} dari ${assessment.data?.questions.length ?? 0} soal dijawab. Jawaban yang dikirim tidak dapat diubah.`,
+      ]
+        .filter(Boolean)
+        .join(" "),
+      finishButtons("Selesaikan", () => void submit()),
     );
   }
 
