@@ -29,7 +29,7 @@ Jika bab tidak kunjung terbuka, periksa:
 
 ## Membaca materi
 
-1. Buka sebuah materi. Di bagian atas tertulis posisinya, misalnya **Bab 2 · Materi 3 dari 4**, lalu judul materi dan ringkasan singkat tentang apa yang akan kamu pelajari. Isinya bisa berupa teks, gambar, audio, percakapan, atau halaman buku.
+1. Buka sebuah materi. Di bagian atas tertulis posisinya, misalnya **Bab 2 · Materi 3 dari 4**, lalu judul materi dan ringkasan singkat tentang apa yang akan kamu pelajari. Di aplikasi ponsel, judul dan posisinya ada di baris paling atas layar, tanpa ringkasan, dan judul yang terlalu panjang bergeser pelan supaya terbaca semua. Isinya bisa berupa teks, gambar, audio, percakapan, atau halaman buku.
 2. Untuk halaman buku PDF, ketuk halamannya untuk membuka tampilan penuh, lalu gunakan **Perbesar** dan **Perkecil**.
 3. Gulir ke bawah sampai kotak **Siap lanjut?**.
 4. Klik **Selesai & lanjutkan** untuk menandai materi selesai dan membuka item berikutnya.

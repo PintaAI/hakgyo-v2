@@ -6,6 +6,7 @@ import {
 } from "../../lib/learning-item-type";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { Badge } from "../ui/badge";
+import { MarqueeText } from "../ui/marquee-text";
 import { Chevron } from "../learning-ui";
 import { SymbolIcon } from "../ui/symbol-icon";
 
@@ -54,6 +55,7 @@ export function LearningItemRow({
 }) {
   const { colors } = useAppTheme();
   const meta = getLearningItemTypeMeta(type);
+  const titleClass = `text-[15px] font-semibold leading-5 ${highlighted ? "text-primary" : "text-foreground"}`;
   return (
     <View className={isLast ? "pb-1" : "pb-6"}>
       {!isLast ? (
@@ -92,12 +94,14 @@ export function LearningItemRow({
         >
           <View className="flex-row items-start gap-3">
             <View className="min-w-0 flex-1 gap-1">
-              <Text
-                className={`text-[15px] font-semibold leading-5 ${highlighted ? "text-primary" : "text-foreground"}`}
-                numberOfLines={titleLines}
-              >
-                {title}
-              </Text>
+              {/* One line slides when it is too long to read whole. */}
+              {titleLines === 1 ? (
+                <MarqueeText className={titleClass}>{title}</MarqueeText>
+              ) : (
+                <Text className={titleClass} numberOfLines={titleLines}>
+                  {title}
+                </Text>
+              )}
               <Text
                 className="text-xs leading-4 text-muted-foreground"
                 numberOfLines={detailLines}

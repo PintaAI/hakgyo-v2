@@ -42,6 +42,7 @@ import {
   markContentSeen,
   useCourseContentChanges,
 } from "../../lib/use-content-changes";
+import { MarqueeText } from "../ui/marquee-text";
 import { SymbolIcon } from "../ui/symbol-icon";
 
 type OutlineModule = CourseOutline["modules"][number];
@@ -392,9 +393,9 @@ const OutlineModuleSection = memo(function OutlineModuleSection({
         </Text>
       </View>
       <View className={`min-w-0 flex-1 ${hasSubtitle ? "gap-1" : ""}`}>
-        <Text className="text-base font-bold text-foreground" numberOfLines={1}>
+        <MarqueeText className="text-base font-bold text-foreground">
           {module.title}
-        </Text>
+        </MarqueeText>
         {/* One line only, so long descriptions never push the row. */}
         {hasSubtitle ? (
           <Text
