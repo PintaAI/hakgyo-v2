@@ -15,9 +15,20 @@ import { vocabularyContentHash } from "~/server/vocabulary/progress-policy";
 import {
   gradePracticeChoice,
   preparePracticeOptions,
-  sampleForPractice,
   vocabularySetVersion,
 } from "~/server/practice/policy";
+import {
+  prioritizeQuestions,
+  prioritizeVocabulary,
+  RECENT_MISS_DAYS,
+} from "~/server/practice/priorities";
+
+/**
+ * Sets or quizzes one practice sample ranks: plenty for any course, and a
+ * bound on what one request loads.
+ */
+const MAX_PRACTICE_SETS = 120;
+const MAX_PRACTICE_ASSESSMENTS = 60;
 
 const seed = z.string().trim().min(1).max(100);
 
@@ -127,75 +138,122 @@ export async function getVocabularyPool(
           })
         ).map((row) => row.vocabularySetId),
   );
-  const seenSets = new Set<string>();
-  const sets = placementMetadata.flatMap((placement) => {
-    const set = placement.vocabularySet;
-    const source = placementById.get(placement.id);
-    if (
-      !set ||
-      !setsWithEntries.has(set.id) ||
-      !source ||
-      seenSets.has(set.id)
-    ) {
-      return [];
-    }
-    seenSets.add(set.id);
-    return [{ id: placement.id, set, source }];
-  });
-  const orderedSets = sampleForPractice(
-    sets,
-    `${ctx.actorUserId}:${input.seed}:vocabulary-sets`,
-    sets.length,
+  // Course order of every placement, for "the set the learner is on".
+  const outlineOrder = new Map(
+    available.map((item, index) => [item.courseItemId, index]),
   );
-  async function loadVocabularyCandidates(selectedSets: typeof orderedSets) {
-    const selectedByPlacementId = new Map(
-      selectedSets.map((selected) => [selected.id, selected]),
-    );
-    const placements = await ctx.db.courseItem.findMany({
-      where: { id: { in: [...selectedByPlacementId.keys()] } },
-      orderBy: [{ position: "asc" }, { id: "asc" }],
-      select: {
-        id: true,
-        vocabularySet: {
+  const seenSets = new Set<string>();
+  const sets = placementMetadata
+    .flatMap((placement) => {
+      const set = placement.vocabularySet;
+      const source = placementById.get(placement.id);
+      if (
+        !set ||
+        !setsWithEntries.has(set.id) ||
+        !source ||
+        seenSets.has(set.id)
+      ) {
+        return [];
+      }
+      seenSets.add(set.id);
+      return [{ id: placement.id, set, source }];
+    })
+    .sort(
+      (a, b) => (outlineOrder.get(a.id) ?? 0) - (outlineOrder.get(b.id) ?? 0),
+    )
+    .slice(0, MAX_PRACTICE_SETS);
+  const now = new Date();
+  const missSince = new Date(
+    now.getTime() - RECENT_MISS_DAYS * 24 * 60 * 60 * 1000,
+  );
+  const [placements, completedSets, recentAttempts] = await Promise.all([
+    sets.length === 0
+      ? []
+      : ctx.db.courseItem.findMany({
+          where: { id: { in: sets.map((selected) => selected.id) } },
           select: {
             id: true,
-            title: true,
-            entries: {
-              orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            vocabularySet: {
               select: {
                 id: true,
-                term: true,
-                meanings: true,
-                definition: true,
-                imageAssetId: true,
-                progress: {
-                  where: { userId: ctx.actorUserId },
+                title: true,
+                entries: {
+                  orderBy: [{ createdAt: "asc" }, { id: "asc" }],
                   select: {
-                    contentHash: true,
-                    nextReviewAt: true,
+                    id: true,
+                    term: true,
+                    meanings: true,
+                    definition: true,
+                    imageAssetId: true,
+                    progress: {
+                      where: { userId: ctx.actorUserId },
+                      select: {
+                        contentHash: true,
+                        practicedAt: true,
+                        masteredAt: true,
+                        nextReviewAt: true,
+                      },
+                    },
                   },
                 },
               },
             },
           },
-        },
-      },
-    });
-    return placements.flatMap((placement) => {
-      const set = placement.vocabularySet;
-      const selected = selectedByPlacementId.get(placement.id);
-      if (!set || !selected) return [];
-      const entries = set.entries.filter(
-        (entry) => entry.term.trim() && entry.definition.trim(),
-      );
-      const setVersion = vocabularySetVersion(entries);
-
-      return entries.map((entry) => {
-        const saved = entry.progress[0];
-        const current =
-          saved?.contentHash === vocabularyContentHash(entry) ? saved : null;
-        return {
-          id: entry.id,
+        }),
+    sets.length === 0
+      ? []
+      : ctx.db.contentProgress.findMany({
+          where: {
+            userId: ctx.actorUserId,
+            status: "COMPLETED",
+            courseItemId: { in: sets.map((selected) => selected.id) },
+          },
+          select: { courseItemId: true },
+        }),
+    ctx.db.vocabularyPracticeAttempt.findMany({
+      where: { userId: ctx.actorUserId, createdAt: { gte: missSince } },
+      orderBy: { createdAt: "desc" },
+      select: { entryId: true, result: true },
+    }),
+  ]);
+  const completedSetIds = new Set(
+    completedSets.map((progress) => progress.courseItemId),
+  );
+  // The latest answer per word decides: right since then clears a miss.
+  const latestResult = new Map<string, string>();
+  for (const attempt of recentAttempts) {
+    if (!latestResult.has(attempt.entryId)) {
+      latestResult.set(attempt.entryId, attempt.result);
+    }
+  }
+  const selectedById = new Map(sets.map((selected) => [selected.id, selected]));
+  const candidates = placements.flatMap((placement) => {
+    const set = placement.vocabularySet;
+    const selected = selectedById.get(placement.id);
+    if (!set || !selected) return [];
+    const entries = set.entries.filter(
+      (entry) => entry.term.trim() && entry.definition.trim(),
+    );
+    const setVersion = vocabularySetVersion(entries);
+    return entries.map((entry, entryOrder) => {
+      const saved = entry.progress[0];
+      const current =
+        saved?.contentHash === vocabularyContentHash(entry) ? saved : null;
+      const latest = latestResult.get(entry.id);
+      return {
+        id: entry.id,
+        progress: current
+          ? {
+              practicedAt: current.practicedAt,
+              masteredAt: current.masteredAt,
+              nextReviewAt: current.nextReviewAt,
+            }
+          : null,
+        recentlyMissed: latest !== undefined && latest !== "CORRECT",
+        setCompleted: completedSetIds.has(placement.id),
+        setOrder: outlineOrder.get(placement.id) ?? 0,
+        entryOrder,
+        item: {
           entryId: entry.id,
           term: entry.term,
           meanings: entryMeanings(entry),
@@ -209,35 +267,20 @@ export async function getVocabularyPool(
           courseId: selected.source.courseId,
           courseTitle: selected.source.courseTitle,
           sourceCourseItemId: selected.source.courseItemId,
-          due: !current?.nextReviewAt || current.nextReviewAt <= new Date(),
-        };
-      });
+        },
+      };
     });
-  }
-  const candidates: Awaited<ReturnType<typeof loadVocabularyCandidates>> = [];
-  const batchSize = Math.min(input.limit * 2, 60);
-  for (
-    let offset = 0;
-    offset < orderedSets.length && candidates.length < input.limit;
-    offset += batchSize
-  ) {
-    candidates.push(
-      ...(await loadVocabularyCandidates(
-        orderedSets.slice(offset, offset + batchSize),
-      )),
-    );
-  }
-  const due = candidates.filter((item) => item.due);
-  const items = sampleForPractice(
-    due.length ? due : candidates,
-    `${ctx.actorUserId}:${input.seed}:vocabulary`,
-    input.limit,
-  ).map(({ id: _id, due: _due, ...item }) => item);
+  });
+  const items = prioritizeVocabulary(candidates, {
+    now,
+    limit: input.limit,
+    seed: `${ctx.actorUserId}:${input.seed}:vocabulary`,
+  }).map((candidate) => candidate.item);
 
   return {
     items,
     hasAvailableContent: candidates.length > 0,
-    serverTime: new Date(),
+    serverTime: now,
   };
 }
 
@@ -293,112 +336,145 @@ export async function getAssessmentSample(
           })
         ).map((row) => row.assessmentId),
   );
-  const seenAssessments = new Set<string>();
-  const assessments = placementMetadata.flatMap((placement) => {
-    const assessment = placement.assessment;
-    const source = placementById.get(placement.id);
-    if (
-      !assessment ||
-      !assessmentsWithQuestions.has(assessment.id) ||
-      !source ||
-      seenAssessments.has(assessment.id)
-    ) {
-      return [];
-    }
-    seenAssessments.add(assessment.id);
-    return [{ id: placement.id, assessment, source }];
-  });
-  const orderedAssessments = sampleForPractice(
-    assessments,
-    `${ctx.actorUserId}:${input.seed}:assessments`,
-    assessments.length,
+  const outlineOrder = new Map(
+    available.map((item, index) => [item.courseItemId, index]),
   );
-  async function loadAssessmentCandidates(
-    selectedAssessments: typeof orderedAssessments,
-  ) {
-    const selectedByPlacementId = new Map(
-      selectedAssessments.map((selected) => [selected.id, selected]),
-    );
-    const placements = await ctx.db.courseItem.findMany({
-      where: { id: { in: [...selectedByPlacementId.keys()] } },
-      orderBy: [{ position: "asc" }, { id: "asc" }],
-      select: {
-        id: true,
-        assessment: {
+  const seenAssessments = new Set<string>();
+  const assessments = placementMetadata
+    .flatMap((placement) => {
+      const assessment = placement.assessment;
+      const source = placementById.get(placement.id);
+      if (
+        !assessment ||
+        !assessmentsWithQuestions.has(assessment.id) ||
+        !source ||
+        seenAssessments.has(assessment.id)
+      ) {
+        return [];
+      }
+      seenAssessments.add(assessment.id);
+      return [{ id: placement.id, assessment, source }];
+    })
+    .sort(
+      (a, b) => (outlineOrder.get(a.id) ?? 0) - (outlineOrder.get(b.id) ?? 0),
+    )
+    .slice(0, MAX_PRACTICE_ASSESSMENTS);
+  const [placements, passedPlacements] = await Promise.all([
+    assessments.length === 0
+      ? []
+      : ctx.db.courseItem.findMany({
+          where: { id: { in: assessments.map((selected) => selected.id) } },
           select: {
             id: true,
-            title: true,
-            questions: {
-              // Grouped questions need their group's passage or picture, so practice skips them.
-              where: {
-                type: { in: ["SINGLE_CHOICE", "MULTIPLE_CHOICE"] },
-                groupId: null,
-              },
-              orderBy: [{ position: "asc" }, { id: "asc" }],
+            assessment: {
               select: {
                 id: true,
-                type: true,
-                prompt: true,
-                options: {
+                title: true,
+                questions: {
+                  // Grouped questions need their group's passage or picture, so practice skips them.
+                  where: {
+                    type: { in: ["SINGLE_CHOICE", "MULTIPLE_CHOICE"] },
+                    groupId: null,
+                  },
                   orderBy: [{ position: "asc" }, { id: "asc" }],
-                  select: { id: true, content: true, isCorrect: true },
+                  select: {
+                    id: true,
+                    type: true,
+                    prompt: true,
+                    points: true,
+                    options: {
+                      orderBy: [{ position: "asc" }, { id: "asc" }],
+                      select: { id: true, content: true, isCorrect: true },
+                    },
+                  },
                 },
               },
             },
           },
-        },
-      },
-    });
-    return placements.flatMap((placement) => {
-      const assessment = placement.assessment;
-      const selected = selectedByPlacementId.get(placement.id);
-      if (!assessment || !selected) return [];
-
-      return assessment.questions.flatMap((question) => {
-        const correctCount = question.options.filter(
-          (option) => option.isCorrect,
-        ).length;
-        const valid =
-          question.options.length >= 2 &&
-          (question.type === "SINGLE_CHOICE"
-            ? correctCount === 1
-            : correctCount > 0);
-        if (!valid) return [];
-
-        return [
-          {
-            id: question.id,
-            questionId: question.id,
-            type: question.type,
-            prompt: question.prompt,
-            options: question.options,
-            assessmentTitle: assessment.title,
-            courseId: selected.source.courseId,
-            courseTitle: selected.source.courseTitle,
-            sourceCourseItemId: selected.source.courseItemId,
+        }),
+    assessments.length === 0
+      ? []
+      : ctx.db.contentProgress.findMany({
+          where: {
+            userId: ctx.actorUserId,
+            status: "COMPLETED",
+            courseItemId: { in: assessments.map((selected) => selected.id) },
           },
-        ];
-      });
+          select: { courseItemId: true },
+        }),
+  ]);
+  const passedIds = new Set(
+    passedPlacements.map((progress) => progress.courseItemId),
+  );
+  const selectedById = new Map(
+    assessments.map((selected) => [selected.id, selected]),
+  );
+  const questions = placements.flatMap((placement) => {
+    const assessment = placement.assessment;
+    const selected = selectedById.get(placement.id);
+    if (!assessment || !selected) return [];
+    return assessment.questions.flatMap((question) => {
+      const correctCount = question.options.filter(
+        (option) => option.isCorrect,
+      ).length;
+      const valid =
+        question.options.length >= 2 &&
+        (question.type === "SINGLE_CHOICE"
+          ? correctCount === 1
+          : correctCount > 0);
+      return valid ? [{ question, assessment, selected, placement }] : [];
     });
+  });
+  // The learner's latest graded answer per question, from submitted
+  // attempts: not full marks means it still needs practice.
+  const answers =
+    questions.length === 0
+      ? []
+      : await ctx.db.assessmentAnswer.findMany({
+          where: {
+            questionId: { in: questions.map((entry) => entry.question.id) },
+            attempt: {
+              userId: ctx.actorUserId,
+              status: { in: ["SUBMITTED", "IN_REVIEW", "GRADED"] },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+          select: { questionId: true, autoScore: true, manualScore: true },
+        });
+  const latestScore = new Map<string, number | null>();
+  for (const answer of answers) {
+    if (!latestScore.has(answer.questionId)) {
+      latestScore.set(
+        answer.questionId,
+        answer.manualScore ?? answer.autoScore,
+      );
+    }
   }
-  const candidates: Awaited<ReturnType<typeof loadAssessmentCandidates>> = [];
-  const batchSize = Math.min(input.limit * 3, 20);
-  for (
-    let offset = 0;
-    offset < orderedAssessments.length && candidates.length < input.limit;
-    offset += batchSize
-  ) {
-    candidates.push(
-      ...(await loadAssessmentCandidates(
-        orderedAssessments.slice(offset, offset + batchSize),
-      )),
-    );
-  }
-  const questions = sampleForPractice(
-    candidates,
-    `${ctx.actorUserId}:${input.seed}:assessment`,
-    input.limit,
-  ).map(({ id: _id, options, ...question }) => ({
+  const candidates = questions.map(
+    ({ question, assessment, selected, placement }) => {
+      const score = latestScore.get(question.id);
+      return {
+        id: question.id,
+        answeredWrong:
+          score !== undefined && score !== null && score < question.points,
+        assessmentPassed: passedIds.has(placement.id),
+        question: {
+          questionId: question.id,
+          type: question.type,
+          prompt: question.prompt,
+          options: question.options,
+          assessmentTitle: assessment.title,
+          courseId: selected.source.courseId,
+          courseTitle: selected.source.courseTitle,
+          sourceCourseItemId: selected.source.courseItemId,
+        },
+      };
+    },
+  );
+  const sample = prioritizeQuestions(candidates, {
+    limit: input.limit,
+    seed: `${ctx.actorUserId}:${input.seed}:assessment`,
+  }).map(({ question: { options, ...question } }) => ({
     ...question,
     options: preparePracticeOptions(
       options,
@@ -407,7 +483,7 @@ export async function getAssessmentSample(
   }));
 
   return {
-    questions,
+    questions: sample,
     hasAvailableContent: candidates.length > 0,
     serverTime: new Date(),
   };

@@ -5,7 +5,11 @@ import { AccessibilityInfo, Pressable, Text, View } from "react-native";
 
 import { api } from "../lib/trpc";
 import { userErrorMessage } from "../lib/error-message";
-import { localSample } from "../lib/local-sample";
+import {
+  readCorrectQuestions,
+  rememberCorrectQuestion,
+} from "../lib/today-question-memory";
+import { pickTodayQuestions } from "../lib/today-question-pick";
 import {
   nextUnansweredQuestion,
   type QuestionStatus,
@@ -72,7 +76,14 @@ export function TodayAssessmentPractice({
   const [showExplanation, setShowExplanation] = useExplanationVisibility();
 
   useEffect(() => {
-    const questions = localSample(pool.questions, seed, 5);
+    // Questions answered right in the last few days sit out, unless the
+    // day's pool has too few others.
+    const questions = pickTodayQuestions(pool.questions, {
+      memory: readCorrectQuestions(),
+      now: Date.now(),
+      count: 5,
+      seed,
+    });
     const signature = JSON.stringify([organizationId, seed, questions]);
     if (initializedPool.current === signature) return;
     initializedPool.current = signature;
@@ -141,8 +152,12 @@ export function TodayAssessmentPractice({
         optionIds,
       });
       if (gradingRequest.current !== request) return;
-      if (next.correct) hapticSuccess();
-      else hapticError();
+      if (next.correct) {
+        hapticSuccess();
+        rememberCorrectQuestion(target.questionId);
+      } else {
+        hapticError();
+      }
       setResults((current) => ({ ...current, [questionIndex]: next }));
     } catch (error) {
       // Keep the selection visible and offer an explicit retry.

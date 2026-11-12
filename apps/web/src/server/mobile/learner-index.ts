@@ -20,6 +20,7 @@ import {
 import type { TRPCContext } from "~/server/api/trpc";
 import type { organizationBrandSelect } from "~/server/brand/context";
 import { getLocalDateKey } from "~/server/gamification/logic";
+import { PRACTICE_TIME_ZONE } from "~/server/practice/priorities";
 import { getCourseOutlineViewsForUser } from "~/server/learning/course-outline";
 import { enrolledCourseWhere } from "~/server/learning/enrolled-courses";
 import { attemptAssessment } from "~/server/mobile/apply-operations";
@@ -47,6 +48,15 @@ type AccessDb = Pick<
 >;
 
 const MOBILE_PRACTICE_SEED = "mobile-sync-v1";
+
+/**
+ * The day Hari ini's practice belongs to. It seeds the sample, and it is part
+ * of the index token, so the app takes a new day's words and questions once
+ * the day turns even when nothing else changed.
+ */
+export function practiceDayKey(now: Date) {
+  return getLocalDateKey(now, PRACTICE_TIME_ZONE);
+}
 const MAX_INDEX_VALIDITY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -140,6 +150,7 @@ export async function getIndexToken(
         rosterRevision,
         enrolled.map((course) => course.courseId),
         INDEX_SCHEMA,
+        practiceDayKey(new Date()),
       ]),
     )
     .digest("hex");
@@ -271,12 +282,20 @@ export async function buildLearnerIndex(
     return Promise.all([
       getVocabularyPool(
         practiceContext,
-        { ...scope, limit: 30, seed: MOBILE_PRACTICE_SEED },
+        {
+          ...scope,
+          limit: 30,
+          seed: `${MOBILE_PRACTICE_SEED}:${practiceDayKey(now)}`,
+        },
         available,
       ),
       getAssessmentSample(
         practiceContext,
-        { ...scope, limit: 10, seed: MOBILE_PRACTICE_SEED },
+        {
+          ...scope,
+          limit: 10,
+          seed: `${MOBILE_PRACTICE_SEED}:${practiceDayKey(now)}`,
+        },
         available,
       ),
     ]);
