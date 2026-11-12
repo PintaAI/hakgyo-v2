@@ -40,7 +40,6 @@ export default function HomeTab() {
 
   return (
     <TabScreen
-      doodle
       scrollGesture={scrollGesture}
       refreshing={refreshing}
       onRefresh={() => void refresh()}

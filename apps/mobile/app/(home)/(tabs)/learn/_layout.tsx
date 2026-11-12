@@ -12,9 +12,9 @@ export default function LearnTabLayout() {
         name="index"
         options={{
           title: "",
-          // The class card runs up under the header (bleedTop), so the soft
-          // scroll edge would frost it even at rest. Clear at rest, like Hari
-          // Ini; the screen switches to "soft" once its page scrolls.
+          // The class card runs up under the header (bleedTop), so the scroll
+          // edge would frost it even at rest. Clear at rest; the screen
+          // switches to the tabs' "automatic" edge once its page scrolls.
           scrollEdgeEffects:
             Platform.OS === "ios" ? { top: "hidden" } : undefined,
         }}

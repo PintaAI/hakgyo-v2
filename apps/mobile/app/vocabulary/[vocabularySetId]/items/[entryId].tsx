@@ -8,6 +8,7 @@ import {
   Eyebrow,
   QueryState,
 } from "../../../../src/components/learning-ui";
+import { HakgyoHero } from "../../../../src/components/learn/hakgyo-hero";
 import { EntryImage } from "../../../../src/components/learn/vocabulary-set-detail";
 import { VocabularyAudioButton } from "../../../../src/components/vocabulary-audio-button";
 import { authClient } from "../../../../src/lib/auth-client";
@@ -76,45 +77,47 @@ export default function VocabularyItemSheet() {
   return (
     <ScrollView
       className="flex-1 bg-background"
-      contentContainerClassName="gap-8 px-6 pb-10 pt-10"
+      contentContainerClassName="gap-8 px-5 pb-10"
       contentInsetAdjustmentBehavior="automatic"
     >
-      {/* The word in the spotlight: large and centred, its meanings and
-          audio right under it. The sheet sizes to its content and closes
-          with a swipe down, so it needs no back button. */}
-      <View className="items-center gap-5">
-        <Text
-          accessibilityRole="header"
-          adjustsFontSizeToFit
-          className="text-center font-black tracking-tight text-foreground"
-          minimumFontScale={0.5}
-          numberOfLines={2}
-          style={termStyle(entry.term)}
-        >
-          {entry.term}
-        </Text>
-        <View className="flex-row flex-wrap justify-center gap-2">
-          {meanings.map((meaning, meaningIndex) => (
-            <View
-              className="rounded-full bg-muted px-4 py-2"
-              key={`${meaningIndex}:${meaning}`}
-            >
-              <Text className="text-base font-semibold text-foreground">
-                {meaning}
-              </Text>
-            </View>
-          ))}
+      {/* The word in the spotlight on the Hakgyo hero: large and centred,
+          its meanings and audio right under it. The sheet sizes to its
+          content and closes with a swipe down, so it needs no back button. */}
+      <HakgyoHero inSheet>
+        <View className="items-center gap-5">
+          <Text
+            accessibilityRole="header"
+            adjustsFontSizeToFit
+            className="text-center font-black tracking-tight text-foreground"
+            minimumFontScale={0.5}
+            numberOfLines={2}
+            style={termStyle(entry.term)}
+          >
+            {entry.term}
+          </Text>
+          <View className="flex-row flex-wrap justify-center gap-2">
+            {meanings.map((meaning, meaningIndex) => (
+              <View
+                className="rounded-full bg-muted px-4 py-2"
+                key={`${meaningIndex}:${meaning}`}
+              >
+                <Text className="text-base font-semibold text-foreground">
+                  {meaning}
+                </Text>
+              </View>
+            ))}
+          </View>
+          {entry.audioAssetId ? (
+            <VocabularyAudioButton
+              assetId={entry.audioAssetId}
+              entryId={entry.id}
+              onSpeak={setSpeakingId}
+              size="large"
+              speakingId={speakingId}
+            />
+          ) : null}
         </View>
-        {entry.audioAssetId ? (
-          <VocabularyAudioButton
-            assetId={entry.audioAssetId}
-            entryId={entry.id}
-            onSpeak={setSpeakingId}
-            size="large"
-            speakingId={speakingId}
-          />
-        ) : null}
-      </View>
+      </HakgyoHero>
 
       {entry.imageAssetId ? (
         <EntryImage assetId={entry.imageAssetId} variant="detail" />

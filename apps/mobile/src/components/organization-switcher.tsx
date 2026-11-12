@@ -1,6 +1,5 @@
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -9,8 +8,11 @@ import {
 
 import { getOrganizationSwitcherOptions } from "../lib/organization-switcher";
 import { useAppTheme } from "../providers/AppThemeProvider";
+import { withOpacity } from "../theme/colors";
 import { GlassBox } from "./GlassBox";
-import { Avatar, SectionHeader } from "./learning-ui";
+import { HakgyoHero } from "./learn/hakgyo-hero";
+import { HeroMark, HeroTitle } from "./learn/hero-parts";
+import { Avatar, Eyebrow } from "./learning-ui";
 import { SymbolIcon } from "./ui/symbol-icon";
 
 function OrganizationMark({
@@ -112,6 +114,10 @@ export function OrganizationSwitcherTrigger({
   );
 }
 
+/**
+ * The organization picker sheet: the active organization in the Hakgyo hero,
+ * then every organization the learner belongs to as one list.
+ */
 export function OrganizationSwitcherContent({
   onClose,
 }: {
@@ -121,6 +127,7 @@ export function OrganizationSwitcherContent({
     activeBrand,
     availableOrganizations,
     colors,
+    colorScheme,
     isRefreshingOrganizations,
     selectOrganization,
   } = useAppTheme();
@@ -132,26 +139,32 @@ export function OrganizationSwitcherContent({
   return (
     <ScrollView
       className="flex-1"
-      contentContainerClassName="flex-grow gap-2 px-5 pb-5 pt-4"
-      contentInsetAdjustmentBehavior="automatic"
+      contentContainerClassName="flex-grow gap-4 px-5 pb-8"
       showsVerticalScrollIndicator={false}
     >
-      {Platform.OS !== "ios" ? (
-        <SectionHeader
-          title="Pilih organisasi"
-          trailing={
-            <Pressable
-              accessibilityLabel="Tutup pemilih organisasi"
-              accessibilityRole="button"
-              className="rounded-full px-3 py-2 active:opacity-60"
-              onPress={onClose}
-            >
-              <SymbolIcon name="xmark" size={20} tintColor={colors.primary} />
-            </Pressable>
+      <HakgyoHero
+        inSheet
+        onClose={onClose}
+        closeLabel="Tutup pemilih organisasi"
+      >
+        <HeroMark
+          face={
+            <OrganizationMark
+              logoUrl={activeBrand.logoUrl}
+              name={activeBrand.name}
+              size={56}
+            />
           }
         />
-      ) : null}
-      <View className="h-5 justify-center">
+        <HeroTitle
+          eyebrow="Organisasi aktif"
+          title={activeBrand.name}
+          description="Kelas, latihan, dan warna aplikasi mengikuti organisasi yang kamu pilih."
+        />
+      </HakgyoHero>
+
+      <View className="flex-row items-center justify-between">
+        <Eyebrow>Pilih organisasi</Eyebrow>
         <ActivityIndicator
           accessibilityLabel="Memperbarui organisasi"
           animating={isRefreshingOrganizations}
@@ -159,57 +172,73 @@ export function OrganizationSwitcherContent({
           size="small"
         />
       </View>
-      {switcherOptions.map((organization) => {
-        const selected =
-          organization.organizationId === activeBrand.organizationId;
-        return (
-          <Pressable
-            accessibilityRole="radio"
-            accessibilityState={{ selected }}
-            className={`flex-row items-center gap-3 rounded-2xl border px-3 py-3 active:opacity-70 ${
-              selected
-                ? "border-primary bg-primary/10"
-                : "border-border bg-card"
-            }`}
-            key={organization.organizationId ?? "hakgyo-default"}
-            onPress={() => {
-              onClose();
-              if (organization.organizationId) {
-                void selectOrganization(organization.organizationId);
-              }
-            }}
-          >
-            <OrganizationMark
-              logoUrl={organization.logoUrl}
-              name={organization.name}
-              size={44}
-            />
-            <View className="min-w-0 flex-1 gap-0.5">
-              <Text
-                className="text-base font-bold text-foreground"
-                numberOfLines={1}
-              >
-                {organization.name}
-              </Text>
-              <Text className="text-xs text-muted-foreground">
-                {organization.isThemed ? "Tema organisasi" : "Tema Hakgyo"}
-              </Text>
-            </View>
-            {selected ? (
-              <SymbolIcon
-                name="checkmark"
-                size={18}
-                weight="bold"
-                tintColor={colors.primary}
-              />
-            ) : null}
-          </Pressable>
-        );
-      })}
+
       {availableOrganizations.length === 0 ? (
         <Text className="py-5 text-center text-sm text-muted-foreground">
           Belum ada organisasi aktif yang kamu ikuti.
         </Text>
+      ) : null}
+
+      {switcherOptions.length ? (
+        <View className="overflow-hidden rounded-2xl border border-border">
+          {switcherOptions.map((organization, index) => {
+            const selected =
+              organization.organizationId === activeBrand.organizationId;
+            return (
+              <View key={organization.organizationId ?? "hakgyo-default"}>
+                {index > 0 ? <View className="ml-16 h-px bg-border" /> : null}
+                <Pressable
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  className="min-h-16 flex-row items-center gap-3 px-4 py-3 active:opacity-70"
+                  style={
+                    selected
+                      ? {
+                          backgroundColor: withOpacity(
+                            colors.primary,
+                            colorScheme === "dark" ? 0.22 : 0.1,
+                          ),
+                        }
+                      : undefined
+                  }
+                  onPress={() => {
+                    onClose();
+                    if (organization.organizationId) {
+                      void selectOrganization(organization.organizationId);
+                    }
+                  }}
+                >
+                  <OrganizationMark
+                    logoUrl={organization.logoUrl}
+                    name={organization.name}
+                    size={40}
+                  />
+                  <View className="min-w-0 flex-1 gap-0.5">
+                    <Text
+                      className="text-base font-bold text-foreground"
+                      numberOfLines={1}
+                    >
+                      {organization.name}
+                    </Text>
+                    <Text className="text-xs text-muted-foreground">
+                      {organization.isThemed
+                        ? "Tema organisasi"
+                        : "Tema Hakgyo"}
+                    </Text>
+                  </View>
+                  {selected ? (
+                    <SymbolIcon
+                      name="checkmark"
+                      size={18}
+                      weight="bold"
+                      tintColor={colors.primary}
+                    />
+                  ) : null}
+                </Pressable>
+              </View>
+            );
+          })}
+        </View>
       ) : null}
     </ScrollView>
   );

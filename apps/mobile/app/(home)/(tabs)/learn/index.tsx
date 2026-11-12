@@ -233,8 +233,8 @@ export default function LearnTab() {
   );
 
   // Clear at rest, so the class card runs up to the top unfrosted; once the
-  // page scrolls, the header frosts like on Hari Ini. (The soft edge would
-  // frost it even at rest: the card starts under the header.)
+  // page scrolls, the header frosts like the other tabs. (The edge effect
+  // would frost it even at rest: the card starts under the header.)
   const navigation = useNavigation();
   const [scrolled, setScrolled] = useState(false);
   const onScroll = useCallback(
@@ -247,7 +247,7 @@ export default function LearnTab() {
   useEffect(() => {
     if (Platform.OS !== "ios") return;
     navigation.setOptions({
-      scrollEdgeEffects: { top: scrolled ? "soft" : "hidden" },
+      scrollEdgeEffects: { top: scrolled ? "automatic" : "hidden" },
     });
   }, [navigation, scrolled]);
 

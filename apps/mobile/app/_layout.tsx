@@ -306,22 +306,12 @@ function RootNavigator() {
                       <Stack.Screen
                         name="organization-switcher"
                         options={{
-                          headerShown: Platform.OS === "ios",
-                          headerBackVisible: false,
-                          headerShadowVisible: false,
-                          headerStyle: { backgroundColor: "transparent" },
-                          title: "Pilih organisasi",
-                          // iOS shows the native sheet material through; Android
-                          // sheets have none and need an opaque surface.
-                          contentStyle: {
-                            backgroundColor:
-                              Platform.OS === "ios"
-                                ? "transparent"
-                                : colors.background,
-                          },
+                          headerShown: false,
+                          // Opaque on both platforms: the Hakgyo hero at the top
+                          // fades into the page colour.
+                          contentStyle: { backgroundColor: colors.background },
                           ...formSheetOptions({
-                            detents: [0.55, 0.9],
-                            grabber: false,
+                            detents: [0.75, 1],
                             expandsWhenScrolledToEdge: true,
                           }),
                         }}
@@ -356,20 +346,10 @@ function RootNavigator() {
                       <Stack.Screen
                         name="leaderboard"
                         options={{
-                          headerShown: Platform.OS === "ios",
-                          headerBackVisible: false,
-                          headerShadowVisible: false,
-                          headerStyle: { backgroundColor: "transparent" },
-                          title: "Peringkat minggu ini",
-                          contentStyle: {
-                            backgroundColor:
-                              Platform.OS === "ios"
-                                ? "transparent"
-                                : colors.background,
-                          },
+                          headerShown: false,
+                          contentStyle: { backgroundColor: colors.background },
                           ...formSheetOptions({
                             detents: [0.75, 1],
-                            grabber: false,
                             expandsWhenScrolledToEdge: true,
                           }),
                         }}

@@ -1,9 +1,9 @@
 import { router } from "expo-router";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView } from "react-native";
 
-import { useAppTheme } from "../providers/AppThemeProvider";
 import { AttemptResultDetails } from "./attempt-result-details";
-import { SymbolIcon } from "./ui/symbol-icon";
+import { HakgyoHero } from "./learn/hakgyo-hero";
+import { HeroTitle } from "./learn/hero-parts";
 
 /**
  * A finished attempt in full, as a form sheet over its tugas, latihan or
@@ -21,33 +21,26 @@ export function AttemptResultSheet({
   /** The review opens at this question (from the preview on the screen). */
   initialQuestion?: number;
 }) {
-  const { colors } = useAppTheme();
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       className="bg-background"
-      contentContainerClassName="gap-4 px-5 pb-10 pt-6"
+      contentContainerClassName="gap-4 px-5 pb-10"
     >
-      <View className="flex-row items-center gap-3">
-        <Text
-          accessibilityRole="header"
-          className="min-w-0 flex-1 text-xl font-black text-foreground"
-        >
-          Hasil lengkap
-        </Text>
-        {/* iOS closes the sheet by its grabber; Android needs a button. */}
-        {Platform.OS !== "ios" ? (
-          <Pressable
-            accessibilityLabel="Tutup hasil lengkap"
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={() => router.back()}
-            className="size-8 items-center justify-center rounded-full bg-muted active:opacity-70"
-          >
-            <SymbolIcon name="xmark" size={14} tintColor={colors.foreground} />
-          </Pressable>
-        ) : null}
-      </View>
+      {/* A slim hero: the score already sits in the tugas page's own hero
+          under this sheet, so here only the title. */}
+      <HakgyoHero
+        inSheet
+        className="pb-4"
+        onClose={() => router.back()}
+        closeLabel="Tutup hasil lengkap"
+      >
+        <HeroTitle
+          eyebrow="Pembahasan"
+          title="Hasil lengkap"
+          description="Nilai per bagian dan jenis soal, lalu jawabanmu satu per satu."
+        />
+      </HakgyoHero>
       {attemptId ? (
         <AttemptResultDetails
           key={attemptId}
