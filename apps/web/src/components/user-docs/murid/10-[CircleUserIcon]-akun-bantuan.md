@@ -29,6 +29,8 @@ Klik namamu, lalu **Pengaturan**, untuk mengatur tampilan situs web:
 
 Aplikasi ponsel selalu mengikuti tema terang atau gelap di ponselmu.
 
+Di aplikasi ponsel, buka **Profil**, lalu **Pengaturan**, lalu geser **Ukuran teks** di bagian **Tampilan** untuk memperkecil atau memperbesar tulisan (80% sampai 140%). Contoh kalimat di atas penggeser langsung berubah, dan seluruh aplikasi berubah saat jarimu dilepas. Ukuran ini menambah ukuran teks yang sudah kamu pilih di pengaturan ponsel. Beberapa bagian, seperti bar di atas dan di bawah layar dan layar game, tidak ikut berubah.
+
 ## Menghapus akun
 
 Menghapus akun bersifat permanen dan tidak bisa dibatalkan.

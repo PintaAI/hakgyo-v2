@@ -4,6 +4,7 @@ import { Pressable, Text, View } from "react-native";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { withOpacity } from "../theme/colors";
 import { Eyebrow } from "./learning-ui";
+import { SettingsSlider, type SettingsSliderProps } from "./ui/settings-slider";
 import { SettingsSwitch } from "./ui/settings-switch";
 import { SymbolIcon } from "./ui/symbol-icon";
 import type { SymbolName } from "./ui/symbol-names";
@@ -86,8 +87,10 @@ export function SettingsRow({
           <SymbolIcon name={symbol} size={20} tintColor={accent} />
         </View>
         <View className="min-w-0 flex-1">
+          {/* text-base is React Native's default 14pt, and it follows
+              Ukuran teks. */}
           <Text
-            className="font-semibold"
+            className="text-base font-semibold"
             style={{
               color: destructive ? colors.destructive : colors.foreground,
             }}
@@ -120,6 +123,53 @@ export function SettingsRow({
         )}
       </View>
     </Pressable>
+  );
+}
+
+/**
+ * A setting picked on a scale: the label and current value on top, an
+ * optional preview, then a full-width native slider.
+ */
+export function SettingsSliderRow({
+  label,
+  symbol,
+  valueText,
+  preview,
+  ...slider
+}: Omit<SettingsSliderProps, "label"> & {
+  label: string;
+  symbol: SymbolName;
+  /** The value as read, such as "110%". */
+  valueText: string;
+  /** Shows the value being chosen, above the slider. */
+  preview?: ReactNode;
+}) {
+  const { colorScheme, colors } = useAppTheme();
+
+  return (
+    <View
+      className="gap-3 px-4 py-3"
+      style={{
+        backgroundColor: withOpacity(
+          colors.mutedForeground,
+          colorScheme === "dark" ? 0.18 : 0.1,
+        ),
+      }}
+    >
+      <View className="min-h-8 flex-row items-center gap-3">
+        <View className="w-5 items-center">
+          <SymbolIcon name={symbol} size={20} tintColor={colors.primary} />
+        </View>
+        <Text className="min-w-0 flex-1 text-base font-semibold text-foreground">
+          {label}
+        </Text>
+        <Text className="text-sm tabular-nums text-muted-foreground">
+          {valueText}
+        </Text>
+      </View>
+      {preview}
+      <SettingsSlider label={label} {...slider} />
+    </View>
   );
 }
 
@@ -156,7 +206,9 @@ export function SettingsToggleRow({
           <SymbolIcon name={symbol} size={20} tintColor={colors.primary} />
         </View>
         <View className="min-w-0 flex-1">
-          <Text className="font-semibold text-foreground">{label}</Text>
+          <Text className="text-base font-semibold text-foreground">
+            {label}
+          </Text>
           {detail ? (
             <Text className="text-sm text-muted-foreground" numberOfLines={2}>
               {detail}
