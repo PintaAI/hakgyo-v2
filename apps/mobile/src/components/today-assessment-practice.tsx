@@ -22,6 +22,7 @@ import { openCourseItem } from "../lib/navigation";
 import { useExplanationVisibility } from "../lib/use-explanation-visibility";
 import { SymbolIcon } from "./ui/symbol-icon";
 import { useAppTheme } from "../providers/AppThemeProvider";
+import { hapticError, hapticSelection, hapticSuccess } from "../lib/haptics";
 
 type PracticeQuestion =
   RouterOutputs["practice"]["getAssessmentSample"]["questions"][number];
@@ -140,6 +141,8 @@ export function TodayAssessmentPractice({
         optionIds,
       });
       if (gradingRequest.current !== request) return;
+      if (next.correct) hapticSuccess();
+      else hapticError();
       setResults((current) => ({ ...current, [questionIndex]: next }));
     } catch (error) {
       // Keep the selection visible and offer an explicit retry.
@@ -164,7 +167,9 @@ export function TodayAssessmentPractice({
           ? selected.filter((id) => id !== optionId)
           : [...selected, optionId];
     setSelections((current) => ({ ...current, [questionIndex]: next }));
+    // A single choice is graded at once, and that haptic says right or wrong.
     if (target.type === "SINGLE_CHOICE") void checkAnswer(questionIndex, next);
+    else hapticSelection();
   }
   function nextQuestion(questionIndex: number) {
     const next = nextUnansweredQuestion(statuses, questionIndex);

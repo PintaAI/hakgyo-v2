@@ -14,12 +14,24 @@ import {
 import { levelForXp } from "@hakgyo/shared/xp-level";
 import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ConfettiBurst } from "../../src/components/learn/confetti";
 import { Action, HeroHeader } from "../../src/components/learning-ui";
 import { SymbolIcon } from "../../src/components/ui/symbol-icon";
 import type { SymbolName } from "../../src/components/ui/symbol-names";
+import {
+  hapticError,
+  hapticSelection,
+  hapticSuccess,
+} from "../../src/lib/haptics";
 import {
   savePlacementGoal,
   savePlacementStage,
@@ -83,6 +95,10 @@ const READINGS: {
   },
 ];
 
+const RESULT_ICON_SIZE = 56;
+/** The confetti box around the result icon. */
+const RESULT_BURST_HEIGHT = 320;
+
 /** The test's longest run: four stages of at most three questions. */
 const MAX_QUESTIONS = 12;
 
@@ -129,7 +145,10 @@ function OptionRow({
       accessibilityHint={detail}
       accessibilityRole="button"
       className="min-h-16 flex-row items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 active:opacity-70"
-      onPress={onPress}
+      onPress={() => {
+        hapticSelection();
+        onPress();
+      }}
       style={{ borderCurve: "continuous" }}
     >
       {symbol ? (
@@ -272,7 +291,11 @@ function TestStep({
           <Choice
             choice={choice}
             key={choice}
-            onPress={() => setPicked(choice)}
+            onPress={() => {
+              if (choice === question.answer) hapticSuccess();
+              else hapticError();
+              setPicked(choice);
+            }}
             picked={picked}
             question={question}
           />
@@ -313,6 +336,13 @@ function ResultStep({
       ? "XP dan lencananya masuk ke akunmu setelah daftar atau masuk."
       : null,
   ].filter((note): note is string => note !== null);
+  const passedAny = (stage ?? 0) > 0;
+  const { width } = useWindowDimensions();
+
+  // A passed stage is celebrated once, as the result comes in.
+  useEffect(() => {
+    if (passedAny) hapticSuccess();
+  }, [passedAny]);
 
   return (
     <>
@@ -321,11 +351,38 @@ function ResultStep({
         showsVerticalScrollIndicator={false}
       >
         <View className="items-center gap-4">
-          <SymbolIcon
-            name={readsHangeul ? "checkmark.seal.fill" : "sparkles"}
-            size={56}
-            tintColor={colors.primary}
-          />
+          {/* The burst is centred on the icon and may spill past it. */}
+          <View style={{ width: RESULT_ICON_SIZE, height: RESULT_ICON_SIZE }}>
+            <SymbolIcon
+              name={readsHangeul ? "checkmark.seal.fill" : "sparkles"}
+              size={RESULT_ICON_SIZE}
+              tintColor={colors.primary}
+            />
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                left: (RESULT_ICON_SIZE - width) / 2,
+                top: (RESULT_ICON_SIZE - RESULT_BURST_HEIGHT) / 2,
+                width,
+                height: RESULT_BURST_HEIGHT,
+              }}
+            >
+              <ConfettiBurst
+                colors={[
+                  colors.primary,
+                  "#F2C14E",
+                  "#F472B6",
+                  "#34D399",
+                  "#60A5FA",
+                ]}
+                fire={passedAny}
+                height={RESULT_BURST_HEIGHT}
+                spread={1.8}
+                width={width}
+              />
+            </View>
+          </View>
           <Text
             accessibilityRole="header"
             className="text-center text-2xl font-black tracking-tight text-foreground"

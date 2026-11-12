@@ -68,6 +68,7 @@ import {
   type WordFallWord,
 } from "./engine";
 import { SymbolIcon } from "../../components/ui/symbol-icon";
+import { hapticError, hapticSuccess } from "../../lib/haptics";
 
 type FallingWord = {
   id: string;
@@ -882,6 +883,7 @@ export function WordFallScreen({
     (word?: WordFallWord) => {
       if (mistakeActiveRef.current) return;
       mistakeActiveRef.current = true;
+      hapticError();
       if (word) mistakeWordIdsRef.current.add(word.id);
       if (word)
         setReviewItems((current) =>
@@ -1110,6 +1112,8 @@ export function WordFallScreen({
     (id: string) => {
       const entity = entitiesRef.current.find((item) => item.id === id);
       if (!entity || entity.completed) return;
+      // A word that reaches the ship counts as wrong.
+      hapticError();
       commitEntities(entitiesRef.current.filter((item) => item.id !== id));
       clearTargetInput(id);
       setReviewItems((current) =>
@@ -1559,6 +1563,7 @@ export function WordFallScreen({
       }
 
       if (analysis.completed) {
+        hapticSuccess();
         const nextCombo = comboRef.current + 1;
         comboRef.current = nextCombo;
         setCombo(nextCombo);

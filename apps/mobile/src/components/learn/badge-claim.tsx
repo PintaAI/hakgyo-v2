@@ -22,6 +22,7 @@ import { withOpacity } from "../../theme/colors";
 import { CourseMedal, GOLD } from "../hangeul-mastery-medal";
 import { Action } from "../learning-ui";
 import { ConfettiPiece, confettiPieces } from "./confetti";
+import { hapticSuccess } from "../../lib/haptics";
 
 const claimSound = require("../../../assets/sounds/badge-claim.wav");
 
@@ -307,6 +308,7 @@ export function BadgeClaimCard({
   const startClaim = () => {
     if (celebrating || claimed) return;
     setCelebrating(true);
+    hapticSuccess();
     try {
       void player.seekTo(0);
       player.play();

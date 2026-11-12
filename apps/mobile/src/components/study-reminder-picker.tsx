@@ -8,6 +8,7 @@ import {
   STUDY_MINUTE_OPTIONS,
   type StudyReminder,
 } from "../lib/study-reminder-plan";
+import { hapticSelection } from "../lib/haptics";
 import { useAppTheme } from "../providers/AppThemeProvider";
 
 export type StudyReminderChoice = Omit<StudyReminder, "enabled">;
@@ -56,7 +57,10 @@ function OptionTile({
       accessibilityRole="button"
       accessibilityState={{ selected }}
       className={`min-h-14 flex-1 items-center justify-center rounded-2xl px-1 py-2 active:opacity-70 ${selected ? "bg-primary" : "bg-muted"}`}
-      onPress={onPress}
+      onPress={() => {
+        if (!selected) hapticSelection();
+        onPress();
+      }}
       style={{ borderCurve: "continuous" }}
     >
       <Text

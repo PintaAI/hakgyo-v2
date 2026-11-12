@@ -27,6 +27,7 @@ import {
 } from "./hangeul-data";
 import { hangeulLessonPlan, type HangeulFamilyGroup } from "./hangeul-stage";
 import { SymbolIcon } from "../../components/ui/symbol-icon";
+import { hapticError, hapticSuccess } from "../../lib/haptics";
 
 const introImage = require("../../../assets/games/hangeul-intro.png");
 const introImageAsset = Asset.fromModule(introImage);
@@ -517,6 +518,7 @@ export function HangeulScreen({
       const nextMastered = new Set(masteredIds).add(currentLetter.id);
       setMasteredIds(nextMastered);
       if (remaining.length === 0) {
+        hapticSuccess();
         setPhase("complete");
         return;
       }
@@ -677,7 +679,12 @@ export function HangeulScreen({
                   correct={cue === currentLetter.cue}
                   cue={cue}
                   // One answer per letter; it moves on by itself.
-                  onPress={() => setSelectedCue((current) => current ?? cue)}
+                  onPress={() => {
+                    if (selectedCue) return;
+                    if (cue === currentLetter.cue) hapticSuccess();
+                    else hapticError();
+                    setSelectedCue((current) => current ?? cue);
+                  }}
                   revealed={Boolean(selectedCue)}
                   selected={selectedCue === cue}
                 />

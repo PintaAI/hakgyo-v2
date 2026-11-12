@@ -24,6 +24,7 @@ import {
   createWordBuilderReducer,
   initialWordBuilderSession,
 } from "./word-builder-session";
+import { hapticError, hapticSelection, hapticSuccess } from "../../lib/haptics";
 
 /** How long a right answer stays before the next word. */
 const AUTO_NEXT_MS = 1500;
@@ -102,6 +103,12 @@ export function WordBuilderScreen({
         "Urutan belum tepat. Ketuk blok untuk mengubah jawaban.",
       );
   }, [challenge.meaning, challenge.word, correct, session.feedback]);
+
+  // Once per outcome: only the outcome changes these.
+  useEffect(() => {
+    if (correct) hapticSuccess();
+    else if (session.feedback === "incorrect") hapticError();
+  }, [correct, session.feedback]);
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -199,10 +206,11 @@ export function WordBuilderScreen({
                   }
                   accessibilityRole="button"
                   disabled={tileIndex === undefined || correct}
-                  onPress={() =>
-                    tileIndex !== undefined &&
-                    dispatch({ type: "remove", tileIndex })
-                  }
+                  onPress={() => {
+                    if (tileIndex === undefined) return;
+                    hapticSelection();
+                    dispatch({ type: "remove", tileIndex });
+                  }}
                   style={[
                     styles.answerSlot,
                     {
@@ -272,7 +280,10 @@ export function WordBuilderScreen({
                     disabled: selected || correct || isFull,
                   }}
                   disabled={selected || correct || isFull}
-                  onPress={() => dispatch({ type: "add", tileIndex: index })}
+                  onPress={() => {
+                    hapticSelection();
+                    dispatch({ type: "add", tileIndex: index });
+                  }}
                   style={({ pressed }) => [
                     styles.tile,
                     {

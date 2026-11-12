@@ -39,6 +39,7 @@ import {
 } from "./syllable-session";
 import { SyllableStage } from "./syllable-stage";
 import { SymbolIcon } from "../../components/ui/symbol-icon";
+import { hapticError, hapticSuccess } from "../../lib/haptics";
 
 function SyllableHintModal({
   challenge,
@@ -281,6 +282,12 @@ export function SyllableForgeScreen({
     if (correct || session.feedback === "incorrect")
       AccessibilityInfo.announceForAccessibility(feedback);
   }, [correct, session.feedback, feedback]);
+
+  // Once per outcome: only the outcome changes these.
+  useEffect(() => {
+    if (correct) hapticSuccess();
+    else if (session.feedback === "incorrect") hapticError();
+  }, [correct, session.feedback]);
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
