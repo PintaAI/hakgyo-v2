@@ -19,9 +19,11 @@ import Animated, {
   FadeIn,
   FadeOut,
   interpolate,
+  ZoomIn,
   runOnJS,
   useAnimatedReaction,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withRepeat,
   withSequence,
@@ -36,6 +38,7 @@ import type {
 } from "../../lib/use-vocabulary-progress";
 import { withOpacity, type ThemeColors } from "../../theme/colors";
 import { toolbarIcons } from "../../theme/toolbar-icons";
+import { gameIconPalette } from "../game-icons";
 import { GameBackToolbar } from "../game-screens";
 import { GameResultSheet } from "../game-result";
 import type { GameLesson } from "../lesson";
@@ -188,6 +191,36 @@ function entityPosition(
   };
 }
 
+/**
+ * The player's flying saucer, in the colors of the Hujan Kata icon (shades of
+ * the theme's primary). The body stays level; only the turret on the dome
+ * turns to aim at the locked word.
+ */
+const Ship = memo(function Ship({
+  aim,
+}: {
+  aim: ReturnType<typeof useAnimatedStyle>;
+}) {
+  const { colors } = useAppTheme();
+  const palette = useMemo(
+    () => gameIconPalette(colors.primary),
+    [colors.primary],
+  );
+  return (
+    <>
+      <Animated.View style={[styles.shipTurret, aim]}>
+        <View style={[styles.shipBarrel, { backgroundColor: palette.main }]} />
+      </Animated.View>
+      <View style={[styles.shipDome, { backgroundColor: palette.light }]} />
+      <View style={[styles.shipBody, { backgroundColor: palette.dark }]}>
+        <View style={[styles.shipLight, { backgroundColor: palette.light }]} />
+        <View style={[styles.shipLight, { backgroundColor: palette.light }]} />
+        <View style={[styles.shipLight, { backgroundColor: palette.light }]} />
+      </View>
+    </>
+  );
+});
+
 const FallingWordView = memo(function FallingWordView({
   entity,
   field,
@@ -208,6 +241,7 @@ const FallingWordView = memo(function FallingWordView({
   onImpact: (id: string) => void;
 }) {
   const { colors } = useAppTheme();
+  const reducedMotion = useReducedMotion();
   const progress = useSharedValue(0);
   const hit = useSharedValue(0);
   const dangerPulse = useSharedValue(0);
@@ -243,6 +277,11 @@ const FallingWordView = memo(function FallingWordView({
       if (!inDanger) {
         cancelAnimation(dangerPulse);
         dangerPulse.value = 0;
+        return;
+      }
+      // A steady warning instead of a blinking one under Reduce Motion.
+      if (reducedMotion) {
+        dangerPulse.value = 0.5;
         return;
       }
       dangerPulse.value = withRepeat(
@@ -368,6 +407,10 @@ const FallingWordView = memo(function FallingWordView({
         style={[
           styles.wordSurface,
           {
+            backgroundColor: colors.card,
+            borderColor: entity.powerUp
+              ? withOpacity(entityColor, 0.6)
+              : colors.border,
             maxWidth: Math.max(0, field.width - 16),
           },
         ]}
@@ -579,12 +622,61 @@ const Burst = memo(function Burst({
     ],
   }));
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[styles.burst, { borderColor: burst.color }, animatedStyle]}
-    />
+    <>
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.burst, { borderColor: burst.color }, animatedStyle]}
+      />
+      {SPARK_ANGLES.map((angle) => (
+        <Spark
+          key={angle}
+          angle={angle}
+          at={burst.at}
+          color={burst.color}
+          progress={progress}
+        />
+      ))}
+    </>
   );
 });
+
+/** Six sparks thrown out of a burst, one every 60°, offset a little. */
+const SPARK_ANGLES = [15, 75, 135, 195, 255, 315];
+const SPARK_SIZE = 5;
+const SPARK_DISTANCE = 30;
+
+function Spark({
+  angle,
+  at,
+  color,
+  progress,
+}: {
+  angle: number;
+  at: Point;
+  color: string;
+  progress: SharedValue<number>;
+}) {
+  const radians = (angle * Math.PI) / 180;
+  const style = useAnimatedStyle(() => {
+    // Ease-out: fast from the burst, slowing as it fades.
+    const t = progress.value;
+    const travel = (1 - (1 - t) * (1 - t)) * SPARK_DISTANCE;
+    return {
+      opacity: 1 - progress.value,
+      transform: [
+        { translateX: at.x - SPARK_SIZE / 2 + Math.cos(radians) * travel },
+        { translateY: at.y - SPARK_SIZE / 2 + Math.sin(radians) * travel },
+        { scale: 1 - progress.value * 0.5 },
+      ],
+    };
+  });
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.spark, { backgroundColor: color }, style]}
+    />
+  );
+}
 
 function levelDetail(level: number) {
   const fallSeconds = Math.round(fallDurationForLevel(level, 0.5) / 1000);
@@ -760,6 +852,8 @@ export function WordFallScreen({
   onSessionStart,
   courseId,
   sourceCourseItemId,
+  vocabularySetId,
+  sessionXp,
   lesson,
 }: {
   words: readonly WordFallWord[];
@@ -772,6 +866,10 @@ export function WordFallScreen({
   onSessionStart: () => string;
   courseId?: string;
   sourceCourseItemId?: string;
+  /** The set played, which keeps the top score. */
+  vocabularySetId?: string;
+  /** XP the session has earned (the game route's reporter). */
+  sessionXp?: () => number;
   /** Played as a round of a vocabulary lesson. */
   lesson?: GameLesson;
 }) {
@@ -1801,15 +1899,7 @@ export function WordFallScreen({
             accessibilityLabel="Pemain"
             style={[styles.player, playerPositionStyle]}
           >
-            <Animated.Text
-              style={[
-                styles.playerGlyph,
-                { color: colors.primary },
-                playerRotationStyle,
-              ]}
-            >
-              ⧋
-            </Animated.Text>
+            <Ship aim={playerRotationStyle} />
             {unmatchedInput ? (
               <Text
                 numberOfLines={1}
@@ -1874,9 +1964,14 @@ export function WordFallScreen({
           >
             Bersiap
           </Text>
-          <Text style={[styles.countdownNumber, { color: colors.foreground }]}>
+          {/* Keyed by the number, so each one pops in. */}
+          <Animated.Text
+            key={countdown}
+            entering={ZoomIn.springify().damping(12)}
+            style={[styles.countdownNumber, { color: colors.foreground }]}
+          >
             {countdown}
-          </Text>
+          </Animated.Text>
         </Animated.View>
       ) : null}
       {/* Pausing opens the same sheet the round ends on. Closing it any way
@@ -1907,6 +2002,13 @@ export function WordFallScreen({
         <GameResultSheet
           courseId={courseId}
           courseItemId={sourceCourseItemId}
+          xp={sessionXp?.()}
+          // Endless: the top score on this set is the record to beat.
+          best={
+            vocabularySetId
+              ? { scope: `word-fall:${vocabularySetId}`, value: score }
+              : undefined
+          }
           eyebrow="Hujan kata"
           title={`Sampai level ${level}`}
           mark={{ value: String(score), label: "poin" }}
@@ -1970,7 +2072,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   countdownNumber: {
-    fontSize: 44,
+    fontSize: 64,
     fontVariant: ["tabular-nums"],
     fontWeight: "800",
   },
@@ -1995,17 +2097,24 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
   },
+  // A small card, so a word reads over any background. No overflow clipping:
+  // it would cut the shadow, and the overlays round their own corners.
   wordSurface: {
     alignItems: "center",
-    borderRadius: 6,
-    gap: 0,
-    overflow: "hidden",
-    paddingHorizontal: 6,
-    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    elevation: 2,
+    gap: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
   hitSurface: {
     bottom: 0,
-    borderRadius: 6,
+    borderRadius: 12,
     borderWidth: 1,
     left: 0,
     position: "absolute",
@@ -2014,7 +2123,7 @@ const styles = StyleSheet.create({
   },
   dangerSurface: {
     bottom: 0,
-    borderRadius: 6,
+    borderRadius: 12,
     borderWidth: 1,
     left: 0,
     position: "absolute",
@@ -2025,7 +2134,7 @@ const styles = StyleSheet.create({
   term: { fontSize: 20, fontWeight: "800", textAlign: "center" },
   indonesianPrompt: { fontSize: 16, lineHeight: 20 },
   definition: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "600",
     letterSpacing: 0.4,
     textAlign: "center",
@@ -2062,12 +2171,44 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: PLAYER_SIZE,
   },
-  playerGlyph: {
-    fontSize: 24,
-    fontWeight: "700",
-    lineHeight: PLAYER_SIZE,
-    textAlign: "center",
+  // The ship, drawn inside the player's square and spilling past its sides.
+  shipTurret: {
+    height: 28,
+    left: PLAYER_SIZE / 2 - 14,
+    position: "absolute",
+    top: -6,
+    width: 28,
   },
+  shipBarrel: {
+    borderRadius: 3,
+    height: 13,
+    left: 11,
+    position: "absolute",
+    top: 1,
+    width: 6,
+  },
+  shipDome: {
+    borderTopLeftRadius: 9,
+    borderTopRightRadius: 9,
+    height: 11,
+    left: PLAYER_SIZE / 2 - 9,
+    position: "absolute",
+    top: 4,
+    width: 18,
+  },
+  shipBody: {
+    alignItems: "center",
+    borderRadius: 7,
+    flexDirection: "row",
+    gap: 6,
+    height: 12,
+    justifyContent: "center",
+    left: PLAYER_SIZE / 2 - 20,
+    position: "absolute",
+    top: 13,
+    width: 40,
+  },
+  shipLight: { borderRadius: 2, height: 4, width: 4 },
   unmatchedInput: {
     fontSize: 13,
     fontWeight: "800",
@@ -2112,6 +2253,14 @@ const styles = StyleSheet.create({
     left: 0,
     position: "absolute",
     top: 0,
+  },
+  spark: {
+    borderRadius: SPARK_SIZE / 2,
+    height: SPARK_SIZE,
+    left: 0,
+    position: "absolute",
+    top: 0,
+    width: SPARK_SIZE,
   },
   burst: {
     borderRadius: 18,

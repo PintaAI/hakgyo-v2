@@ -1,5 +1,10 @@
 import { router } from "expo-router";
-import { useEffect, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { ScrollView, Text, View } from "react-native";
 
 import { HeroTile } from "../components/hero-tile";
@@ -17,6 +22,7 @@ import {
 } from "../components/learn/hero-parts";
 import { Action, Card, Eyebrow } from "../components/learning-ui";
 import { getLearningItemTypeMeta } from "../lib/learning-item-type";
+import { formatScore, recordBest, type GameScore } from "./personal-best";
 
 type GameResultProps = {
   eyebrow: string;
@@ -79,9 +85,37 @@ export function useGameResult() {
  * follows the props as they change, and shows at once from what the phone
  * knows. Closing the sheet without choosing leaves the game.
  */
-export function GameResultSheet(props: GameResultProps) {
+export function GameResultSheet({
+  xp,
+  best,
+  ...props
+}: GameResultProps & {
+  /** XP this round earned, counted on the phone like the server does. */
+  xp?: number;
+  /** The round's score, kept as a personal best per `scope`. */
+  best?: GameScore & { scope: string };
+}) {
+  // The sheet mounts once per finished round, so the score is recorded once.
+  const [bestOutcome] = useState(() =>
+    best ? recordBest(best.scope, best) : null,
+  );
+  const rewardFacts: Fact[] = [];
+  if (xp) rewardFacts.push({ icon: "sparkles", text: `+${xp} XP` });
+  if (bestOutcome?.isNew)
+    rewardFacts.push({ icon: "trophy.fill", text: "Rekor baru!" });
+  else if (bestOutcome?.previous)
+    rewardFacts.push({
+      icon: "trophy.fill",
+      text: `Rekor ${formatScore(bestOutcome.previous)}`,
+      accessibilityLabel: `Rekor pribadi ${formatScore(bestOutcome.previous)}`,
+    });
+  const page: GameResultProps = {
+    ...props,
+    celebrate: props.celebrate || bestOutcome?.isNew,
+    facts: [...rewardFacts, ...(props.facts ?? [])],
+  };
   useEffect(() => {
-    publish(props);
+    publish(page);
   });
   useEffect(() => {
     router.push("/game-result");

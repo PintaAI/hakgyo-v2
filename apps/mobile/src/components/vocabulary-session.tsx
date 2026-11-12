@@ -32,6 +32,7 @@ import { GameResultSheet } from "../games/game-result";
 import { GameBackToolbar } from "../games/game-screens";
 import { useGameExitGuard } from "../games/game-navigation";
 import type { GameLesson } from "../games/lesson";
+import { SessionXp } from "../lib/session-xp";
 import { useVocabularyProgressReporter } from "../lib/use-vocabulary-progress";
 import { useAppTheme } from "../providers/AppThemeProvider";
 import { toolbarIcons } from "../theme/toolbar-icons";
@@ -93,6 +94,7 @@ export function VocabularySession({
     sourceCourseItemId,
     vocabularySetId,
   });
+  const sessionXp = useRef(new SessionXp());
   const [latestEvidence, setLatestEvidence] = useState<ProgressEvidence>();
   const [queue, setQueue] = useState<Word[]>([]);
   const [index, setIndex] = useState(0);
@@ -227,6 +229,7 @@ export function VocabularySession({
     if (!roundWords.length || busy) return;
     stopSession();
     reporter.startSession();
+    sessionXp.current = new SessionXp();
     setRoundResults({});
     setRoundDone(false);
     const nextQueue = [...roundWords];
@@ -279,11 +282,13 @@ export function VocabularySession({
     reporter.reset();
     setSessionError(undefined);
     try {
-      await reporter.report({
+      const attempt = {
         entryId: currentWord.id,
         evidence: "RECALL",
         result: correct ? "CORRECT" : "INCORRECT",
-      });
+      } as const;
+      await reporter.report(attempt);
+      sessionXp.current.add(attempt);
       setFeedback({ correct, saved: true });
     } catch {
       setFeedback({ correct, saved: false });
@@ -349,11 +354,13 @@ export function VocabularySession({
     reporter.reset();
     setSessionError(undefined);
     try {
-      await reporter.report({
+      const attempt = {
         entryId: currentWord.id,
         evidence: "RECALL",
         result: "REVEALED",
-      });
+      } as const;
+      await reporter.report(attempt);
+      sessionXp.current.add(attempt);
       setRevealSaved(true);
     } catch {
       setSessionError(
@@ -508,6 +515,16 @@ export function VocabularySession({
       <GameResultSheet
         courseId={courseId}
         courseItemId={sourceCourseItemId}
+        xp={roundDone ? sessionXp.current.xp : undefined}
+        best={
+          roundDone && played.length
+            ? {
+                scope: `cards:${vocabularySetId}`,
+                value: correct,
+                max: played.length,
+              }
+            : undefined
+        }
         eyebrow="Kartu"
         title={
           !roundDone

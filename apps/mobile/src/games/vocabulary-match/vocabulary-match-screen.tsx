@@ -206,6 +206,8 @@ export function VocabularyMatchScreen({
   onSessionStart,
   courseId,
   sourceCourseItemId,
+  vocabularySetId,
+  sessionXp,
   lesson,
 }: {
   words: readonly VocabularyMatchWord[];
@@ -215,6 +217,10 @@ export function VocabularyMatchScreen({
   onSessionStart: () => void;
   courseId?: string;
   sourceCourseItemId?: string;
+  /** The set played, which keeps the personal best. */
+  vocabularySetId?: string;
+  /** XP the session has earned (the game route's reporter). */
+  sessionXp?: () => number;
   /** Played as a round of a vocabulary lesson. */
   lesson?: GameLesson;
 }) {
@@ -771,6 +777,12 @@ export function VocabularyMatchScreen({
         <GameResultSheet
           courseId={courseId}
           courseItemId={sourceCourseItemId}
+          xp={sessionXp?.()}
+          best={
+            vocabularySetId
+              ? { scope: `match:${vocabularySetId}`, value: score }
+              : undefined
+          }
           eyebrow="Cocokkan kata"
           title={allCorrect ? "Mantap, semua benar!" : "Ronde selesai"}
           mark={{

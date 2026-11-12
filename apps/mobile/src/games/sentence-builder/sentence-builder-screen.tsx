@@ -2,22 +2,27 @@ import { Stack } from "expo-router";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import {
   AccessibilityInfo,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { FadeIn, useReducedMotion } from "react-native-reanimated";
 
-import { StudyAction } from "../../components/study-glass";
 import type { VocabularyAttempt } from "../../lib/use-vocabulary-progress";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
+import { toolbarIcons } from "../../theme/toolbar-icons";
+import { PressableScale, useOutcomeMotion } from "../game-motion";
 import { useGameExitGuard } from "../game-navigation";
 import { GameResultSheet } from "../game-result";
+import {
+  GameActionBar,
+  GameRoundHeader,
+  type GameBarAction,
+} from "../game-round";
 import type { GameLesson } from "../lesson";
-import { GameBackToolbar } from "../game-screens";
+import { CometFlight, type BoardRect, type WordFlight } from "./comet-flight";
 import {
   createSentenceChallenges,
   initialSentenceBuilderSession,
@@ -36,6 +41,8 @@ export function SentenceBuilderScreen({
   onSessionStart,
   courseId,
   sourceCourseItemId,
+  vocabularySetId,
+  sessionXp,
   lesson,
 }: {
   words: readonly SentenceSourceWord[];
@@ -45,11 +52,14 @@ export function SentenceBuilderScreen({
   onSessionStart: () => void;
   courseId?: string;
   sourceCourseItemId?: string;
+  /** The set played, which keeps the personal best. */
+  vocabularySetId?: string;
+  /** XP the session has earned (the game route's reporter). */
+  sessionXp?: () => number;
   /** Played as a round of a vocabulary lesson. */
   lesson?: GameLesson;
 }) {
   const { colors } = useAppTheme();
-  const insets = useSafeAreaInsets();
   const [session, dispatch] = useReducer(
     sentenceBuilderReducer,
     initialSentenceBuilderSession,
@@ -131,11 +141,88 @@ export function SentenceBuilderScreen({
       );
   }, [challenge, correct, session.feedback]);
 
-  // Once per outcome: only the outcome changes these.
+  // Once per outcome: only the outcome changes these. Each wrong order also
+  // shakes the answer row.
+  const [wrongCount, setWrongCount] = useState(0);
   useEffect(() => {
     if (correct) hapticSuccess();
-    else if (session.feedback === "incorrect") hapticError();
+    else if (session.feedback === "incorrect") {
+      hapticError();
+      setWrongCount((count) => count + 1);
+    }
   }, [correct, session.feedback]);
+  const answerMotion = useOutcomeMotion({ wrongCount, correct });
+
+  // A chosen word flies from the bank to the next empty place on an arc with
+  // a comet tail, and joins the answer when it lands, so the outcome (and its
+  // shake or pop) follows the last landing. Under Reduce Motion it joins at
+  // once.
+  const reducedMotion = useReducedMotion();
+  const boardRef = useRef<View>(null);
+  const tileRefs = useRef<(View | null)[]>([]);
+  const slotRefs = useRef<(View | null)[]>([]);
+  const nextFlightId = useRef(0);
+  const [flights, setFlights] = useState<WordFlight[]>([]);
+  const flightsRef = useRef(flights);
+  flightsRef.current = flights;
+  // A flight that has landed is already in `session.selected`; only its tail
+  // is still fading.
+  const landedIds = useRef(new Set<number>());
+  const pendingFlights = flights.filter(
+    (flight) => !landedIds.current.has(flight.id),
+  );
+  const flying = flights.length > 0;
+
+  const measureOnBoard = (view: View | null | undefined) =>
+    new Promise<BoardRect | null>((resolve) => {
+      const board = boardRef.current;
+      if (!view || !board) return resolve(null);
+      view.measureLayout(
+        board,
+        (x, y, width, height) => resolve({ x, y, width, height }),
+        () => resolve(null),
+      );
+    });
+
+  const chooseWord = (tileIndex: number) => {
+    hapticSelection();
+    if (reducedMotion || !challenge) {
+      dispatch({ type: "add", tileIndex });
+      return;
+    }
+    const slot =
+      session.selected.length +
+      flightsRef.current.filter((flight) => !landedIds.current.has(flight.id))
+        .length;
+    void Promise.all([
+      measureOnBoard(tileRefs.current[tileIndex]),
+      measureOnBoard(slotRefs.current[slot]),
+    ]).then(([from, to]) => {
+      if (!from || !to) {
+        dispatch({ type: "add", tileIndex });
+        return;
+      }
+      const flight: WordFlight = {
+        id: nextFlightId.current++,
+        tileIndex,
+        word: challenge.tiles[tileIndex]!,
+        from,
+        to,
+      };
+      setFlights((current) => [...current, flight]);
+    });
+  };
+
+  const landWord = useCallback((id: number) => {
+    const flight = flightsRef.current.find((item) => item.id === id);
+    if (!flight) return;
+    landedIds.current.add(id);
+    dispatch({ type: "add", tileIndex: flight.tileIndex });
+  }, []);
+  const endFlight = useCallback((id: number) => {
+    landedIds.current.delete(id);
+    setFlights((current) => current.filter((item) => item.id !== id));
+  }, []);
 
   const reviewChallenges = session.challenges.filter((item) =>
     session.reviewIds.includes(item.id),
@@ -143,166 +230,178 @@ export function SentenceBuilderScreen({
 
   const allCorrect = session.independent === total;
 
+  // The round moves on from the bottom toolbar, as in Kartu: clearing while
+  // building, then "Lanjut" once the solved sentence is saved.
+  const barActions: GameBarAction[] = !challenge
+    ? []
+    : correct
+      ? [
+          saveError
+            ? {
+                label: "Coba simpan lagi",
+                onPress: save,
+                disabled: saving,
+                prominent: true,
+              }
+            : {
+                label: session.index === total - 1 ? "Lihat hasil" : "Lanjut",
+                onPress: () => dispatch({ type: "next" }),
+                disabled: !saved,
+                prominent: true,
+              },
+        ]
+      : [
+          {
+            label: "Hapus semua",
+            onPress: () => dispatch({ type: "clear" }),
+            disabled: session.selected.length === 0 || flying,
+          },
+        ];
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <GameBackToolbar disabled={saving} onPress={exit} />
-      <Stack.Screen
-        options={{
-          headerBackButtonDisplayMode: "minimal",
-          headerBackVisible: false,
-          headerShown: true,
-          gestureEnabled: false,
-          title: lesson?.title ?? "Susun makna",
-        }}
-      />
-      <View
-        accessibilityLabel="Kalimat selesai"
-        accessibilityRole="progressbar"
-        accessibilityValue={{ min: 0, max: Math.max(1, total), now: completed }}
-        style={[styles.progressTrack, { backgroundColor: colors.border }]}
+      <GameRoundHeader
+        title={lesson?.title}
+        onBack={exit}
+        backDisabled={saving}
+        stats={[{ value: `${completed}/${total}` }]}
+        statsLabel={`${completed} dari ${total} kalimat selesai`}
       >
-        <View
-          style={[
-            styles.progressFill,
-            {
-              backgroundColor: colors.primary,
-              width: `${total ? (completed / total) * 100 : 0}%`,
-            },
-          ]}
+        <Stack.Toolbar.Button
+          accessibilityLabel="Petunjuk"
+          disabled={!challenge || correct || session.showHint}
+          icon={toolbarIcons.hint}
+          onPress={() => dispatch({ type: "hint" })}
         />
-      </View>
+      </GameRoundHeader>
+      <GameActionBar actions={barActions} />
 
       {challenge ? (
         <ScrollView
-          contentContainerStyle={[
-            styles.content,
-            { paddingBottom: Math.max(28, insets.bottom + 20) },
-          ]}
+          contentContainerStyle={styles.content}
           contentInsetAdjustmentBehavior="automatic"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.lessonRow}>
-            <Text
-              style={[styles.smallLabel, { color: colors.mutedForeground }]}
-            >
-              Contoh kalimat
-            </Text>
-            <Text
-              style={[styles.smallLabel, { color: colors.mutedForeground }]}
-            >
-              {session.index + 1}/{total}
-            </Text>
-          </View>
-
-          <View style={styles.prompt}>
-            <Text style={[styles.eyebrow, { color: colors.primary }]}>
-              SUSUN KALIMAT DENGAN
-            </Text>
-            <Text style={[styles.term, { color: colors.foreground }]}>
-              {challenge.term}
-            </Text>
-            <Text
-              style={[styles.definition, { color: colors.mutedForeground }]}
-            >
-              {challenge.meaning}
-            </Text>
-            {/* The meaning to build: the example's own translation. */}
-            {challenge.translation ? (
-              <Text
-                accessibilityLabel={`Artinya: ${challenge.translation}`}
-                style={[styles.translation, { color: colors.foreground }]}
-              >
-                “{challenge.translation}”
+          <View ref={boardRef} collapsable={false} style={styles.board}>
+            <View style={styles.prompt}>
+              <Text style={[styles.eyebrow, { color: colors.primary }]}>
+                SUSUN KALIMAT DENGAN
               </Text>
-            ) : null}
-          </View>
-
-          <View
-            style={[
-              styles.workspace,
-              {
-                backgroundColor: withOpacity(colors.primary, 0.06),
-                borderColor:
-                  session.feedback === "incorrect"
-                    ? colors.destructive
-                    : withOpacity(colors.primary, 0.18),
-              },
-            ]}
-          >
-            <Text style={[styles.sectionLabel, { color: colors.primary }]}>
-              KALIMAT YANG KAMU SUSUN
-            </Text>
-            {correct ? (
-              <Text
-                accessibilityLiveRegion="polite"
-                style={[styles.solvedSentence, { color: colors.foreground }]}
-              >
-                {challenge.sentence}
+              <Text style={[styles.term, { color: colors.foreground }]}>
+                {challenge.term}
               </Text>
-            ) : (
-              <View style={styles.answerRow}>
-                {challenge.words.map((_, index) => {
-                  const tileIndex = session.selected[index];
-                  const word =
-                    tileIndex === undefined
-                      ? undefined
-                      : challenge.tiles[tileIndex];
-                  if (!word)
+              <Text
+                style={[styles.definition, { color: colors.mutedForeground }]}
+              >
+                {challenge.meaning}
+              </Text>
+              {/* The meaning to build: the example's own translation. */}
+              {challenge.translation ? (
+                <Text
+                  accessibilityLabel={`Artinya: ${challenge.translation}`}
+                  style={[styles.translation, { color: colors.foreground }]}
+                >
+                  “{challenge.translation}”
+                </Text>
+              ) : null}
+            </View>
+
+            <Animated.View
+              style={[
+                styles.workspace,
+                answerMotion,
+                {
+                  backgroundColor: correct
+                    ? withOpacity(colors.primary, 0.12)
+                    : withOpacity(colors.primary, 0.06),
+                  borderColor:
+                    session.feedback === "incorrect"
+                      ? colors.destructive
+                      : correct
+                        ? colors.primary
+                        : withOpacity(colors.primary, 0.18),
+                },
+              ]}
+            >
+              <Text style={[styles.sectionLabel, { color: colors.primary }]}>
+                KALIMAT YANG KAMU SUSUN
+              </Text>
+              {correct ? (
+                <Animated.Text
+                  accessibilityLiveRegion="polite"
+                  entering={FadeIn.duration(200)}
+                  style={[styles.solvedSentence, { color: colors.foreground }]}
+                >
+                  {challenge.sentence}
+                </Animated.Text>
+              ) : (
+                <View style={styles.answerRow}>
+                  {challenge.words.map((_, index) => {
+                    const tileIndex = session.selected[index];
+                    const word =
+                      tileIndex === undefined
+                        ? undefined
+                        : challenge.tiles[tileIndex];
+                    if (!word)
+                      return (
+                        <View
+                          key={`slot-${index}`}
+                          ref={(view) => {
+                            slotRefs.current[index] = view;
+                          }}
+                          accessibilityLabel={`Posisi ${index + 1}, kosong`}
+                          collapsable={false}
+                          style={[
+                            styles.emptySlot,
+                            { borderColor: withOpacity(colors.primary, 0.3) },
+                          ]}
+                        />
+                      );
                     return (
-                      <View
-                        key={index}
-                        accessibilityLabel={`Posisi ${index + 1}, kosong`}
+                      <PressableScale
+                        key={`tile-${tileIndex}`}
+                        accessibilityLabel={`Posisi ${index + 1}, ${word}. Ketuk untuk melepas.`}
+                        accessibilityRole="button"
+                        disabled={flying}
+                        onPress={() => {
+                          hapticSelection();
+                          dispatch({ type: "remove", tileIndex: tileIndex! });
+                        }}
                         style={[
-                          styles.emptySlot,
-                          { borderColor: withOpacity(colors.primary, 0.3) },
-                        ]}
-                      />
-                    );
-                  return (
-                    <Pressable
-                      key={index}
-                      accessibilityLabel={`Posisi ${index + 1}, ${word}. Ketuk untuk melepas.`}
-                      accessibilityRole="button"
-                      onPress={() => {
-                        hapticSelection();
-                        dispatch({ type: "remove", tileIndex: tileIndex! });
-                      }}
-                      style={[
-                        styles.chip,
-                        {
-                          backgroundColor: colors.primary,
-                          borderColor: colors.primary,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          { color: colors.primaryForeground },
+                          styles.chip,
+                          {
+                            backgroundColor: colors.primary,
+                            borderColor: colors.primary,
+                          },
                         ]}
                       >
-                        {word}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-            {!correct ? (
-              <Text
-                style={[
-                  styles.workspaceNote,
-                  { color: colors.mutedForeground },
-                ]}
-              >
-                Ketuk kata di atas untuk melepasnya.
-              </Text>
-            ) : null}
-          </View>
+                        <Text
+                          style={[
+                            styles.chipText,
+                            { color: colors.primaryForeground },
+                          ]}
+                        >
+                          {word}
+                        </Text>
+                      </PressableScale>
+                    );
+                  })}
+                </View>
+              )}
+              {!correct ? (
+                <Text
+                  style={[
+                    styles.workspaceNote,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  Ketuk kata di atas untuk melepasnya.
+                </Text>
+              ) : null}
+            </Animated.View>
 
-          {!correct ? (
-            <View style={styles.traySection}>
-              <View style={styles.trayHeading}>
+            {!correct ? (
+              <View style={styles.traySection}>
                 <Text
                   style={[
                     styles.sectionLabel,
@@ -311,134 +410,129 @@ export function SentenceBuilderScreen({
                 >
                   PILIH KATA
                 </Text>
-                {session.selected.length > 0 ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => dispatch({ type: "clear" })}
-                  >
-                    <Text
-                      style={[styles.clearLabel, { color: colors.primary }]}
-                    >
-                      Hapus semua
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-              <View style={styles.tiles}>
-                {challenge.tiles.map((word, index) => {
-                  const selected = session.selected.includes(index);
-                  const highlighted =
-                    session.showHint && hint?.tileIndex === index;
-                  return (
-                    <Pressable
-                      key={index}
-                      accessibilityLabel={`Kata ${word}${highlighted ? ", petunjuk" : ""}`}
-                      accessibilityRole="button"
-                      accessibilityState={{ disabled: selected || isFull }}
-                      disabled={selected || isFull}
-                      onPress={() => {
-                        hapticSelection();
-                        dispatch({ type: "add", tileIndex: index });
-                      }}
-                      style={({ pressed }) => [
-                        styles.chip,
-                        {
-                          backgroundColor: selected
-                            ? colors.muted
-                            : pressed
-                              ? withOpacity(colors.primary, 0.16)
-                              : colors.card,
-                          borderColor: highlighted
-                            ? colors.primary
-                            : colors.border,
-                          borderWidth: highlighted ? 2 : 1,
-                          opacity: selected ? 0.42 : 1,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[styles.chipText, { color: colors.foreground }]}
+                <View style={styles.tiles}>
+                  {challenge.tiles.map((word, index) => {
+                    const inFlight = pendingFlights.some(
+                      (flight) => flight.tileIndex === index,
+                    );
+                    const selected =
+                      session.selected.includes(index) || inFlight;
+                    const full =
+                      isFull ||
+                      session.selected.length + pendingFlights.length >=
+                        challenge.words.length;
+                    const highlighted =
+                      session.showHint && hint?.tileIndex === index;
+                    return (
+                      <View
+                        key={index}
+                        ref={(view) => {
+                          tileRefs.current[index] = view;
+                        }}
+                        collapsable={false}
                       >
-                        {word}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+                        <PressableScale
+                          accessibilityLabel={`Kata ${word}${highlighted ? ", petunjuk" : ""}`}
+                          accessibilityRole="button"
+                          accessibilityState={{ disabled: selected || full }}
+                          disabled={selected || full}
+                          onPress={() => chooseWord(index)}
+                          style={[
+                            styles.chip,
+                            {
+                              backgroundColor: selected
+                                ? colors.muted
+                                : colors.card,
+                              borderColor: highlighted
+                                ? colors.primary
+                                : colors.border,
+                              borderWidth: highlighted ? 2 : 1,
+                              opacity: selected ? 0.42 : 1,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.chipText,
+                              { color: colors.foreground },
+                            ]}
+                          >
+                            {word}
+                          </Text>
+                        </PressableScale>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
+            ) : null}
+
+            <View style={styles.feedbackArea}>
+              {session.feedback === "incorrect" ? (
+                <Animated.Text
+                  accessibilityLiveRegion="polite"
+                  entering={FadeIn.duration(160)}
+                  style={[styles.feedback, { color: colors.destructive }]}
+                >
+                  Urutan belum tepat. Ketuk kata di atas untuk mengubahnya.
+                </Animated.Text>
+              ) : correct ? (
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={[
+                    styles.feedback,
+                    { color: saveError ? colors.destructive : colors.primary },
+                  ]}
+                >
+                  {saveError
+                    ? "Hasil belum tersimpan. Coba simpan lagi."
+                    : saving
+                      ? "Menyimpan hasil…"
+                      : `Tepat! Kalimat ini memakai ${challenge.term}.`}
+                </Text>
+              ) : !session.showHint ? (
+                <Text
+                  style={[styles.feedback, { color: colors.mutedForeground }]}
+                >
+                  Susun {challenge.words.length} kata. Hasil muncul otomatis.
+                </Text>
+              ) : null}
+              {session.showHint && !correct && hint ? (
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={[styles.feedback, { color: colors.foreground }]}
+                >
+                  {hint.tileIndex >= 0
+                    ? `Petunjuk: kata ke-${hint.position + 1} adalah ${hint.word}.`
+                    : `Petunjuk: lepaskan kata di posisi ${hint.position + 1}, lalu cari ${hint.word}.`}
+                </Text>
+              ) : null}
             </View>
-          ) : null}
-
-          <View style={styles.feedbackArea}>
-            {session.feedback === "incorrect" ? (
-              <Text
-                accessibilityLiveRegion="polite"
-                style={[styles.feedback, { color: colors.destructive }]}
-              >
-                Urutan belum tepat. Ketuk kata di atas untuk mengubahnya.
-              </Text>
-            ) : correct ? (
-              <Text
-                accessibilityLiveRegion="polite"
-                style={[
-                  styles.feedback,
-                  { color: saveError ? colors.destructive : colors.primary },
-                ]}
-              >
-                {saveError
-                  ? "Hasil belum tersimpan. Coba simpan lagi."
-                  : saving
-                    ? "Menyimpan hasil…"
-                    : `Tepat! Kalimat ini memakai ${challenge.term}.`}
-              </Text>
-            ) : !session.showHint ? (
-              <Text
-                style={[styles.feedback, { color: colors.mutedForeground }]}
-              >
-                Susun {challenge.words.length} kata. Hasil muncul otomatis.
-              </Text>
-            ) : null}
-            {session.showHint && !correct && hint ? (
-              <Text
-                accessibilityLiveRegion="polite"
-                style={[styles.feedback, { color: colors.foreground }]}
-              >
-                {hint.tileIndex >= 0
-                  ? `Petunjuk: kata ke-${hint.position + 1} adalah ${hint.word}.`
-                  : `Petunjuk: lepaskan kata di posisi ${hint.position + 1}, lalu cari ${hint.word}.`}
-              </Text>
-            ) : null}
+            {flights.map((flight) => (
+              <CometFlight
+                key={flight.id}
+                flight={flight}
+                onArrive={landWord}
+                onDone={endFlight}
+              />
+            ))}
           </View>
-
-          {correct ? (
-            saveError ? (
-              <StudyAction disabled={saving} onPress={save}>
-                Coba simpan lagi
-              </StudyAction>
-            ) : (
-              <StudyAction
-                disabled={!saved}
-                onPress={() => dispatch({ type: "next" })}
-              >
-                {session.index === total - 1 ? "Lihat hasil" : "Lanjut"}
-              </StudyAction>
-            )
-          ) : !session.showHint ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => dispatch({ type: "hint" })}
-              style={styles.hintAction}
-            >
-              <Text style={[styles.hintLabel, { color: colors.primary }]}>
-                Butuh petunjuk?
-              </Text>
-            </Pressable>
-          ) : null}
         </ScrollView>
       ) : null}
       {session.phase === "complete" && !lesson ? (
         <GameResultSheet
           courseId={courseId}
           courseItemId={sourceCourseItemId}
+          xp={sessionXp?.()}
+          best={
+            vocabularySetId
+              ? {
+                  scope: `sentences:${vocabularySetId}`,
+                  value: session.independent,
+                  max: total,
+                }
+              : undefined
+          }
           eyebrow="Susun makna"
           title={
             allCorrect ? "Mantap, semua tepat!" : "Kalimat demi kalimat, bisa!"
@@ -482,8 +576,7 @@ export function SentenceBuilderScreen({
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  progressTrack: { height: 4, overflow: "hidden" },
-  progressFill: { height: "100%" },
+  board: { gap: 20 },
   content: {
     flexGrow: 1,
     width: "100%",
@@ -492,8 +585,6 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 20,
   },
-  lessonRow: { flexDirection: "row", justifyContent: "space-between" },
-  smallLabel: { fontSize: 12, fontWeight: "600" },
   prompt: { alignItems: "center", gap: 5, paddingTop: 12 },
   eyebrow: { fontSize: 10, letterSpacing: 2, fontWeight: "800" },
   term: {
@@ -551,12 +642,6 @@ const styles = StyleSheet.create({
   },
   workspaceNote: { fontSize: 12, textAlign: "center" },
   traySection: { gap: 12 },
-  trayHeading: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  clearLabel: { fontSize: 12, fontWeight: "700" },
   tiles: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -565,6 +650,4 @@ const styles = StyleSheet.create({
   },
   feedbackArea: { minHeight: 42, justifyContent: "center" },
   feedback: { fontSize: 13, lineHeight: 20, textAlign: "center" },
-  hintAction: { alignItems: "center", paddingVertical: 8 },
-  hintLabel: { fontSize: 14, fontWeight: "700" },
 });

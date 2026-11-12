@@ -1,24 +1,27 @@
 import type { HangeulGameStage } from "@hakgyo/shared/hangeul";
-import { Stack, useFocusEffect } from "expo-router";
+import { Stack } from "expo-router";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import {
   AccessibilityInfo,
-  BackHandler,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 
-import { StudyAction } from "../../components/study-glass";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
+import { toolbarIcons } from "../../theme/toolbar-icons";
 import { gameLeaveLabel, type GameSource } from "../game-exit";
-import { GameModal } from "../game-modals";
-import { leaveGame } from "../game-navigation";
-import { GameBackToolbar } from "../game-screens";
+import { PressableScale, useOutcomeMotion } from "../game-motion";
+import { leaveGame, useGameExitGuard } from "../game-navigation";
+import { GameResultSheet } from "../game-result";
+import {
+  GameActionBar,
+  GameRoundHeader,
+  type GameBarAction,
+} from "../game-round";
 import { getWordChallenges } from "./word-builder-data";
 import {
   createWordBuilderReducer,
@@ -37,7 +40,6 @@ export function WordBuilderScreen({
   stage?: HangeulGameStage;
 }) {
   const { colors } = useAppTheme();
-  const insets = useSafeAreaInsets();
   const words = getWordChallenges(stage?.id);
   const reducer = useMemo(() => createWordBuilderReducer(words), [words]);
   // Starts at once: the tile in Latihan (or the lesson) already said what
@@ -47,7 +49,6 @@ export function WordBuilderScreen({
     initialWordBuilderSession,
     (initial) => ({ ...initial, phase: "playing" as const }),
   );
-  const [showExit, setShowExit] = useState(false);
   const leave = useCallback(() => leaveGame(source), [source]);
   const leaveLabel = gameLeaveLabel(source);
   const challenge = words[session.index]!;
@@ -65,15 +66,13 @@ export function WordBuilderScreen({
       syllable === hintSyllable && !session.selected.includes(index),
   );
 
-  // Nothing to lose yet (first word, nothing placed) or done: leave at once.
-  const nothingToLose =
-    session.phase === "intro" ||
-    session.phase === "complete" ||
-    (session.index === 0 && session.selected.length === 0);
-  const requestLeave = useCallback(() => {
-    if (nothingToLose) leave();
-    else setShowExit(true);
-  }, [leave, nothingToLose]);
+  // Nothing is saved, so leaving needs no confirmation; the guard sends
+  // every back action (button, swipe, Android back) to the right place.
+  const exit = useGameExitGuard({
+    active: session.phase !== "complete",
+    locked: false,
+    onExit: leave,
+  });
 
   // A right answer moves on by itself after a moment to read its meaning;
   // "Lanjut" skips the wait.
@@ -82,16 +81,6 @@ export function WordBuilderScreen({
     const timer = setTimeout(() => dispatch({ type: "next" }), AUTO_NEXT_MS);
     return () => clearTimeout(timer);
   }, [session.phase, session.index]);
-
-  useFocusEffect(
-    useCallback(() => {
-      const listener = BackHandler.addEventListener("hardwareBackPress", () => {
-        requestLeave();
-        return true;
-      });
-      return () => listener.remove();
-    }, [requestLeave]),
-  );
 
   useEffect(() => {
     if (correct)
@@ -105,67 +94,61 @@ export function WordBuilderScreen({
   }, [challenge.meaning, challenge.word, correct, session.feedback]);
 
   // Once per outcome: only the outcome changes these.
+  const [wrongCount, setWrongCount] = useState(0);
   useEffect(() => {
     if (correct) hapticSuccess();
-    else if (session.feedback === "incorrect") hapticError();
+    else if (session.feedback === "incorrect") {
+      hapticError();
+      setWrongCount((count) => count + 1);
+    }
   }, [correct, session.feedback]);
+  const answerMotion = useOutcomeMotion({ wrongCount, correct });
+
+  const barActions: GameBarAction[] =
+    session.phase === "complete"
+      ? []
+      : correct
+        ? [
+            {
+              label:
+                session.index === words.length - 1 ? "Lihat hasil" : "Lanjut",
+              onPress: () => dispatch({ type: "next" }),
+              prominent: true,
+            },
+          ]
+        : [
+            {
+              label: "Hapus semua",
+              onPress: () => dispatch({ type: "clear" }),
+              disabled: session.selected.length === 0,
+            },
+          ];
+  const allCorrect = session.independent === words.length;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <GameBackToolbar
-        accessibilityLabel={source?.sourceCourseItemId ? leaveLabel : undefined}
-        onPress={requestLeave}
-      />
-      <Stack.Screen
-        options={{
-          headerBackButtonDisplayMode: "minimal",
-          headerBackVisible: false,
-          headerShown: true,
-          gestureEnabled: false,
-          title: "Susun kata",
-        }}
-      />
-      <View
-        accessibilityLabel="Kata selesai"
-        accessibilityRole="progressbar"
-        accessibilityValue={{
-          min: 0,
-          max: words.length,
-          now: completed,
-        }}
-        style={[styles.progressTrack, { backgroundColor: colors.border }]}
+      <GameRoundHeader
+        onBack={exit}
+        stats={[{ value: `${completed}/${words.length}` }]}
+        statsLabel={`${completed} dari ${words.length} kata selesai`}
       >
-        <View
-          style={[
-            styles.progressFill,
-            {
-              backgroundColor: colors.primary,
-              width: `${(completed / words.length) * 100}%`,
-            },
-          ]}
+        <Stack.Toolbar.Button
+          accessibilityLabel="Petunjuk"
+          disabled={session.phase !== "playing" || session.showHint}
+          icon={toolbarIcons.hint}
+          onPress={() => dispatch({ type: "hint" })}
         />
-      </View>
+      </GameRoundHeader>
+      <GameActionBar actions={barActions} />
 
       <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: Math.max(28, insets.bottom + 20) },
-        ]}
+        contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.lessonRow}>
-          <Text style={[styles.smallLabel, { color: colors.mutedForeground }]}>
-            {challenge.family}
-          </Text>
-          <Text style={[styles.smallLabel, { color: colors.mutedForeground }]}>
-            {session.index + 1}/{words.length}
-          </Text>
-        </View>
-
         <View style={styles.prompt}>
           <Text style={[styles.eyebrow, { color: colors.primary }]}>
-            SUSUN KATA KOREA
+            {challenge.family.toUpperCase()}
           </Text>
           <Text style={[styles.meaning, { color: colors.foreground }]}>
             {challenge.meaning}
@@ -177,18 +160,24 @@ export function WordBuilderScreen({
           </Text>
         </View>
 
-        <View
+        <Animated.View
           style={[
             styles.workspace,
+            answerMotion,
             {
-              backgroundColor: withOpacity(colors.primary, 0.06),
-              borderColor: withOpacity(colors.primary, 0.18),
+              backgroundColor: withOpacity(
+                colors.primary,
+                correct ? 0.12 : 0.06,
+              ),
+              borderColor:
+                session.feedback === "incorrect"
+                  ? colors.destructive
+                  : correct
+                    ? colors.primary
+                    : withOpacity(colors.primary, 0.18),
             },
           ]}
         >
-          <Text style={[styles.sectionLabel, { color: colors.primary }]}>
-            KATA YANG KAMU SUSUN
-          </Text>
           <View style={styles.answerRow}>
             {challenge.syllables.map((_, index) => {
               const tileIndex = session.selected[index];
@@ -197,7 +186,7 @@ export function WordBuilderScreen({
                   ? undefined
                   : challenge.tiles[tileIndex];
               return (
-                <Pressable
+                <PressableScale
                   key={index}
                   accessibilityLabel={
                     syllable
@@ -215,30 +204,37 @@ export function WordBuilderScreen({
                     styles.answerSlot,
                     {
                       backgroundColor: syllable ? colors.primary : colors.card,
-                      borderColor: syllable ? colors.primary : colors.border,
+                      borderColor: syllable
+                        ? colors.primary
+                        : withOpacity(colors.primary, 0.3),
+                      borderStyle: syllable ? "solid" : "dashed",
                     },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.answerText,
-                      {
-                        color: syllable
-                          ? colors.primaryForeground
-                          : colors.mutedForeground,
-                      },
-                    ]}
-                  >
-                    {syllable ?? "·"}
-                  </Text>
-                </Pressable>
+                  {syllable ? (
+                    // Keyed by the tile, so each block placed pops in.
+                    <Animated.Text
+                      key={tileIndex}
+                      entering={ZoomIn.springify().damping(13)}
+                      style={[
+                        styles.answerText,
+                        { color: colors.primaryForeground },
+                      ]}
+                    >
+                      {syllable}
+                    </Animated.Text>
+                  ) : null}
+                </PressableScale>
               );
             })}
           </View>
           {correct ? (
-            <Text style={[styles.pronunciation, { color: colors.primary }]}>
+            <Animated.Text
+              entering={FadeIn.duration(180)}
+              style={[styles.pronunciation, { color: colors.primary }]}
+            >
               {challenge.word} · {challenge.pronunciation}
-            </Text>
+            </Animated.Text>
           ) : (
             <Text
               style={[styles.workspaceNote, { color: colors.mutedForeground }]}
@@ -246,74 +242,53 @@ export function WordBuilderScreen({
               Ketuk blok di atas untuk melepasnya.
             </Text>
           )}
-        </View>
+        </Animated.View>
 
-        <View style={styles.traySection}>
-          <View style={styles.trayHeading}>
-            <Text
-              style={[styles.sectionLabel, { color: colors.mutedForeground }]}
-            >
-              PILIH BLOK
-            </Text>
-            {session.selected.length > 0 && !correct ? (
-              <Pressable
+        <View style={styles.tiles}>
+          {challenge.tiles.map((syllable, index) => {
+            const selected = session.selected.includes(index);
+            const highlighted =
+              session.showHint && hintTileIndex === index && !correct;
+            return (
+              <PressableScale
+                key={index}
+                accessibilityLabel={`Blok ${syllable}${highlighted ? ", petunjuk" : ""}`}
                 accessibilityRole="button"
-                onPress={() => dispatch({ type: "clear" })}
+                accessibilityState={{
+                  disabled: selected || correct || isFull,
+                }}
+                disabled={selected || correct || isFull}
+                onPress={() => {
+                  hapticSelection();
+                  dispatch({ type: "add", tileIndex: index });
+                }}
+                style={[
+                  styles.tile,
+                  {
+                    backgroundColor: selected ? colors.muted : colors.card,
+                    borderColor: highlighted ? colors.primary : colors.border,
+                    borderWidth: highlighted ? 2 : 1,
+                    opacity: selected ? 0.42 : 1,
+                  },
+                ]}
               >
-                <Text style={[styles.clearLabel, { color: colors.primary }]}>
-                  Hapus semua
+                <Text style={[styles.tileText, { color: colors.foreground }]}>
+                  {syllable}
                 </Text>
-              </Pressable>
-            ) : null}
-          </View>
-          <View style={styles.tiles}>
-            {challenge.tiles.map((syllable, index) => {
-              const selected = session.selected.includes(index);
-              const highlighted =
-                session.showHint && hintTileIndex === index && !correct;
-              return (
-                <Pressable
-                  key={index}
-                  accessibilityLabel={`Blok ${syllable}${highlighted ? ", petunjuk" : ""}`}
-                  accessibilityRole="button"
-                  accessibilityState={{
-                    disabled: selected || correct || isFull,
-                  }}
-                  disabled={selected || correct || isFull}
-                  onPress={() => {
-                    hapticSelection();
-                    dispatch({ type: "add", tileIndex: index });
-                  }}
-                  style={({ pressed }) => [
-                    styles.tile,
-                    {
-                      backgroundColor: selected
-                        ? colors.muted
-                        : pressed
-                          ? withOpacity(colors.primary, 0.16)
-                          : colors.card,
-                      borderColor: highlighted ? colors.primary : colors.border,
-                      opacity: selected ? 0.42 : 1,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.tileText, { color: colors.foreground }]}>
-                    {syllable}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+              </PressableScale>
+            );
+          })}
         </View>
 
         <View style={styles.feedbackArea}>
           {session.feedback === "incorrect" ? (
-            <Text
+            <Animated.Text
               accessibilityLiveRegion="polite"
+              entering={FadeIn.duration(160)}
               style={[styles.feedback, { color: colors.destructive }]}
             >
               Urutan belum tepat. Ketuk blok di atas untuk mengubahnya.
-            </Text>
+            </Animated.Text>
           ) : correct ? (
             <Text
               accessibilityLiveRegion="polite"
@@ -337,65 +312,43 @@ export function WordBuilderScreen({
             </Text>
           ) : null}
         </View>
-
-        {correct ? (
-          <StudyAction onPress={() => dispatch({ type: "next" })}>
-            {session.index === words.length - 1 ? "Lihat hasil" : "Lanjut"}
-          </StudyAction>
-        ) : !session.showHint ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={session.phase !== "playing"}
-            onPress={() => dispatch({ type: "hint" })}
-            style={styles.hintAction}
-          >
-            <Text style={[styles.hintLabel, { color: colors.primary }]}>
-              Butuh petunjuk?
-            </Text>
-          </Pressable>
-        ) : null}
       </ScrollView>
 
-      <GameModal
-        gameKey="word-builder"
-        visible={session.phase === "complete"}
-        eyebrow="LATIHAN SELESAI"
-        title="Kata demi kata, bisa!"
-        detail={`Kamu berhasil menyusun ${words.length} kata Hangeul.`}
-        content={
-          <View style={styles.result}>
-            <Text style={[styles.resultNumber, { color: colors.primary }]}>
-              {session.independent}/{words.length}
-            </Text>
-            <Text style={[styles.modalCopy, { color: colors.mutedForeground }]}>
-              Tepat pada percobaan pertama tanpa petunjuk.
-            </Text>
-          </View>
-        }
-        primaryLabel="Main lagi"
-        secondaryLabel={leaveLabel}
-        onPrimary={() => dispatch({ type: "start" })}
-        onSecondary={leave}
-      />
-      <GameModal
-        gameKey="word-builder"
-        visible={showExit}
-        eyebrow="JEDA SEBENTAR"
-        title="Keluar dari latihan?"
-        detail="Progres sesi ini belum disimpan. Kamu bisa melanjutkan atau mulai lagi nanti."
-        primaryLabel="Lanjut bermain"
-        secondaryLabel="Keluar"
-        onPrimary={() => setShowExit(false)}
-        onSecondary={leave}
-      />
+      {session.phase === "complete" ? (
+        <GameResultSheet
+          best={{
+            scope: `word-builder:${stage?.id ?? "all"}`,
+            value: session.independent,
+            max: words.length,
+          }}
+          eyebrow="Susun kata"
+          title={allCorrect ? "Mantap, semua tepat!" : "Kata demi kata, bisa!"}
+          description="Tepat pada percobaan pertama tanpa petunjuk."
+          mark={{
+            value: `${session.independent}/${words.length}`,
+            label: "tepat",
+          }}
+          done={allCorrect}
+          celebrate={allCorrect}
+          facts={[
+            { icon: "text.word.spacing", text: `${words.length} kata disusun` },
+          ]}
+          primary={{
+            eyebrow: "Main lagi",
+            title: `${words.length} kata`,
+            meta: "Ulangi dari kata pertama",
+            pill: "Mulai",
+            onPress: () => dispatch({ type: "start" }),
+          }}
+          secondary={{ label: leaveLabel, onPress: leave }}
+        />
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  progressTrack: { height: 4, overflow: "hidden" },
-  progressFill: { height: "100%" },
   content: {
     flexGrow: 1,
     width: "100%",
@@ -404,8 +357,6 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 20,
   },
-  lessonRow: { flexDirection: "row", justifyContent: "space-between" },
-  smallLabel: { fontSize: 12, fontWeight: "600" },
   prompt: { alignItems: "center", gap: 5, paddingTop: 12 },
   eyebrow: { fontSize: 10, letterSpacing: 2, fontWeight: "800" },
   meaning: {
@@ -424,7 +375,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 14,
   },
-  sectionLabel: { fontSize: 10, fontWeight: "800", letterSpacing: 1.5 },
   answerRow: { flexDirection: "row", justifyContent: "center", gap: 10 },
   answerSlot: {
     width: 68,
@@ -437,13 +387,6 @@ const styles = StyleSheet.create({
   answerText: { fontSize: 34, lineHeight: 42, fontWeight: "700" },
   pronunciation: { fontSize: 16, fontWeight: "700" },
   workspaceNote: { fontSize: 12, textAlign: "center" },
-  traySection: { gap: 12 },
-  trayHeading: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  clearLabel: { fontSize: 12, fontWeight: "700" },
   tiles: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -461,9 +404,4 @@ const styles = StyleSheet.create({
   tileText: { fontSize: 30, lineHeight: 38, fontWeight: "700" },
   feedbackArea: { minHeight: 42, justifyContent: "center" },
   feedback: { fontSize: 13, lineHeight: 20, textAlign: "center" },
-  hintAction: { alignItems: "center", paddingVertical: 8 },
-  hintLabel: { fontSize: 14, fontWeight: "700" },
-  modalCopy: { fontSize: 14, lineHeight: 22, textAlign: "center" },
-  result: { alignItems: "center", gap: 10 },
-  resultNumber: { fontSize: 46, fontWeight: "800" },
 });

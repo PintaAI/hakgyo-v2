@@ -6,9 +6,9 @@ Local, untimed practice with twelve general fixtures in `syllable-forge-data.ts`
 
 `syllable-session.ts` owns answers, progression, hints, retry counts, completion and replay. Each valid key is checked immediately. A complete block succeeds automatically; a typo appears briefly, shakes red, and is removed after 420 ms. The keyboard has no space key because every fixture targets one syllable block.
 
-The lightbulb trigger in the native header follows the first Hangeul game's cheat-sheet pattern. It opens a native `formSheet` with a glass close button, the current target, its explanation, and the required key sequence. Closing the sheet keeps next-key highlighting active for the current challenge.
+The lightbulb trigger in the native header follows the first Hangeul game's cheat-sheet pattern. It opens a native `formSheet` with a close button, the current target, its explanation, and the required key sequence. Closing the sheet keeps next-key highlighting active for the current challenge.
 
-Keyboard keycaps intentionally use plain animated card surfaces rather than native Liquid Glass. This two-set layout has 28 keys; giving every key its own GlassView creates unnecessary native compositing and accessibility listeners. Glass remains limited to the small toolbar and modal controls. Backspace is the only editing control because each answer contains just one short syllable block.
+Keyboard keycaps intentionally use plain animated card surfaces rather than native Liquid Glass. This two-set layout has 28 keys; giving every key its own GlassView creates unnecessary native compositing and accessibility listeners. The syllable blocks are plain surfaces for the same reason; the game uses no glass of its own. Backspace is the only editing control because each answer contains just one short syllable block.
 
 The keyboard remains mounted between challenges. Stable callbacks plus memoized letter keys keep an ordinary input from reconciling all 28 keycaps; only state-changing keys such as Shift, backspace, hint highlighting, and disabled feedback update when needed.
 
