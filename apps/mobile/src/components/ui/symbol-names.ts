@@ -76,6 +76,7 @@ export const materialSymbols = {
   "text.bubble.fill": "chat_bubble",
   "text.word.spacing": "text_fields",
   "textformat.abc": "abc",
+  "textformat.size": "format_size",
   timer: "timer",
   "tray.full": "inbox",
   trash: "delete",

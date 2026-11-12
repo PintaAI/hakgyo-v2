@@ -21,6 +21,7 @@ import { resolveActiveBrand } from "../theme/active-brand";
 import { type ColorScheme, type ThemeColors } from "../theme/colors";
 import { createMobileTheme } from "../theme/organization-theme";
 import { firstParam } from "../lib/route-params";
+import { readFontScale, saveFontScale, snapFontScale } from "../lib/font-scale";
 
 const STORAGE_VERSION = 2;
 // How long the organization list counts as fresh, on mount and on returning
@@ -40,6 +41,9 @@ type StoredBrandLibrary = {
 type AppThemeContextValue = {
   colorScheme: ColorScheme;
   colors: ThemeColors;
+  /** Ukuran teks: every text size is multiplied by it (src/lib/font-scale.ts). */
+  fontScale: number;
+  setFontScale: (value: number) => void;
   activeBrand: ActiveBrandContext;
   activeOrganizationId: string | null;
   availableOrganizations: AvailableOrganizationBrand[];
@@ -150,6 +154,12 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
   const routeCohortId = firstParam(routeParams.cohortId) || undefined;
   const routeCourseId = firstParam(routeParams.courseId) || undefined;
   const colorScheme = useColorScheme() === "dark" ? "dark" : "light";
+  const [fontScale, setFontScaleState] = useState(readFontScale);
+  const setFontScale = useCallback((value: number) => {
+    const next = snapFontScale(value);
+    setFontScaleState(next);
+    saveFontScale(next);
+  }, []);
   const [hydratedUserId, setHydratedUserId] = useState<string | null>();
   const [availableOrganizations, setAvailableOrganizations] = useState<
     AvailableOrganizationBrand[]
@@ -294,6 +304,11 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
     () => createMobileTheme(colorScheme, activeBrand.theme),
     [activeBrand.theme, colorScheme],
   );
+  // The brand's colours and the learner's text size (global.css).
+  const cssVariables = useMemo(
+    () => ({ ...mobileTheme.variables, "--font-scale": fontScale }),
+    [fontScale, mobileTheme.variables],
+  );
   const isHydrated = !isSessionPending && hydratedUserId === (userId ?? null);
 
   const selectOrganization = useCallback(
@@ -325,6 +340,8 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
     () => ({
       colorScheme,
       colors: mobileTheme.colors,
+      fontScale,
+      setFontScale,
       activeBrand,
       activeOrganizationId: activeBrand.organizationId,
       availableOrganizations,
@@ -337,8 +354,10 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
       activeBrand,
       availableOrganizations,
       colorScheme,
+      fontScale,
       isHydrated,
       mobileTheme.colors,
+      setFontScale,
       organizationsQuery.isRefetching,
       refreshOrganizations,
       selectOrganization,
@@ -347,7 +366,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppThemeContext.Provider value={value}>
-      <VariableContextProvider value={mobileTheme.variables}>
+      <VariableContextProvider value={cssVariables}>
         {children}
       </VariableContextProvider>
     </AppThemeContext.Provider>

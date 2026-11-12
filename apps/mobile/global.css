@@ -4,6 +4,49 @@
 
 @import "nativewind/theme";
 
+/*
+ * Ukuran teks (Pengaturan > Tampilan): every text size is multiplied by
+ * --font-scale, which AppThemeProvider sets at runtime. Line heights follow
+ * on their own: the sizes' line heights and NativeWind's leading-* are
+ * relative to the font size. Spacing does not change. Sizes are Tailwind's
+ * defaults.
+ *
+ * `inline` writes each calc straight into its text-* utility. Behind a
+ * --text-* variable, the compiler would flatten var(--font-scale) to its
+ * default: it inlines variables set once (--text-*) before it drops the ones
+ * set twice (--font-scale, below).
+ */
+@theme inline {
+  --text-xs: calc(0.75rem * var(--font-scale));
+  --text-sm: calc(0.875rem * var(--font-scale));
+  --text-base: calc(1rem * var(--font-scale));
+  --text-lg: calc(1.125rem * var(--font-scale));
+  --text-xl: calc(1.25rem * var(--font-scale));
+  --text-2xl: calc(1.5rem * var(--font-scale));
+  --text-3xl: calc(1.875rem * var(--font-scale));
+  --text-4xl: calc(2.25rem * var(--font-scale));
+  --text-5xl: calc(3rem * var(--font-scale));
+  --text-6xl: calc(3.75rem * var(--font-scale));
+  --text-7xl: calc(4.5rem * var(--font-scale));
+  --text-8xl: calc(6rem * var(--font-scale));
+  --text-9xl: calc(8rem * var(--font-scale));
+}
+
+/*
+ * Set twice so the compiler keeps --font-scale a runtime variable: it inlines
+ * custom properties set only once, and react-native-css 3.0.7 does not pass
+ * withNativewind's `inlineVariables.exclude` on to it from Metro. The colours
+ * below stay variables the same way (light and dark).
+ */
+:root {
+  --font-scale: 1;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --font-scale: 1;
+  }
+}
+
 /* Keep this semantic color contract in sync with apps/web/src/styles/globals.css. */
 @theme {
   /* Keep the Liquid Glass-inspired shape scale in sync with the web app. */

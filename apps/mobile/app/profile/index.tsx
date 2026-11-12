@@ -22,6 +22,7 @@ import {
   RecentActivity,
 } from "../../src/components/profile-learner";
 import { CourseBadges } from "../../src/components/course-badges";
+import { FontSizeSetting } from "../../src/components/font-size-setting";
 import { useUserRefresh } from "../../src/lib/use-user-refresh";
 import {
   SettingsRow,
@@ -426,6 +427,7 @@ export default function ProfileScreen() {
                 symbol="square.grid.2x2"
                 onPress={() => router.push("/organization-switcher")}
               />
+              <FontSizeSetting />
             </SettingsSection>
 
             <SettingsSection title="Notifikasi">
