@@ -2,22 +2,31 @@ import { Stack } from "expo-router";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import {
   AccessibilityInfo,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, {
+  FadeIn,
+  LinearTransition,
+  ZoomIn,
+  ZoomOut,
+} from "react-native-reanimated";
 
-import { StudyAction } from "../../components/study-glass";
 import type { VocabularyAttempt } from "../../lib/use-vocabulary-progress";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
+import { toolbarIcons } from "../../theme/toolbar-icons";
+import { PressableScale, useOutcomeMotion } from "../game-motion";
 import { useGameExitGuard } from "../game-navigation";
 import { GameResultSheet } from "../game-result";
+import {
+  GameActionBar,
+  GameRoundHeader,
+  type GameBarAction,
+} from "../game-round";
 import type { GameLesson } from "../lesson";
-import { GameBackToolbar } from "../game-screens";
 import {
   createSentenceChallenges,
   initialSentenceBuilderSession,
@@ -49,7 +58,6 @@ export function SentenceBuilderScreen({
   lesson?: GameLesson;
 }) {
   const { colors } = useAppTheme();
-  const insets = useSafeAreaInsets();
   const [session, dispatch] = useReducer(
     sentenceBuilderReducer,
     initialSentenceBuilderSession,
@@ -131,11 +139,17 @@ export function SentenceBuilderScreen({
       );
   }, [challenge, correct, session.feedback]);
 
-  // Once per outcome: only the outcome changes these.
+  // Once per outcome: only the outcome changes these. Each wrong order also
+  // shakes the answer row.
+  const [wrongCount, setWrongCount] = useState(0);
   useEffect(() => {
     if (correct) hapticSuccess();
-    else if (session.feedback === "incorrect") hapticError();
+    else if (session.feedback === "incorrect") {
+      hapticError();
+      setWrongCount((count) => count + 1);
+    }
   }, [correct, session.feedback]);
+  const answerMotion = useOutcomeMotion({ wrongCount, correct });
 
   const reviewChallenges = session.challenges.filter((item) =>
     session.reviewIds.includes(item.id),
@@ -143,57 +157,58 @@ export function SentenceBuilderScreen({
 
   const allCorrect = session.independent === total;
 
+  // The round moves on from the bottom toolbar, as in Kartu: clearing while
+  // building, then "Lanjut" once the solved sentence is saved.
+  const barActions: GameBarAction[] = !challenge
+    ? []
+    : correct
+      ? [
+          saveError
+            ? {
+                label: "Coba simpan lagi",
+                onPress: save,
+                disabled: saving,
+                prominent: true,
+              }
+            : {
+                label: session.index === total - 1 ? "Lihat hasil" : "Lanjut",
+                onPress: () => dispatch({ type: "next" }),
+                disabled: !saved,
+                prominent: true,
+              },
+        ]
+      : [
+          {
+            label: "Hapus semua",
+            onPress: () => dispatch({ type: "clear" }),
+            disabled: session.selected.length === 0,
+          },
+        ];
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <GameBackToolbar disabled={saving} onPress={exit} />
-      <Stack.Screen
-        options={{
-          headerBackButtonDisplayMode: "minimal",
-          headerBackVisible: false,
-          headerShown: true,
-          gestureEnabled: false,
-          title: lesson?.title ?? "Susun makna",
-        }}
-      />
-      <View
-        accessibilityLabel="Kalimat selesai"
-        accessibilityRole="progressbar"
-        accessibilityValue={{ min: 0, max: Math.max(1, total), now: completed }}
-        style={[styles.progressTrack, { backgroundColor: colors.border }]}
+      <GameRoundHeader
+        title={lesson?.title}
+        onBack={exit}
+        backDisabled={saving}
+        stats={[{ value: `${completed}/${total}` }]}
+        statsLabel={`${completed} dari ${total} kalimat selesai`}
       >
-        <View
-          style={[
-            styles.progressFill,
-            {
-              backgroundColor: colors.primary,
-              width: `${total ? (completed / total) * 100 : 0}%`,
-            },
-          ]}
+        <Stack.Toolbar.Button
+          accessibilityLabel="Petunjuk"
+          disabled={!challenge || correct || session.showHint}
+          icon={toolbarIcons.hint}
+          onPress={() => dispatch({ type: "hint" })}
         />
-      </View>
+      </GameRoundHeader>
+      <GameActionBar actions={barActions} />
 
       {challenge ? (
         <ScrollView
-          contentContainerStyle={[
-            styles.content,
-            { paddingBottom: Math.max(28, insets.bottom + 20) },
-          ]}
+          contentContainerStyle={styles.content}
           contentInsetAdjustmentBehavior="automatic"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.lessonRow}>
-            <Text
-              style={[styles.smallLabel, { color: colors.mutedForeground }]}
-            >
-              Contoh kalimat
-            </Text>
-            <Text
-              style={[styles.smallLabel, { color: colors.mutedForeground }]}
-            >
-              {session.index + 1}/{total}
-            </Text>
-          </View>
-
           <View style={styles.prompt}>
             <Text style={[styles.eyebrow, { color: colors.primary }]}>
               SUSUN KALIMAT DENGAN
@@ -217,15 +232,20 @@ export function SentenceBuilderScreen({
             ) : null}
           </View>
 
-          <View
+          <Animated.View
             style={[
               styles.workspace,
+              answerMotion,
               {
-                backgroundColor: withOpacity(colors.primary, 0.06),
+                backgroundColor: correct
+                  ? withOpacity(colors.primary, 0.12)
+                  : withOpacity(colors.primary, 0.06),
                 borderColor:
                   session.feedback === "incorrect"
                     ? colors.destructive
-                    : withOpacity(colors.primary, 0.18),
+                    : correct
+                      ? colors.primary
+                      : withOpacity(colors.primary, 0.18),
               },
             ]}
           >
@@ -233,12 +253,13 @@ export function SentenceBuilderScreen({
               KALIMAT YANG KAMU SUSUN
             </Text>
             {correct ? (
-              <Text
+              <Animated.Text
                 accessibilityLiveRegion="polite"
+                entering={ZoomIn.springify().damping(14)}
                 style={[styles.solvedSentence, { color: colors.foreground }]}
               >
                 {challenge.sentence}
-              </Text>
+              </Animated.Text>
             ) : (
               <View style={styles.answerRow}>
                 {challenge.words.map((_, index) => {
@@ -249,9 +270,10 @@ export function SentenceBuilderScreen({
                       : challenge.tiles[tileIndex];
                   if (!word)
                     return (
-                      <View
-                        key={index}
+                      <Animated.View
+                        key={`slot-${index}`}
                         accessibilityLabel={`Posisi ${index + 1}, kosong`}
+                        layout={LinearTransition.springify().damping(18)}
                         style={[
                           styles.emptySlot,
                           { borderColor: withOpacity(colors.primary, 0.3) },
@@ -259,31 +281,37 @@ export function SentenceBuilderScreen({
                       />
                     );
                   return (
-                    <Pressable
-                      key={index}
-                      accessibilityLabel={`Posisi ${index + 1}, ${word}. Ketuk untuk melepas.`}
-                      accessibilityRole="button"
-                      onPress={() => {
-                        hapticSelection();
-                        dispatch({ type: "remove", tileIndex: tileIndex! });
-                      }}
-                      style={[
-                        styles.chip,
-                        {
-                          backgroundColor: colors.primary,
-                          borderColor: colors.primary,
-                        },
-                      ]}
+                    <Animated.View
+                      key={`tile-${tileIndex}`}
+                      entering={ZoomIn.springify().damping(13)}
+                      exiting={ZoomOut.duration(120)}
+                      layout={LinearTransition.springify().damping(18)}
                     >
-                      <Text
+                      <PressableScale
+                        accessibilityLabel={`Posisi ${index + 1}, ${word}. Ketuk untuk melepas.`}
+                        accessibilityRole="button"
+                        onPress={() => {
+                          hapticSelection();
+                          dispatch({ type: "remove", tileIndex: tileIndex! });
+                        }}
                         style={[
-                          styles.chipText,
-                          { color: colors.primaryForeground },
+                          styles.chip,
+                          {
+                            backgroundColor: colors.primary,
+                            borderColor: colors.primary,
+                          },
                         ]}
                       >
-                        {word}
-                      </Text>
-                    </Pressable>
+                        <Text
+                          style={[
+                            styles.chipText,
+                            { color: colors.primaryForeground },
+                          ]}
+                        >
+                          {word}
+                        </Text>
+                      </PressableScale>
+                    </Animated.View>
                   );
                 })}
               </View>
@@ -298,39 +326,22 @@ export function SentenceBuilderScreen({
                 Ketuk kata di atas untuk melepasnya.
               </Text>
             ) : null}
-          </View>
+          </Animated.View>
 
           {!correct ? (
             <View style={styles.traySection}>
-              <View style={styles.trayHeading}>
-                <Text
-                  style={[
-                    styles.sectionLabel,
-                    { color: colors.mutedForeground },
-                  ]}
-                >
-                  PILIH KATA
-                </Text>
-                {session.selected.length > 0 ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => dispatch({ type: "clear" })}
-                  >
-                    <Text
-                      style={[styles.clearLabel, { color: colors.primary }]}
-                    >
-                      Hapus semua
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
+              <Text
+                style={[styles.sectionLabel, { color: colors.mutedForeground }]}
+              >
+                PILIH KATA
+              </Text>
               <View style={styles.tiles}>
                 {challenge.tiles.map((word, index) => {
                   const selected = session.selected.includes(index);
                   const highlighted =
                     session.showHint && hint?.tileIndex === index;
                   return (
-                    <Pressable
+                    <PressableScale
                       key={index}
                       accessibilityLabel={`Kata ${word}${highlighted ? ", petunjuk" : ""}`}
                       accessibilityRole="button"
@@ -340,14 +351,12 @@ export function SentenceBuilderScreen({
                         hapticSelection();
                         dispatch({ type: "add", tileIndex: index });
                       }}
-                      style={({ pressed }) => [
+                      style={[
                         styles.chip,
                         {
                           backgroundColor: selected
                             ? colors.muted
-                            : pressed
-                              ? withOpacity(colors.primary, 0.16)
-                              : colors.card,
+                            : colors.card,
                           borderColor: highlighted
                             ? colors.primary
                             : colors.border,
@@ -361,7 +370,7 @@ export function SentenceBuilderScreen({
                       >
                         {word}
                       </Text>
-                    </Pressable>
+                    </PressableScale>
                   );
                 })}
               </View>
@@ -370,12 +379,13 @@ export function SentenceBuilderScreen({
 
           <View style={styles.feedbackArea}>
             {session.feedback === "incorrect" ? (
-              <Text
+              <Animated.Text
                 accessibilityLiveRegion="polite"
+                entering={FadeIn.duration(160)}
                 style={[styles.feedback, { color: colors.destructive }]}
               >
                 Urutan belum tepat. Ketuk kata di atas untuk mengubahnya.
-              </Text>
+              </Animated.Text>
             ) : correct ? (
               <Text
                 accessibilityLiveRegion="polite"
@@ -408,31 +418,6 @@ export function SentenceBuilderScreen({
               </Text>
             ) : null}
           </View>
-
-          {correct ? (
-            saveError ? (
-              <StudyAction disabled={saving} onPress={save}>
-                Coba simpan lagi
-              </StudyAction>
-            ) : (
-              <StudyAction
-                disabled={!saved}
-                onPress={() => dispatch({ type: "next" })}
-              >
-                {session.index === total - 1 ? "Lihat hasil" : "Lanjut"}
-              </StudyAction>
-            )
-          ) : !session.showHint ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => dispatch({ type: "hint" })}
-              style={styles.hintAction}
-            >
-              <Text style={[styles.hintLabel, { color: colors.primary }]}>
-                Butuh petunjuk?
-              </Text>
-            </Pressable>
-          ) : null}
         </ScrollView>
       ) : null}
       {session.phase === "complete" && !lesson ? (
@@ -482,8 +467,6 @@ export function SentenceBuilderScreen({
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  progressTrack: { height: 4, overflow: "hidden" },
-  progressFill: { height: "100%" },
   content: {
     flexGrow: 1,
     width: "100%",
@@ -492,8 +475,6 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 20,
   },
-  lessonRow: { flexDirection: "row", justifyContent: "space-between" },
-  smallLabel: { fontSize: 12, fontWeight: "600" },
   prompt: { alignItems: "center", gap: 5, paddingTop: 12 },
   eyebrow: { fontSize: 10, letterSpacing: 2, fontWeight: "800" },
   term: {
@@ -551,12 +532,6 @@ const styles = StyleSheet.create({
   },
   workspaceNote: { fontSize: 12, textAlign: "center" },
   traySection: { gap: 12 },
-  trayHeading: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  clearLabel: { fontSize: 12, fontWeight: "700" },
   tiles: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -565,6 +540,4 @@ const styles = StyleSheet.create({
   },
   feedbackArea: { minHeight: 42, justifyContent: "center" },
   feedback: { fontSize: 13, lineHeight: 20, textAlign: "center" },
-  hintAction: { alignItems: "center", paddingVertical: 8 },
-  hintLabel: { fontSize: 14, fontWeight: "700" },
 });
