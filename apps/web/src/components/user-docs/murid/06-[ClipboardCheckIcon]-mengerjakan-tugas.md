@@ -97,6 +97,13 @@ Di halaman tugas, tekan **Review jawaban kamu** di bawah tombol tugas untuk memb
 
 Di halaman **Hari ini**, bagian **Soal harian** berisi soal untuk mengulang pelajaran. Hasilnya tidak mengubah nilai, percobaan, progres kurikulum, maupun XP-mu.
 
+Soal dipilih berdasarkan progresmu dan berganti setiap hari:
+
+1. Soal yang jawabanmu salah di tugas atau kuis yang pernah kamu kerjakan muncul lebih dulu.
+2. Lalu soal dari kuis yang belum kamu lulusi.
+3. Soal dari kuis yang sudah lulus muncul paling banyak 3 dari 10, kecuali soal lain tidak cukup.
+4. Di aplikasi ponsel, soal yang sudah kamu jawab benar di Soal harian tidak muncul lagi selama 3 hari.
+
 - Setelah menjawab, jawaban yang benar langsung ditandai. Matikan **Tampilkan penjelasan** jika tidak ingin melihat penjelasannya.
 - Pindah soal dengan bar di bawah, titik di atas soal, atau dengan menggeser soal. **Soal belum dijawab berikutnya** membawamu ke soal yang belum dijawab.
 - Setelah soal terakhir, halaman **Ringkasan** menunjukkan berapa yang benar. Tekan **Coba lagi** untuk set soal yang baru.

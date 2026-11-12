@@ -45,7 +45,14 @@ Jika pengajarmu mengubah sebuah kata atau artinya, progres kata itu dimulai lagi
 
 ## Kosakata hari ini
 
-Di halaman **Hari ini**, bagian **Kosakata hari ini** mengambil hingga 24 kata dari semua kurikulummu, terutama yang sudah waktunya diulang. Mode bawaannya **Arti**. Klik **Campuran berikutnya** untuk ronde baru. Hasilnya dihitung sama dengan latihan di dalam kurikulum.
+Di halaman **Hari ini**, bagian **Kosakata hari ini** mengambil hingga 24 kata dari semua kurikulummu, dengan urutan prioritas ini:
+
+1. Kata yang sudah waktunya diulang, yang paling lama terlambat lebih dulu.
+2. Kata yang salah atau kamu lihat jawabannya dalam 7 hari terakhir.
+3. Kata baru, paling banyak 10 per hari, dari kumpulan kosakata yang belum selesai lebih dulu.
+4. Kata yang sudah kamu kuasai, hanya kalau kata lain belum cukup. Yang paling lama tidak dilatih muncul lebih dulu.
+
+Pilihan katanya berganti setiap hari. Mode bawaannya **Arti**. Klik **Campuran berikutnya** untuk ronde baru. Hasilnya dihitung sama dengan latihan di dalam kurikulum.
 
 ## Di aplikasi ponsel
 
