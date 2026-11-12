@@ -12,6 +12,7 @@ import { z } from "zod";
 import { assessmentRouter } from "~/server/api/routers/assessment";
 import { gamificationRouter } from "~/server/api/routers/gamification";
 import { createTRPCRouter } from "~/server/api/trpc";
+import { requireOrganizationAccess } from "~/server/authorization";
 import {
   applySyncOperations,
   looseSyncOperation,
@@ -27,7 +28,6 @@ import { recordMobileClientVersionInBackground } from "~/server/mobile/client-ve
 import {
   buildLearnerIndex,
   getIndexToken,
-  requireOrganizationAccess,
   type LearnerIndex,
 } from "~/server/mobile/learner-index";
 import { buildLearnerState } from "~/server/mobile/learner-state";

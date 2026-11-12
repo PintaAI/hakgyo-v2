@@ -47,6 +47,34 @@ function findOrganizationMembership(organizationId: string, userId: string) {
   );
 }
 
+type OrganizationAccessDb = Pick<
+  Prisma.TransactionClient,
+  "organizationMember" | "cohortEnrollment"
+>;
+
+/**
+ * A learner may act within an organization they belong to as staff or have a
+ * cohort enrollment in (mobile sync scope, the organization leaderboard).
+ */
+export async function requireOrganizationAccess(
+  db: OrganizationAccessDb,
+  userId: string,
+  organizationId: string | undefined,
+) {
+  if (!organizationId) return;
+  const access = await Promise.all([
+    db.organizationMember.findFirst({
+      where: { userId, organizationId },
+      select: { id: true },
+    }),
+    db.cohortEnrollment.findFirst({
+      where: { userId, cohort: { organizationId } },
+      select: { id: true },
+    }),
+  ]);
+  if (access.every((entry) => !entry)) return forbidden();
+}
+
 export async function requireOrganizationMembership(input: {
   organizationId: string;
   userId: string;

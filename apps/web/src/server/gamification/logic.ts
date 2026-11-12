@@ -230,7 +230,7 @@ function getMetricValue(
   }
 }
 
-function shiftDateKey(dateKey: string, days: number): string {
+export function shiftDateKey(dateKey: string, days: number): string {
   const [year, month, day] = dateKey.split("-").map(Number);
 
   if (!year || !month || !day) {

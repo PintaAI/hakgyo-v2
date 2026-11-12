@@ -9,7 +9,7 @@ export function xpForLevel(level: number) {
   if (level <= 1) return 0;
   if (level <= LEVEL_START_XP.length) return LEVEL_START_XP[level - 1]!;
   return (
-    LEVEL_START_XP[LEVEL_START_XP.length - 1] +
+    LEVEL_START_XP[LEVEL_START_XP.length - 1]! +
     (level - LEVEL_START_XP.length) * XP_PER_LEVEL_AFTER_TABLE
   );
 }

@@ -31,6 +31,18 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    id: "2026-11-12",
+    version: "1.0.2",
+    date: "2026-11-12",
+    title: "Peringkat minggu ini",
+    items: [
+      "Ketuk XP minggu ini di samping streak untuk melihat peringkatmu.",
+      "Pilih Global untuk semua murid Hakgyo, atau Lembaga untuk teman satu lembaga.",
+      "Lihat berapa XP lagi yang kamu butuhkan untuk naik satu peringkat.",
+      "Peringkat dimulai lagi dari nol setiap Senin pukul 00.00 WIB.",
+    ],
+  },
+  {
     id: "2026-11-09.2",
     version: "1.0.1",
     date: "2026-11-09",
