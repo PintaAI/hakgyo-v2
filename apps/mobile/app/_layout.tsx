@@ -353,6 +353,27 @@ function RootNavigator() {
                           }),
                         }}
                       />
+                      <Stack.Screen
+                        name="leaderboard"
+                        options={{
+                          headerShown: Platform.OS === "ios",
+                          headerBackVisible: false,
+                          headerShadowVisible: false,
+                          headerStyle: { backgroundColor: "transparent" },
+                          title: "Peringkat minggu ini",
+                          contentStyle: {
+                            backgroundColor:
+                              Platform.OS === "ios"
+                                ? "transparent"
+                                : colors.background,
+                          },
+                          ...formSheetOptions({
+                            detents: [0.75, 1],
+                            grabber: false,
+                            expandsWhenScrolledToEdge: true,
+                          }),
+                        }}
+                      />
                       {/* Assessment screens leave only by the back button: an edge
                       swipe must not end up leaving mid-attempt, and on the
                       attempt it would compete with swiping questions. */}

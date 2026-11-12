@@ -1,4 +1,8 @@
+import { z } from "zod";
+
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { requireOrganizationAccess } from "~/server/authorization";
+import { loadWeeklyLeaderboard } from "~/server/gamification/leaderboard";
 import {
   getLocalCalendarWindow,
   summarizeStreakRuns,
@@ -6,6 +10,23 @@ import {
 import { loadStreakRuns } from "~/server/gamification/streak";
 
 export const gamificationRouter = createTRPCRouter({
+  /**
+   * This week's XP ranking (Monday to Sunday, WIB): everyone, or the learners
+   * of one organization the viewer studies in or works for.
+   */
+  getWeeklyLeaderboard: protectedProcedure
+    .input(z.object({ organizationId: z.string().min(1).optional() }))
+    .query(async ({ ctx, input }) => {
+      await requireOrganizationAccess(
+        ctx.db,
+        ctx.actorUserId,
+        input.organizationId,
+      );
+      return loadWeeklyLeaderboard(ctx.db, {
+        userId: ctx.actorUserId,
+        organizationId: input.organizationId,
+      });
+    }),
   getMySummary: protectedProcedure.query(async ({ ctx }) => {
     const now = new Date();
     const summary = await ctx.db.userGamification.findUnique({

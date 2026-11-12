@@ -1,6 +1,8 @@
 import type { RouterOutputs } from "@hakgyo/api";
-import { Text, View } from "react-native";
+import { router } from "expo-router";
+import { Pressable, Text, View } from "react-native";
 
+import { formatXp, useWeeklyLeaderboard } from "../lib/leaderboard";
 import { getStreakProgressDays } from "../lib/streak";
 import { api } from "../lib/trpc";
 import { useAppTheme } from "../providers/AppThemeProvider";
@@ -18,6 +20,7 @@ export function WeeklyStreak({
     enabled: !summary,
   });
   const data = summary ?? query.data;
+  const leaderboard = useWeeklyLeaderboard();
 
   return (
     <>
@@ -30,22 +33,32 @@ export function WeeklyStreak({
         <WeeklyStreakView
           currentStreak={data.summary.currentStreak}
           weeklyActivity={data.weeklyActivity}
+          rank={leaderboard.data?.me?.rank ?? null}
+          onOpenLeaderboard={() => router.push("/leaderboard")}
         />
       ) : null}
     </>
   );
 }
 
-/** The streak and this week's days, from data the caller already has. */
+/**
+ * The streak and this week's days, from data the caller already has. With
+ * `onOpenLeaderboard`, this week's XP is a button to the weekly ranking that
+ * also shows the learner's global rank once it is known.
+ */
 export function WeeklyStreakView({
   currentStreak,
   weeklyActivity,
+  rank = null,
+  onOpenLeaderboard,
 }: {
   currentStreak: number;
   weeklyActivity: Pick<
     GamificationSummary["weeklyActivity"],
     "activeDates" | "startsOn" | "today" | "xp"
   >;
+  rank?: number | null;
+  onOpenLeaderboard?: () => void;
 }) {
   const { colors } = useAppTheme();
   const days = getStreakProgressDays(weeklyActivity);
@@ -56,7 +69,42 @@ export function WeeklyStreakView({
         <Text className="text-sm font-bold text-foreground">
           Streak {currentStreak} hari
         </Text>
-        <Badge>{weeklyActivity.xp.toLocaleString("id-ID")} XP minggu ini</Badge>
+        {onOpenLeaderboard ? (
+          <Pressable
+            accessibilityHint="Membuka peringkat XP minggu ini"
+            accessibilityLabel={
+              rank
+                ? `Peringkat ${rank} minggu ini, ${formatXp(weeklyActivity.xp)}`
+                : `${formatXp(weeklyActivity.xp)} minggu ini`
+            }
+            accessibilityRole="button"
+            className="min-w-0 shrink flex-row items-center gap-1.5 rounded-full bg-primary/10 py-1 pl-2.5 pr-2 active:opacity-70"
+            hitSlop={8}
+            onPress={onOpenLeaderboard}
+          >
+            <SymbolIcon
+              name="trophy.fill"
+              size={13}
+              tintColor={colors.primary}
+            />
+            <Text
+              className="shrink text-xs font-bold tabular-nums text-primary"
+              numberOfLines={1}
+            >
+              {rank
+                ? `#${rank.toLocaleString("id-ID")} · ${formatXp(weeklyActivity.xp)}`
+                : `${formatXp(weeklyActivity.xp)} minggu ini`}
+            </Text>
+            <SymbolIcon
+              name="chevron.right"
+              size={11}
+              tintColor={colors.primary}
+              weight="bold"
+            />
+          </Pressable>
+        ) : (
+          <Badge>{formatXp(weeklyActivity.xp)} minggu ini</Badge>
+        )}
       </View>
 
       <View className="flex-row">

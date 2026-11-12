@@ -5,7 +5,6 @@ import {
   type LearnerIndexBase,
   type SyncRevision,
 } from "@hakgyo/shared/mobile-sync";
-import { TRPCError } from "@trpc/server";
 
 import type { Prisma } from "../../../generated/prisma/client";
 import { assessmentRouter } from "~/server/api/routers/assessment";
@@ -41,38 +40,8 @@ import {
 } from "~/server/request-cache";
 
 type LearnerContext = TRPCContext & { actorUserId: string };
-type AccessDb = Pick<
-  Prisma.TransactionClient,
-  "organizationMember" | "cohortEnrollment"
->;
-
 const MOBILE_PRACTICE_SEED = "mobile-sync-v1";
 const MAX_INDEX_VALIDITY_MS = 24 * 60 * 60 * 1000;
-
-/**
- * A learner may scope sync to an organization they belong to or have a
- * cohort membership in.
- */
-export async function requireOrganizationAccess(
-  db: AccessDb,
-  userId: string,
-  organizationId: string | undefined,
-) {
-  if (!organizationId) return;
-  const access = await Promise.all([
-    db.organizationMember.findFirst({
-      where: { userId, organizationId },
-      select: { id: true },
-    }),
-    db.cohortEnrollment.findFirst({
-      where: { userId, cohort: { organizationId } },
-      select: { id: true },
-    }),
-  ]);
-  if (access.every((entry) => !entry)) {
-    throw new TRPCError({ code: "FORBIDDEN" });
-  }
-}
 
 export type EnrolledCourseRevision = {
   courseId: string;

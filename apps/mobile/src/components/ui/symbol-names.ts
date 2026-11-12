@@ -80,6 +80,7 @@ export const materialSymbols = {
   timer: "timer",
   "tray.full": "inbox",
   trash: "delete",
+  "trophy.fill": "trophy",
   "video.fill": "videocam",
   "video.slash.fill": "videocam_off",
   wifi: "wifi",

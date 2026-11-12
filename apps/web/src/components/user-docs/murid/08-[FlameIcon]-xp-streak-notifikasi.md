@@ -40,6 +40,17 @@ Level dihitung dari total XP-mu dan tampil di samping namamu di halaman **Profil
 
 Setelah level 8, setiap level berikutnya butuh 2.000 XP lagi.
 
+### Peringkat minggu ini
+
+Di aplikasi ponsel, XP minggu ini di samping streak (di **Hari ini** dan **Profil**) juga menampilkan peringkatmu di antara semua murid Hakgyo, misalnya **#37 · 1.240 XP**. Ketuk untuk membuka **Peringkat minggu ini**.
+
+- **Global** menampilkan 100 murid dengan XP terbanyak minggu ini dari semua lembaga. **Lembaga** hanya menghitung XP yang kamu kumpulkan di lembaga yang sedang kamu pilih.
+- Di bagian atas tertulis peringkatmu dan berapa XP lagi yang kamu butuhkan untuk naik satu peringkat. Jika kamu tidak masuk 100 besar, barismu tetap tampil di bawah daftar.
+- Peringkat dimulai lagi dari nol setiap Senin pukul 00.00 WIB, jadi setiap minggu semua murid punya kesempatan yang sama.
+- Jika XP-nya sama, murid yang lebih dulu mencapainya berada di atas.
+- Nama murid ditampilkan dengan nama depan dan huruf pertama nama belakang, misalnya **Siti A.**, beserta foto profil dan level.
+- Peringkat butuh koneksi internet dan diperbarui saat kamu membukanya lagi.
+
 Di aplikasi ponsel, tab **Profil** juga menampilkan total XP, jumlah kosakata, aktivitas terbaru, dan pencapaian seperti **Langkah pertama** dan streak beberapa hari. Setelah menyelesaikan kurikulum Hangeul Mastery, kamu juga mendapat lencana **Hangeul Mastery** di sana. Lihat [Hangeul Mastery](/docs/murid/hangeul-mastery).
 
 ## Notifikasi
