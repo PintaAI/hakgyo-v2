@@ -650,6 +650,8 @@ enum GamificationAction {
   ASSESSMENT_SUBMITTED
   ASSESSMENT_PASSED
   VOCABULARY_REVIEWED
+  /// The onboarding placement test, once per learner; its XP depends on the stage reached.
+  PLACEMENT_PASSED
 }
 
 model Organization {

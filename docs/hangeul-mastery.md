@@ -122,6 +122,8 @@ The course is `SEQUENTIAL`: a module opens when every item of the earlier ones i
 
 ## Completion, badge and hiding
 
+The mobile onboarding ends with an adaptive placement test (`@hakgyo/shared/placement`, screen `apps/mobile/app/(onboarding)/placement.tsx`): the learner's goal and reading level, then a four-stage ladder (basic Hangeul, full Hangeul, basic vocabulary from this course, sentences: EPS-TOPIK reading for EPS learners, Pola Bahasa patterns otherwise). Two correct answers pass a stage, two wrong ones end it, at most twelve questions. The device keeps the highest stage passed in SecureStore and sends it after sign-in to `preferences.passHangeulPlacement({ stage })`; `applyPlacementResult` (`apps/web/src/server/foundation/placement.ts`) grants the badge from stage 2 (`awardHangeulMasteryFromPlacement`) and books the stage's XP once per learner as a `PLACEMENT_PASSED` activity on the Hakgyo system organization. App versions with the old 10-question test send no input, which counts as stage 2. The learner's level is computed from total XP wherever it is shown (`@hakgyo/shared/xp-level`), never stored.
+
 When the last published item of the course is completed (by web, a queued mobile operation or MCP), the same transaction:
 
 1. awards `UserAchievement` `HANGEUL_MASTERY` (idempotent through `@@unique([userId, code])`), and

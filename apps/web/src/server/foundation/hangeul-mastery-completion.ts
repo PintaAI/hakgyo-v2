@@ -182,7 +182,8 @@ export async function awardHangeulMasteryIfComplete(
  * test in mobile onboarding, and marks every published item of the course
  * completed (assessments included, without attempts) so the course reads as
  * finished if the learner shows it again. The device grades the test and the
- * server trusts it: passing only skips a free course. No XP is awarded.
+ * server trusts it: passing only skips a free course. The test's XP is
+ * booked by `applyPlacementResult` (`./placement`), not here.
  */
 export async function awardHangeulMasteryFromPlacement(
   db: Prisma.TransactionClient,

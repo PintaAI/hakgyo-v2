@@ -46,17 +46,21 @@ Permainan adalah latihan tambahan. Bab tetap bisa selesai tanpa memainkannya. Ka
 
 ## Sudah bisa membaca Hangeul?
 
-Kamu bisa melewati kurikulum ini dengan tes singkat di layar perkenalan aplikasi, sebelum daftar atau masuk:
+Kamu bisa melewati kurikulum ini dengan **tes level** di layar perkenalan aplikasi, sebelum daftar atau masuk:
 
-1. Geser layar perkenalan sampai **Udah bisa baca Hangeul?**, lalu ketuk **Gas, tes sekarang**.
-2. Jawab 10 soal membaca. Kamu lulus jika minimal 8 jawaban benar. Belum lulus? Ketuk **Coba lagi**.
-3. Setelah lulus, daftar atau masuk. Semua materi, kosakata, dan kuis Hangeul Mastery ditandai selesai, lalu kamu mendapat lencana **Hangeul Mastery**.
+1. Geser layar perkenalan sampai **Mulai dari levelmu**, lalu ketuk **Gas, cek levelku**.
+2. Pilih tujuan belajarmu: **Baru mulai belajar**, **Persiapan ujian EPS-TOPIK**, **Sudah kerja di Korea**, atau **Lainnya**.
+3. Pilih seberapa bisa kamu membaca Hangeul. Jika memilih **Belum bisa**, tidak ada tes dan kamu mulai dari Hangeul Mastery. **Bisa, tapi masih pelan** memulai tes dari tahap 1. **Lancar** memulai tes dari tahap 3.
+4. Tes punya 4 tahap: **Hangeul dasar**, **Bisa baca Hangeul**, **Kosakata dasar**, dan **Kalimat**. Di tahap Kalimat, yang memilih EPS-TOPIK mendapat soal bacaan gaya EPS, sedangkan yang lain mendapat soal pola kalimat sehari-hari. Dua jawaban benar di satu tahap membuatmu naik ke tahap berikutnya. Dua jawaban salah di satu tahap mengakhiri tes. Tesnya paling banyak 12 soal.
+5. Setelah itu, daftar atau masuk. Jika kamu lolos sampai tahap 2 atau lebih, semua materi, kosakata, dan kuis Hangeul Mastery ditandai selesai, kamu mendapat lencana **Hangeul Mastery**, dan kamu langsung masuk kelas **Korea → Indonesia** dan **Indonesia → Korea**.
 
-Tes ini hanya ada di aplikasi dan tidak memberi XP. Tes juga tidak muncul lagi setelah kamu pernah masuk di ponsel itu, karena status Hangeul-mu sudah tersimpan di akun. Lanjutkan saja kurikulum Hangeul Mastery setelah masuk.
+Setiap tahap yang lolos juga memberi XP: tahap 1 100 XP, tahap 2 300 XP, tahap 3 600 XP, dan tahap 4 1.000 XP. XP-nya hanya diberikan sekali per akun. Lihat [XP, Streak, dan Notifikasi](/docs/murid/xp-streak-notifikasi).
+
+Tes ini hanya ada di aplikasi. Tes juga tidak muncul lagi setelah kamu pernah masuk di ponsel itu, karena status Hangeul-mu sudah tersimpan di akun. Lanjutkan saja kurikulum Hangeul Mastery setelah masuk.
 
 ## Lencana Hangeul Mastery
 
-Setelah semua materi, kosakata, dan kuis selesai, termasuk ujian akhir, atau setelah lulus tes di layar perkenalan, kamu mendapat lencana **Hangeul Mastery**. Lencananya tampil di halaman **Profil** di aplikasi.
+Setelah semua materi, kosakata, dan kuis selesai, termasuk ujian akhir, atau setelah lolos sampai tahap 2 di tes level layar perkenalan, kamu mendapat lencana **Hangeul Mastery**. Lencananya tampil di halaman **Profil** di aplikasi.
 
 Bersamaan dengan lencana, kamu otomatis masuk ke kelas lanjutan **Pola Bahasa**: kurikulum **Indonesia → Korea** dan **Korea → Indonesia**. Keduanya muncul di **Kurikulum saya** dan di tab **Belajar** di aplikasi.
 

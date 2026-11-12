@@ -180,6 +180,48 @@ describe("recordGamificationActivity", () => {
     expect(createdAchievements).toHaveLength(1);
   });
 
+  test("books a caller's XP for actions whose reward varies", async () => {
+    let createdXp: number | undefined;
+    let incrementedBy: unknown;
+    const tx = {
+      $queryRaw: () => Promise.resolve([]),
+      userActivityEvent: {
+        createMany: (args: { data: Array<{ xpAwarded: number }> }) => {
+          createdXp = args.data[0]?.xpAwarded;
+          return Promise.resolve({ count: 1 });
+        },
+      },
+      userAchievement: {
+        createMany: () => Promise.resolve({ count: 0 }),
+        findMany: () => Promise.resolve([]),
+      },
+      userGamification: {
+        findUnique: () => Promise.resolve({ timeZone: "UTC" }),
+        upsert: (args: { update: { totalXp: unknown } }) => {
+          incrementedBy = args.update.totalXp;
+          return Promise.resolve({
+            completedActivities: 1,
+            currentStreak: 1,
+            longestStreak: 1,
+            totalXp: 600,
+          });
+        },
+      },
+    } as unknown as Prisma.TransactionClient;
+
+    const result = await recordGamificationActivity(tx, {
+      action: "PLACEMENT_PASSED",
+      xp: 600,
+      idempotencyKey: "placement:user-1",
+      organizationId: "hakgyo-system-organization",
+      userId: "user-1",
+    });
+
+    expect(createdXp).toBe(600);
+    expect(incrementedBy).toEqual({ increment: 600 });
+    expect(result).toMatchObject({ awarded: true, xpAwarded: 600 });
+  });
+
   test("does not award a duplicate activity", async () => {
     let summaryWasUpdated = false;
     const tx = {

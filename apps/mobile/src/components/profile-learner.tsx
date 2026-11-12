@@ -1,4 +1,5 @@
 import { HANGEUL_MASTERY_ACHIEVEMENT_CODE } from "@hakgyo/shared/hangeul";
+import { levelForXp } from "@hakgyo/shared/xp-level";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
@@ -35,6 +36,22 @@ export type LearnerActivity = {
   xpAwarded: number;
   occurredAt: Date | string;
 };
+
+/** The learner's level, computed from total XP (`@hakgyo/shared/xp-level`). */
+function LevelBadge({ totalXp }: { totalXp: number }) {
+  const { level, nextLevelXp } = levelForXp(totalXp);
+  return (
+    <View
+      accessibilityLabel={`Level ${level}, ${(nextLevelXp - totalXp).toLocaleString("id-ID")} XP lagi ke level ${level + 1}`}
+      accessible
+      className="rounded-full bg-primary px-2 py-0.5"
+    >
+      <Text className="text-xs font-black text-primary-foreground">
+        Lv {level}
+      </Text>
+    </View>
+  );
+}
 
 // Instagram-style hero: avatar with brand ring, learner identity, and three
 // learned-context counts (vocabulary mastered, modules mastered, assessment
@@ -100,9 +117,15 @@ export function ProfileHero({
         </View>
       </View>
       <View className="gap-0.5">
-        <Text className="text-base font-bold text-foreground" numberOfLines={1}>
-          {displayName}
-        </Text>
+        <View className="flex-row items-center gap-2">
+          <Text
+            className="shrink text-base font-bold text-foreground"
+            numberOfLines={1}
+          >
+            {displayName}
+          </Text>
+          {stats && !isPending ? <LevelBadge totalXp={stats.totalXp} /> : null}
+        </View>
         <Text className="text-sm text-muted-foreground" numberOfLines={1}>
           {email}
         </Text>
