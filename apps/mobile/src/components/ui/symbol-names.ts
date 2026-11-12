@@ -5,6 +5,7 @@ import type { AndroidSymbol, SFSymbol } from "expo-symbols";
  * it on Android. Add a pair here before using a new symbol with `SymbolIcon`.
  */
 export const materialSymbols = {
+  "alarm.fill": "alarm",
   "arrow.clockwise": "refresh",
   "arrow.down.circle": "arrow_circle_down",
   "arrow.down.circle.fill": "arrow_circle_down",
@@ -12,6 +13,7 @@ export const materialSymbols = {
   "arrow.triangle.2.circlepath": "sync",
   "arrow.up.right": "north_east",
   archivebox: "archive",
+  "battery.100": "battery_full",
   bell: "notifications",
   "bell.fill": "notifications",
   "book.closed": "book_2",
@@ -20,6 +22,7 @@ export const materialSymbols = {
   "books.vertical.fill": "library_books",
   calendar: "calendar_today",
   "calendar.badge.clock": "calendar_clock",
+  cellularbars: "signal_cellular_alt",
   "character.book.closed.fill": "dictionary",
   checklist: "checklist",
   checkmark: "check",
@@ -78,6 +81,7 @@ export const materialSymbols = {
   trash: "delete",
   "video.fill": "videocam",
   "video.slash.fill": "videocam_off",
+  wifi: "wifi",
   xmark: "close",
   "xmark.circle": "cancel",
   "xmark.circle.fill": "cancel",
