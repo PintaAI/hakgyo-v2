@@ -134,11 +134,15 @@ export function selectedTool(key: string | null | undefined) {
   return tools.find((tool) => tool.key === key);
 }
 
+/** Icons fill this share of their tile, which gives them all one edge. */
+const GAME_ICON_INSET = 0.66;
+
 /**
- * The game's flat icon in the theme's colors (`src/games/game-icons.ts`),
- * or the symbol in a tinted circle when it has none or cannot be drawn.
+ * The game's flat icon in the theme's colors (`src/games/game-icons.ts`) on a
+ * tinted rounded square, so icons of different proportions share one edge.
+ * Falls back to the symbol when the game has no icon or it cannot be drawn.
  */
-export function GameIcon({ tool, size = 44 }: { tool: Tool; size?: number }) {
+export function GameIcon({ tool, size = 56 }: { tool: Tool; size?: number }) {
   const { colors } = useAppTheme();
   const [artFailed, setArtFailed] = useState(false);
   const artUri = useMemo(
@@ -148,34 +152,34 @@ export function GameIcon({ tool, size = 44 }: { tool: Tool; size?: number }) {
         : null,
     [colors.primary, tool.key],
   );
-  if (artUri && !artFailed) {
-    return (
-      <Image
-        accessible={false}
-        cachePolicy="memory"
-        contentFit="contain"
-        onError={() => setArtFailed(true)}
-        source={{ uri: artUri }}
-        style={{ width: size, height: size }}
-        transition={0}
-      />
-    );
-  }
-  const glyph = colors.primary;
+  const inner = Math.round(size * GAME_ICON_INSET);
   return (
     <View
-      className="items-center justify-center rounded-full bg-primary/10"
-      style={{ width: size, height: size }}
+      className="items-center justify-center bg-primary/10"
+      style={{ width: size, height: size, borderRadius: size * 0.28 }}
     >
-      {tool.textIcon ? (
-        <Text className="text-base font-black" style={{ color: glyph }}>
+      {artUri && !artFailed ? (
+        <Image
+          accessible={false}
+          cachePolicy="memory"
+          contentFit="contain"
+          onError={() => setArtFailed(true)}
+          source={{ uri: artUri }}
+          style={{ width: inner, height: inner }}
+          transition={0}
+        />
+      ) : tool.textIcon ? (
+        <Text
+          className="text-base font-black"
+          style={{ color: colors.primary }}
+        >
           {tool.fallback}
         </Text>
       ) : (
         <SymbolIcon
           name={tool.icon}
           size={Math.round(size * 0.42)}
-          tintColor={glyph}
+          tintColor={colors.primary}
           weight="bold"
         />
       )}
@@ -222,7 +226,7 @@ function GameTile({
       >
         {fullWidth ? (
           <>
-            <GameIcon size={44} tool={tool} />
+            <GameIcon tool={tool} />
             <View className="min-w-0 flex-1 gap-0.5">
               <Text
                 className="text-[15px] font-bold text-foreground"
@@ -239,7 +243,7 @@ function GameTile({
         ) : (
           <>
             <View className="flex-row items-start justify-between gap-2">
-              <GameIcon size={48} tool={tool} />
+              <GameIcon tool={tool} />
               {badge}
             </View>
             <View className="gap-0.5">
