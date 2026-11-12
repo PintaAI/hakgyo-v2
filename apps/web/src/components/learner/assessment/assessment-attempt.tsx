@@ -25,6 +25,8 @@ import {
   sectionTimeline,
   sectionView,
   stimulusPlaysWith,
+  unseenNotice,
+  unseenQuestions,
   type AttemptLogEntry,
   type TimelineEntry,
 } from "@hakgyo/shared";
@@ -307,6 +309,16 @@ export function AssessmentAttempt({
     (forwardOnly
       ? undefined
       : sectionIndexes.find((index) => statuses[index] === "unanswered"));
+  // Questions never opened that the learner can still open: finishing offers
+  // to go to them first (the button itself always shows).
+  const unseen = unseenQuestions({
+    indexes: sectionIndexes,
+    current,
+    navigation: activeSection?.navigation,
+    isSeen: (index) =>
+      seenQuestionIds.has(assessment.questions[index]?.id ?? ""),
+  });
+  const firstUnseen = unseen[0];
   const pacedEndsAt =
     paced && activeSection && question && pacedClock?.questionId === question.id
       ? pacedQuestionEndsAt({
@@ -1078,16 +1090,26 @@ export function AssessmentAttempt({
               Selesaikan {activeSection?.title}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {sectionAnswered} dari {sectionIndexes.length} soal di bagian ini
-              dijawab. Bagian yang sudah selesai tidak bisa dibuka lagi.
+              {[
+                unseenNotice(unseen.length, true),
+                `${sectionAnswered} dari ${sectionIndexes.length} soal di bagian ini dijawab. Bagian yang sudah selesai tidak bisa dibuka lagi.`,
+              ]
+                .filter(Boolean)
+                .join(" ")}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Periksa lagi</AlertDialogCancel>
-            <AlertDialogAction onClick={finishSection}>
-              Selesai bagian
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          <FinishDialogFooter
+            finishLabel="Selesai bagian"
+            onFinish={finishSection}
+            onOpenUnseen={
+              firstUnseen === undefined
+                ? undefined
+                : () => {
+                    setFinishSectionOpen(false);
+                    goTo(firstUnseen);
+                  }
+            }
+          />
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
@@ -1097,17 +1119,63 @@ export function AssessmentAttempt({
             <AlertDialogDescription>
               {expired
                 ? "Waktu habis. Jawaban yang kamu isi sebelum waktu habis akan dikirim dan dinilai."
-                : `Apakah kamu yakin ingin menyelesaikan ${kindLabel} ini dan mengirim jawaban? ${answeredCount} dari ${total} soal dijawab. Jawaban yang dikirim tidak dapat diubah.`}
+                : [
+                    `Apakah kamu yakin ingin menyelesaikan ${kindLabel} ini dan mengirim jawaban?`,
+                    unseenNotice(unseen.length, Boolean(activeSection)),
+                    `${answeredCount} dari ${total} soal dijawab. Jawaban yang dikirim tidak dapat diubah.`,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Periksa lagi</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void submitAssessment()}>
-              Selesaikan
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          <FinishDialogFooter
+            finishLabel="Selesaikan"
+            onFinish={() => void submitAssessment()}
+            onOpenUnseen={
+              expired || firstUnseen === undefined
+                ? undefined
+                : () => {
+                    setConfirmOpen(false);
+                    goTo(firstUnseen);
+                  }
+            }
+          />
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+/**
+ * A finish confirmation's buttons. With questions still unopened, going to
+ * the first of them is the main action and finishing the second choice.
+ */
+function FinishDialogFooter({
+  finishLabel,
+  onFinish,
+  onOpenUnseen,
+}: {
+  finishLabel: string;
+  onFinish: () => void;
+  onOpenUnseen?: () => void;
+}) {
+  if (!onOpenUnseen) {
+    return (
+      <AlertDialogFooter>
+        <AlertDialogCancel>Periksa lagi</AlertDialogCancel>
+        <AlertDialogAction onClick={onFinish}>{finishLabel}</AlertDialogAction>
+      </AlertDialogFooter>
+    );
+  }
+  return (
+    <AlertDialogFooter>
+      <AlertDialogCancel>Batal</AlertDialogCancel>
+      <AlertDialogAction variant="outline" onClick={onFinish}>
+        Tetap {finishLabel.toLowerCase()}
+      </AlertDialogAction>
+      <AlertDialogAction onClick={onOpenUnseen}>
+        Buka soal yang belum dilihat
+      </AlertDialogAction>
+    </AlertDialogFooter>
   );
 }

@@ -54,6 +54,8 @@ Setelah dinilai, hasilmu juga menunjukkan nilai setiap bagian.
 2. Baca konfirmasinya, termasuk berapa soal yang sudah dijawab. Jawaban yang sudah dikirim tidak bisa diubah. Tekan **Periksa lagi** jika ingin memeriksa dulu.
 3. Tekan **Selesaikan**.
 
+Jika masih ada soal yang belum pernah kamu buka, konfirmasinya menyebut jumlahnya, misalnya "3 soal belum kamu buka". Tekan **Buka soal yang belum dilihat** untuk langsung ke soal itu, atau **Tetap selesaikan** jika memang ingin mengirim sekarang. Hal yang sama berlaku untuk **Selesai bagian**, dengan pilihan **Tetap selesai bagian**. Soal yang tidak bisa kamu buka lagi tidak dihitung: soal yang sudah dilewati di bagian dengan aturan **Soal yang sudah dilewati tidak bisa dibuka lagi**, dan semua soal di bagian dengan aturan **Soal berganti sendiri**.
+
 Jika waktu habis saat halaman masih terbuka di situs web, jawabanmu dikirim otomatis. Jika halaman sudah tertutup, jawaban yang sempat tersimpan dikirim saat kamu membuka tugas itu lagi. Jawaban yang diubah setelah waktu habis tidak dihitung.
 
 ## Melihat hasil
