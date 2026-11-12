@@ -69,7 +69,10 @@ import { api } from "../../../../src/lib/trpc";
 import { getLearningPath } from "../../../../src/lib/course-learning-path";
 import { useSidebarIndicators } from "../../../../src/lib/sidebar-indicators";
 import { materialPosition } from "@hakgyo/shared/learning";
-import { MaterialHeader } from "../../../../src/components/learn/material-header";
+import {
+  MaterialHeaderTitle,
+  materialPositionLabel,
+} from "../../../../src/components/learn/material-header";
 import { markContentSeen } from "../../../../src/lib/use-content-changes";
 import { useAppTheme } from "../../../../src/providers/AppThemeProvider";
 import { useMobileSyncActions } from "../../../../src/providers/MobileSyncProvider";
@@ -461,7 +464,20 @@ function CourseItemContent({
       <Stack.Screen
         options={{
           headerShown: true,
-          headerTitle: "",
+          // A material shows its title and place in the course up here;
+          // tugas and vocabulary screens title themselves.
+          headerTitle:
+            material && !item?.assessment && !vocabulary
+              ? () => (
+                  <MaterialHeaderTitle
+                    title={material.title}
+                    subtitle={materialPositionLabel(
+                      materialPosition(outline.data, courseItemId),
+                    )}
+                  />
+                )
+              : "",
+          headerTitleAlign: "center",
           headerBackVisible: false,
           headerShadowVisible: false,
           headerStyle: {
@@ -734,11 +750,6 @@ function CourseItemContent({
                   aimPendingAnchor();
                 }}
               >
-                <MaterialHeader
-                  title={material.title}
-                  description={material.description}
-                  position={materialPosition(outline.data, courseItemId)}
-                />
                 <NativeContentRenderer
                   content={material.content}
                   courseItemId={courseItemId}
