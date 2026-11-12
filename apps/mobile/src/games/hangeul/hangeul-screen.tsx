@@ -1,6 +1,6 @@
 import type { HangeulGameStage } from "@hakgyo/shared/hangeul";
 import { Stack } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -9,15 +9,26 @@ import {
   Text,
   View,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  FadeInRight,
+  ZoomIn,
+} from "react-native-reanimated";
 
-import { GlassBox } from "../../components/GlassBox";
-import { StudyAction } from "../../components/study-glass";
+import { Action } from "../../components/learning-ui";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { withOpacity } from "../../theme/colors";
 import { gameLeaveLabel, type GameSource } from "../game-exit";
-import { leaveGame } from "../game-navigation";
 import { GameIconTile } from "../game-icon-tile";
-import { GameBackToolbar, GamePage } from "../game-screens";
+import { PressableScale, useOutcomeMotion } from "../game-motion";
+import { leaveGame, useGameExitGuard } from "../game-navigation";
+import { GameResultSheet } from "../game-result";
+import {
+  GameActionBar,
+  GameRoundHeader,
+  type GameBarAction,
+} from "../game-round";
+import { GamePage } from "../game-screens";
 import {
   getHangeulLetter,
   getQuizOptions,
@@ -30,28 +41,18 @@ import { hapticError, hapticSuccess } from "../../lib/haptics";
 
 type Phase = "learn" | "quiz" | "complete";
 
-function ProgressBar({ progress }: { progress: number }) {
-  const { colors } = useAppTheme();
-  return (
-    <View
-      accessibilityRole="progressbar"
-      accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}
-      style={[styles.progressTrack, { backgroundColor: colors.muted }]}
-    >
-      <View
-        style={[
-          styles.progressFill,
-          {
-            backgroundColor: colors.primary,
-            width: `${Math.max(4, progress * 100)}%`,
-          },
-        ]}
-      />
-    </View>
-  );
-}
-
-function LetterTile({ letter }: { letter: HangeulLetter }) {
+/**
+ * One letter on a plain card. A native glass view per letter (the cheat sheet
+ * shows them all) is the pattern that made long quizzes lag. `enterIndex`
+ * staggers the letters in on a lesson step; the cheat sheet leaves it out.
+ */
+function LetterTile({
+  letter,
+  enterIndex,
+}: {
+  letter: HangeulLetter;
+  enterIndex?: number;
+}) {
   const { colors } = useAppTheme();
   const example = letter.example;
   const exampleIndex = example ? letter.note.indexOf(example) : -1;
@@ -67,11 +68,21 @@ function LetterTile({ letter }: { letter: HangeulLetter }) {
         };
 
   return (
-    <View style={styles.letterTileShell}>
-      <GlassBox
-        isInteractive={false}
-        glassEffectStyle="clear"
-        style={styles.letterTile}
+    <Animated.View
+      entering={
+        enterIndex === undefined
+          ? undefined
+          : FadeInDown.delay(enterIndex * 45)
+              .springify()
+              .damping(16)
+      }
+      style={styles.letterTileShell}
+    >
+      <View
+        style={[
+          styles.letterTile,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
       >
         <View style={styles.letterTileHeader}>
           <View
@@ -106,7 +117,7 @@ function LetterTile({ letter }: { letter: HangeulLetter }) {
             )}
           </Text>
         </View>
-      </GlassBox>
+      </View>
       <View
         style={[
           styles.letterKind,
@@ -117,7 +128,7 @@ function LetterTile({ letter }: { letter: HangeulLetter }) {
           {letter.kind === "vowel" ? "V" : "K"}
         </Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -228,8 +239,8 @@ function FamilyStep({ group }: { group: HangeulFamilyGroup }) {
         </Text>
       </View>
       <View style={styles.letterGrid}>
-        {letters.map((letter) => (
-          <LetterTile key={letter.id} letter={letter} />
+        {letters.map((letter, index) => (
+          <LetterTile key={letter.id} enterIndex={index} letter={letter} />
         ))}
       </View>
     </View>
@@ -290,67 +301,29 @@ function HangeulCheatSheetModal({
                 Cheatsheet 한글
               </Text>
             </View>
-            <GlassBox
-              isInteractive
-              glassEffectStyle="clear"
-              tintColor={withOpacity(colors.mutedForeground, 0.12)}
-              style={styles.modalCloseGlass}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Tutup cheat sheet"
+              hitSlop={8}
+              onPress={onClose}
+              style={[
+                styles.modalCloseButton,
+                { backgroundColor: colors.muted },
+              ]}
             >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Tutup cheat sheet"
-                onPress={onClose}
-                style={styles.modalCloseButton}
-              >
-                <SymbolIcon
-                  name="xmark"
-                  size={16}
-                  tintColor={colors.foreground}
-                  weight="bold"
-                />
-              </Pressable>
-            </GlassBox>
+              <SymbolIcon
+                name="xmark"
+                size={16}
+                tintColor={colors.foreground}
+                weight="bold"
+              />
+            </Pressable>
           </View>
           <CheatSheet groups={groups} />
-          <StudyAction accessibilityLabel="Kembali ke kuis" onPress={onClose}>
-            Kembali ke kuis
-          </StudyAction>
+          <Action onPress={onClose}>Kembali ke kuis</Action>
         </View>
       </ScrollView>
     </Modal>
-  );
-}
-
-function HangeulCheatSheetTrigger({ onPress }: { onPress: () => void }) {
-  const { colorScheme, colors } = useAppTheme();
-  const trigger = (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Buka cheat sheet Hangeul"
-      onPress={onPress}
-      style={styles.toolbarTrigger}
-    >
-      <Text
-        style={[styles.toolbarTriggerText, { color: colors.primaryForeground }]}
-      >
-        Cheat sheet
-      </Text>
-    </Pressable>
-  );
-  return (
-    <View style={styles.toolbarTriggerContainer}>
-      <GlassBox
-        isInteractive
-        tintColor={withOpacity(
-          colors.primary,
-          colorScheme === "dark" ? 1 : 0.72,
-        )}
-        glassEffectStyle="clear"
-        style={styles.toolbarGlass}
-      >
-        {trigger}
-      </GlassBox>
-    </View>
   );
 }
 
@@ -368,44 +341,39 @@ function QuizOption({
   onPress: () => void;
 }) {
   const { colorScheme, colors } = useAppTheme();
+  // The picked wrong answer shakes; the right one pops once revealed.
+  const motion = useOutcomeMotion({
+    wrongCount: revealed && selected && !correct ? 1 : 0,
+    correct: revealed && correct,
+  });
   const borderColor = revealed
     ? correct
       ? colors.primary
       : selected
         ? colors.destructive
         : colors.border
-    : selected
-      ? colors.primary
-      : colors.border;
-  const tintColor =
+    : colors.border;
+  const backgroundColor =
     revealed && correct
-      ? withOpacity(colors.primary, colorScheme === "dark" ? 0.35 : 0.18)
+      ? withOpacity(colors.primary, colorScheme === "dark" ? 0.35 : 0.16)
       : revealed && selected
-        ? withOpacity(colors.destructive, colorScheme === "dark" ? 0.28 : 0.14)
-        : withOpacity(
-            colors.primary,
-            selected ? (colorScheme === "dark" ? 0.35 : 0.18) : 0.06,
-          );
+        ? withOpacity(colors.destructive, colorScheme === "dark" ? 0.28 : 0.12)
+        : colors.card;
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      disabled={revealed}
-      onPress={onPress}
-      style={styles.option}
-    >
-      <GlassBox
-        isInteractive
-        glassEffectStyle="clear"
-        tintColor={tintColor}
-        style={[styles.optionGlass, { borderColor }]}
+    <Animated.View style={[styles.option, motion]}>
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityState={{ selected, disabled: revealed }}
+        disabled={revealed}
+        onPress={onPress}
+        style={[styles.optionSurface, { backgroundColor, borderColor }]}
       >
         <Text style={[styles.optionText, { color: colors.foreground }]}>
           {cue}
         </Text>
-      </GlassBox>
-    </Pressable>
+      </PressableScale>
+    </Animated.View>
   );
 }
 
@@ -467,8 +435,17 @@ export function HangeulScreen({
   const [quizRound, setQuizRound] = useState(0);
   const [showCheatSheet, setShowCheatSheet] = useState(false);
 
-  const leave = () => leaveGame(source);
+  const [missedIds, setMissedIds] = useState<Set<string>>(() => new Set());
+
+  const leave = useCallback(() => leaveGame(source), [source]);
   const leaveLabel = gameLeaveLabel(source);
+  // Nothing is saved, so leaving needs no confirmation; the guard sends
+  // every back action (button, swipe, Android back) to the right place.
+  const exit = useGameExitGuard({
+    active: phase !== "complete",
+    locked: false,
+    onExit: leave,
+  });
   const currentLetter =
     getHangeulLetter(quizQueue[0] ?? "") ?? plan.pool[0] ?? HANGEUL_LETTERS[0]!;
   const options = useMemo(
@@ -480,6 +457,7 @@ export function HangeulScreen({
   const startQuiz = () => {
     setQuizQueue(plan.quizIds);
     setMasteredIds(new Set());
+    setMissedIds(new Set());
     setSelectedCue(undefined);
     setQuizRound(0);
     setShowCheatSheet(false);
@@ -539,116 +517,79 @@ export function HangeulScreen({
     setPhase("learn");
   };
 
+  const lastStep = lessonIndex + 1 === introStepCount;
+  const barActions: GameBarAction[] =
+    phase === "learn"
+      ? [
+          {
+            label: "Sebelumnya",
+            onPress: goToPreviousLesson,
+            disabled: lessonIndex === 0,
+          },
+          {
+            label: lastStep ? "Mulai cek ingatan" : "Lanjut",
+            onPress: continueLearning,
+            prominent: true,
+          },
+        ]
+      : phase === "quiz"
+        ? [
+            {
+              label: "Lanjut",
+              accessibilityLabel: selectedCue ? "Lanjut kuis" : "Pilih jawaban",
+              onPress: continueQuiz,
+              disabled: !selectedCue,
+              prominent: true,
+            },
+          ]
+        : [];
+  const missedLetters = [...missedIds]
+    .map((id) => getHangeulLetter(id))
+    .filter((letter): letter is HangeulLetter => Boolean(letter));
+
   return (
     <View className="flex-1 bg-background">
-      <GameBackToolbar
-        accessibilityLabel={source?.sourceCourseItemId ? leaveLabel : undefined}
-        onPress={leave}
-      />
-      {phase === "quiz" ? (
-        <Stack.Toolbar placement="right">
-          <Stack.Toolbar.View hidesSharedBackground>
-            <HangeulCheatSheetTrigger onPress={() => setShowCheatSheet(true)} />
-          </Stack.Toolbar.View>
-        </Stack.Toolbar>
-      ) : null}
-      <Stack.Screen
-        options={{
-          headerBackButtonDisplayMode: "minimal",
-          headerBackVisible: false,
-          headerShown: true,
-          title: "Hangeul",
-        }}
-      />
+      <GameRoundHeader
+        onBack={exit}
+        stats={
+          phase === "quiz"
+            ? [{ value: `${masteredIds.size}/${quizLength}` }]
+            : [
+                {
+                  value: `${Math.min(lessonIndex + 1, introStepCount)}/${introStepCount}`,
+                },
+              ]
+        }
+        statsLabel={
+          phase === "quiz"
+            ? `${masteredIds.size} dari ${quizLength} huruf dikenali`
+            : `Bagian ${lessonIndex + 1} dari ${introStepCount}`
+        }
+      >
+        {phase === "quiz" ? (
+          <Stack.Toolbar.Button
+            accessibilityLabel="Buka cheat sheet Hangeul"
+            onPress={() => setShowCheatSheet(true)}
+          >
+            Cheat sheet
+          </Stack.Toolbar.Button>
+        ) : null}
+      </GameRoundHeader>
+      <GameActionBar actions={barActions} />
       <GamePage>
         {phase === "learn" ? (
-          <>
-            <ProgressBar progress={(lessonIndex + 1) / introStepCount} />
-            <View style={styles.progressHeader}>
-              <Text
-                style={[
-                  styles.progressLabel,
-                  { color: colors.mutedForeground },
-                ]}
-              >
-                Belajar
-              </Text>
-              <Text
-                style={[
-                  styles.progressLabel,
-                  { color: colors.mutedForeground },
-                ]}
-              >
-                {lessonIndex + 1}/{introStepCount}
-              </Text>
-            </View>
+          // Keyed by the step, so each step slides in.
+          <Animated.View key={lessonIndex} entering={FadeInRight.duration(220)}>
             {lessonIndex === 0 ? (
               <OverviewStep />
             ) : (
               <FamilyStep group={plan.learnFamilies[lessonIndex - 1]!} />
             )}
-            <View
-              style={[
-                styles.lessonActions,
-                lessonIndex === 0 && styles.lessonActionsSingle,
-              ]}
-            >
-              {lessonIndex > 0 ? (
-                <View style={styles.lessonAction}>
-                  <StudyAction
-                    accessibilityLabel="Bagian sebelumnya"
-                    onPress={goToPreviousLesson}
-                    secondary
-                  >
-                    Sebelumnya
-                  </StudyAction>
-                </View>
-              ) : null}
-              <View
-                style={
-                  lessonIndex === 0
-                    ? styles.lessonActionSingle
-                    : styles.lessonAction
-                }
-              >
-                <StudyAction
-                  accessibilityLabel={
-                    lessonIndex + 1 === introStepCount
-                      ? "Mulai cek ingatan"
-                      : "Bagian selanjutnya"
-                  }
-                  onPress={continueLearning}
-                >
-                  {lessonIndex + 1 === introStepCount
-                    ? "Mulai cek ingatan"
-                    : "Lanjut"}
-                </StudyAction>
-              </View>
-            </View>
-          </>
+          </Animated.View>
         ) : null}
 
         {phase === "quiz" ? (
           <>
-            <ProgressBar progress={masteredIds.size / quizLength} />
-            <View style={styles.progressHeader}>
-              <Text
-                style={[
-                  styles.progressLabel,
-                  { color: colors.mutedForeground },
-                ]}
-              >
-                Cek ingatan
-              </Text>
-              <Text
-                style={[
-                  styles.progressLabel,
-                  { color: colors.mutedForeground },
-                ]}
-              >
-                {masteredIds.size}/{quizLength}
-              </Text>
-            </View>
             <View style={styles.quizPrompt}>
               <Text
                 style={[
@@ -658,21 +599,29 @@ export function HangeulScreen({
               >
                 Pilih bunyi bantu yang paling cocok
               </Text>
-              <Text style={[styles.quizLetter, { color: colors.foreground }]}>
+              {/* Keyed by the round, so each new letter zooms in. */}
+              <Animated.Text
+                key={quizRound}
+                entering={ZoomIn.springify().damping(14)}
+                style={[styles.quizLetter, { color: colors.foreground }]}
+              >
                 {currentLetter.character}
-              </Text>
+              </Animated.Text>
             </View>
             <View style={styles.optionGrid}>
               {options.map((cue) => (
                 <QuizOption
-                  key={cue}
+                  key={`${quizRound}-${cue}`}
                   correct={cue === currentLetter.cue}
                   cue={cue}
                   // One answer per letter; it moves on by itself.
                   onPress={() => {
                     if (selectedCue) return;
                     if (cue === currentLetter.cue) hapticSuccess();
-                    else hapticError();
+                    else {
+                      hapticError();
+                      setMissedIds((ids) => new Set(ids).add(currentLetter.id));
+                    }
                     setSelectedCue((current) => current ?? cue);
                   }}
                   revealed={Boolean(selectedCue)}
@@ -681,7 +630,8 @@ export function HangeulScreen({
               ))}
             </View>
             {selectedCue ? (
-              <View
+              <Animated.View
+                entering={FadeInDown.springify().damping(16)}
                 style={[
                   styles.feedback,
                   {
@@ -707,50 +657,58 @@ export function HangeulScreen({
                 >
                   {currentLetter.note}
                 </Text>
-              </View>
+              </Animated.View>
             ) : null}
-            <StudyAction
-              accessibilityLabel={selectedCue ? "Lanjut kuis" : "Pilih jawaban"}
-              disabled={!selectedCue}
-              onPress={continueQuiz}
-            >
-              {selectedCue ? "Lanjut" : "Pilih jawaban"}
-            </StudyAction>
           </>
         ) : null}
 
         {phase === "complete" ? (
-          <View style={styles.stepContent}>
-            <View style={styles.heroIcon}>
-              <GameIconTile iconKey="stroke-master" size={128} />
-            </View>
-            <View style={styles.centeredCopy}>
-              <Text style={[styles.eyebrow, { color: colors.primary }]}>
-                {quizLength}/{quizLength} DIKENALI
-              </Text>
-              <Text style={[styles.heading, { color: colors.foreground }]}>
-                {stage ? `${stage.title} selesai!` : "Dasar Hangeul lengkap!"}
-              </Text>
-              <Text style={[styles.body, { color: colors.mutedForeground }]}>
-                {copy.done}
-              </Text>
-            </View>
-            <StudyAction
-              accessibilityLabel="Ulangi pelajaran"
-              onPress={restart}
-            >
-              Ulangi pelajaran
-            </StudyAction>
-            <StudyAction
-              accessibilityLabel={leaveLabel}
-              onPress={leave}
-              secondary
-            >
-              {leaveLabel}
-            </StudyAction>
+          <View style={styles.heroIcon}>
+            <GameIconTile iconKey="stroke-master" size={128} />
           </View>
         ) : null}
       </GamePage>
+
+      {phase === "complete" ? (
+        <GameResultSheet
+          eyebrow="Hangeul"
+          title={stage ? `${stage.title} selesai!` : "Dasar Hangeul lengkap!"}
+          description={copy.done}
+          mark={{ value: `${quizLength}/${quizLength}`, label: "dikenali" }}
+          done
+          celebrate={missedLetters.length === 0}
+          facts={[
+            {
+              icon: "character.book.closed.fill",
+              text: `${quizLength} huruf dikenali`,
+            },
+            ...(missedLetters.length
+              ? [
+                  {
+                    icon: "arrow.clockwise" as const,
+                    text: `${missedLetters.length} sempat keliru`,
+                  },
+                ]
+              : []),
+          ]}
+          review={{
+            title: "Sempat keliru",
+            rows: missedLetters.map((letter) => ({
+              key: letter.id,
+              title: `${letter.character} · ${letter.cue}`,
+              detail: letter.note,
+            })),
+          }}
+          primary={{
+            eyebrow: "Ulangi pelajaran",
+            title: copy.title,
+            meta: `${introStepCount} bagian, lalu cek ingatan`,
+            pill: "Mulai",
+            onPress: restart,
+          }}
+          secondary={{ label: leaveLabel, onPress: leave }}
+        />
+      ) : null}
 
       <HangeulCheatSheetModal
         groups={plan.sheetFamilies}
@@ -762,27 +720,7 @@ export function HangeulScreen({
 }
 
 const styles = StyleSheet.create({
-  progressHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  progressLabel: { fontSize: 12, fontWeight: "700" },
-  progressTrack: {
-    borderRadius: 999,
-    height: 8,
-    marginBottom: -16,
-    marginTop: -20,
-    overflow: "hidden",
-  },
-  progressFill: { height: "100%", borderRadius: 999 },
   stepContent: { gap: 20 },
-  lessonActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  lessonAction: { alignItems: "stretch", width: "49%" },
-  lessonActionsSingle: { flexDirection: "column" },
-  lessonActionSingle: { alignItems: "stretch", width: "100%" },
   heroIcon: { alignSelf: "center", paddingVertical: 12 },
   centeredCopy: { alignItems: "center", gap: 8 },
   eyebrow: {
@@ -826,6 +764,7 @@ const styles = StyleSheet.create({
   },
   letterTile: {
     borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
     minHeight: 136,
     overflow: "hidden",
     padding: 14,
@@ -873,7 +812,7 @@ const styles = StyleSheet.create({
   quizLetter: { fontSize: 104, fontWeight: "900", lineHeight: 118 },
   optionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   option: { width: "48%" },
-  optionGlass: {
+  optionSurface: {
     alignItems: "center",
     borderRadius: 16,
     borderWidth: 1.5,
@@ -912,28 +851,11 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     marginTop: 4,
   },
-  modalCloseGlass: {
+  modalCloseButton: {
     alignItems: "center",
     borderRadius: 999,
     height: 40,
     justifyContent: "center",
-    overflow: "hidden",
     width: 40,
   },
-  modalCloseButton: {
-    alignItems: "center",
-    height: "100%",
-    justifyContent: "center",
-    width: "100%",
-  },
-  toolbarTrigger: {
-    alignItems: "center",
-    borderRadius: 999,
-    flexDirection: "row",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  toolbarTriggerText: { fontSize: 12, fontWeight: "800" },
-  toolbarTriggerContainer: { alignItems: "flex-end" },
-  toolbarGlass: { borderRadius: 9999, maxWidth: 176 },
 });

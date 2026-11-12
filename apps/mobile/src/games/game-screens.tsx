@@ -31,6 +31,8 @@ export function GamePage({ children }: { children: ReactNode }) {
     <ScrollView
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40 }}
+      // Clears the native header and a bottom toolbar, if the page has one.
+      contentInsetAdjustmentBehavior="automatic"
     >
       {children}
     </ScrollView>

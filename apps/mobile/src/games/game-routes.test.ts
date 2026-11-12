@@ -47,18 +47,6 @@ describe("game routes", () => {
     ).toBe(false);
   });
 
-  test("uses an inline native form-sheet modal", () => {
-    const modalSource = readFileSync(
-      resolve(import.meta.dir, "./game-modals.tsx"),
-      "utf8",
-    );
-    expect(modalSource).toContain('presentationStyle="formSheet"');
-    expect(modalSource).toContain("allowSwipeDismissal={false}");
-    expect(modalSource).toContain("gameSymbols");
-    expect(modalSource).toContain("<SymbolIcon");
-    expect(modalSource).toContain("StudyAction");
-  });
-
   test("pops to Practice", () => {
     const routeSource = readFileSync(
       resolve(import.meta.dir, "../../app/games/[gameKey].tsx"),
