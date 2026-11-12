@@ -190,16 +190,7 @@ export function TodayAssessmentPractice({
         </Empty>
       ) : questions.length > 0 ? (
         <>
-          {/* The position lives beside the title; the question itself has no
-              counter of its own here. */}
-          <Text className="text-center text-lg font-bold tracking-tight text-foreground">
-            Soal harian
-            <Text className="font-semibold tabular-nums text-muted-foreground">
-              {index < questions.length
-                ? `  ${index + 1}/${questions.length}`
-                : "  · Ringkasan"}
-            </Text>
-          </Text>
+          {/* No title or counter: the dots show where the learner is. */}
           <QuizStatusDots
             statuses={statuses}
             seen={questions.map((_, questionIndex) => seen.has(questionIndex))}
