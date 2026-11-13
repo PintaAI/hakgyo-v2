@@ -35,6 +35,7 @@ import { Chevron } from "./ui/chevron";
 import { Eyebrow } from "./ui/eyebrow";
 import { Action } from "./ui/action";
 import { Spinner } from "./ui/spinner";
+import { useAndroidKeyboardReveal } from "./use-android-keyboard-reveal";
 import { SymbolIcon } from "./ui/symbol-icon";
 
 // The shared UI primitives live in ./ui; they are re-exported here so screens
@@ -88,6 +89,7 @@ export function StudyScreen({
   contentClassName = "gap-6",
   onScroll,
   pullToContinue,
+  footer,
 }: {
   title: string;
   children: ReactNode;
@@ -113,6 +115,11 @@ export function StudyScreen({
    * its indicator over this one. Replaces `onScroll` and `scrollGesture`.
    */
   pullToContinue?: ReturnType<typeof usePullToContinue>;
+  /**
+   * Pinned under the scroll view, where the screen has no native bottom
+   * toolbar (Android). Leave it out and the layout is unchanged.
+   */
+  footer?: ReactNode;
 }) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -121,6 +128,13 @@ export function StudyScreen({
   const ownScrollRef = useRef<ScrollView>(null);
   const scrollRef = scrollViewRef ?? ownScrollRef;
   useDemoScroll(scrollRef);
+  // `automaticallyAdjustKeyboardInsets` is iOS-only.
+  const androidKeyboard = useAndroidKeyboardReveal(
+    Platform.OS === "android" &&
+      automaticallyAdjustKeyboardInsets &&
+      !keyboardAvoiding,
+    scrollRef,
+  );
   const [keyboardVerticalOffset, setKeyboardVerticalOffset] = useState(0);
   const behavior = bleedTop ? "never" : contentInsetAdjustmentBehavior;
   const shortContent = usePullShortContent(pullToContinue?.atEnd);
@@ -133,21 +147,25 @@ export function StudyScreen({
       );
     });
   }, []);
+  const contentStyle = pullToContinue
+    ? // Room under the content for the pull indicator, as on a material.
+      { paddingBottom: Math.max(insets.bottom, 48) + 96 }
+    : bleedTop
+      ? { paddingBottom: Math.max(insets.bottom, 48) }
+      : Platform.OS !== "ios" && !headerShown
+        ? // Without a header nothing else clears the status bar here:
+          // contentInsetAdjustmentBehavior is iOS-only.
+          { paddingTop: insets.top + 16 }
+        : undefined;
   const content = (
     <View
       className={`${fillViewport ? "flex-1" : ""} px-5 pb-12 ${bleedTop ? "pt-0" : "pt-4"} ${contentClassName}`}
       style={
-        pullToContinue
-          ? // Room under the content for the pull indicator, as on a material.
-            { paddingBottom: Math.max(insets.bottom, 48) + 96 }
-          : bleedTop
-            ? { paddingBottom: Math.max(insets.bottom, 48) }
-            : Platform.OS !== "ios" && !headerShown
-              ? // Without a header nothing else clears the status bar here:
-                // contentInsetAdjustmentBehavior is iOS-only.
-                { paddingTop: insets.top + 16 }
-              : undefined
+        androidKeyboard.covered > 0
+          ? [contentStyle, { marginBottom: androidKeyboard.covered }]
+          : contentStyle
       }
+      onTouchEnd={androidKeyboard.onContentTouchEnd}
     >
       {children}
     </View>
@@ -214,6 +232,24 @@ export function StudyScreen({
     ) : (
       viewport
     ));
+  const keyboardAware = keyboardAvoiding ? (
+    <View
+      ref={viewportRef}
+      collapsable={false}
+      className="flex-1"
+      onLayout={measureViewportOffset}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={keyboardVerticalOffset}
+        style={{ flex: 1 }}
+      >
+        {gestureViewport}
+      </KeyboardAvoidingView>
+    </View>
+  ) : (
+    gestureViewport
+  );
   return (
     <TourScrollContext.Provider value={scrollRef}>
       <Stack.Screen
@@ -229,23 +265,15 @@ export function StudyScreen({
             : { title, headerShown }
         }
       />
-      {keyboardAvoiding ? (
-        <View
-          ref={viewportRef}
-          collapsable={false}
-          className="flex-1"
-          onLayout={measureViewportOffset}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={keyboardVerticalOffset}
-            style={{ flex: 1 }}
-          >
-            {gestureViewport}
-          </KeyboardAvoidingView>
+      {footer ? (
+        // The footer stays out of the keyboard avoidance: the keyboard covers
+        // it, and the page above keeps all the room left.
+        <View className="flex-1">
+          {keyboardAware}
+          {footer}
         </View>
       ) : (
-        gestureViewport
+        keyboardAware
       )}
     </TourScrollContext.Provider>
   );
