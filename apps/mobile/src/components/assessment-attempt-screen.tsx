@@ -21,7 +21,7 @@ import {
 import { router, Stack, useNavigation } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Storage from "expo-sqlite/kv-store";
-import { Alert, ScrollView, Text } from "react-native";
+import { Alert, Platform, ScrollView, Text } from "react-native";
 
 import {
   AssessmentMediaStatus,
@@ -29,6 +29,7 @@ import {
 } from "./assessment-media";
 import { SectionIntro } from "./section-intro";
 import { AssessmentAudioPlayer } from "./assessment-audio-player";
+import { AttemptAndroidFooter } from "./attempt-android-footer";
 import { QuizPager, type QuizPagerHandle } from "./quiz/quiz-pager";
 import { QuizQuestion } from "./quiz/quiz-question";
 import { QuizStatusDots } from "./quiz/quiz-status-dots";
@@ -1185,6 +1186,33 @@ function AssessmentAttemptContent({
         <StudyScreen
           automaticallyAdjustKeyboardInsets
           contentClassName="gap-4"
+          footer={
+            // Android has no native toolbar for finishing and moving.
+            Platform.OS === "android" ? (
+              <AttemptAndroidFooter
+                finish={finish}
+                busy={busy}
+                answered={sectionAnswered}
+                total={sectionIndexes.length}
+                onPrevious={
+                  previousIndex === undefined
+                    ? undefined
+                    : () => void moveTo(previousIndex)
+                }
+                onNext={
+                  nextIndex === undefined
+                    ? undefined
+                    : () => void moveTo(nextIndex)
+                }
+                nextLabel={
+                  isLastInSection
+                    ? "Soal belum dijawab berikutnya"
+                    : "Soal berikutnya"
+                }
+                onOpenList={openQuestions}
+              />
+            ) : undefined
+          }
           scrollViewRef={scrollRef}
           title={screenTitle}
         >
@@ -1306,7 +1334,7 @@ function AssessmentAttemptContent({
               toolbar, so both stay put whatever the question's length. How
               it all works is in the attempt tour; each section's rules are on
               its intro. */}
-          {finish ? (
+          {finish && Platform.OS !== "android" ? (
             <Stack.Toolbar placement="right">
               <Stack.Toolbar.Button
                 variant="prominent"
@@ -1317,43 +1345,45 @@ function AssessmentAttemptContent({
               </Stack.Toolbar.Button>
             </Stack.Toolbar>
           ) : null}
-          <Stack.Toolbar
-            placement="bottom"
-            backgroundColor={colors.background}
-            tintColor={colors.primary}
-          >
-            <Stack.Toolbar.Button
-              accessibilityLabel="Soal sebelumnya"
-              icon={toolbarIcons.previousQuestion}
-              hidden={previousIndex === undefined}
-              disabled={busy}
-              onPress={() => {
-                if (previousIndex !== undefined) void moveTo(previousIndex);
-              }}
-            />
-            <Stack.Toolbar.Spacer />
-            <Stack.Toolbar.Button
-              accessibilityHint={`${sectionAnswered} dari ${sectionIndexes.length} soal dijawab. Buka daftar untuk pindah ke soal mana pun.`}
-              disabled={busy}
-              onPress={openQuestions}
+          {Platform.OS !== "android" ? (
+            <Stack.Toolbar
+              placement="bottom"
+              backgroundColor={colors.background}
+              tintColor={colors.primary}
             >
-              {`Daftar soal · ${sectionAnswered}/${sectionIndexes.length}`}
-            </Stack.Toolbar.Button>
-            <Stack.Toolbar.Spacer />
-            <Stack.Toolbar.Button
-              accessibilityLabel={
-                isLastInSection
-                  ? "Soal belum dijawab berikutnya"
-                  : "Soal berikutnya"
-              }
-              icon={toolbarIcons.nextQuestion}
-              hidden={nextIndex === undefined}
-              disabled={busy}
-              onPress={() => {
-                if (nextIndex !== undefined) void moveTo(nextIndex);
-              }}
-            />
-          </Stack.Toolbar>
+              <Stack.Toolbar.Button
+                accessibilityLabel="Soal sebelumnya"
+                icon={toolbarIcons.previousQuestion}
+                hidden={previousIndex === undefined}
+                disabled={busy}
+                onPress={() => {
+                  if (previousIndex !== undefined) void moveTo(previousIndex);
+                }}
+              />
+              <Stack.Toolbar.Spacer />
+              <Stack.Toolbar.Button
+                accessibilityHint={`${sectionAnswered} dari ${sectionIndexes.length} soal dijawab. Buka daftar untuk pindah ke soal mana pun.`}
+                disabled={busy}
+                onPress={openQuestions}
+              >
+                {`Daftar soal · ${sectionAnswered}/${sectionIndexes.length}`}
+              </Stack.Toolbar.Button>
+              <Stack.Toolbar.Spacer />
+              <Stack.Toolbar.Button
+                accessibilityLabel={
+                  isLastInSection
+                    ? "Soal belum dijawab berikutnya"
+                    : "Soal berikutnya"
+                }
+                icon={toolbarIcons.nextQuestion}
+                hidden={nextIndex === undefined}
+                disabled={busy}
+                onPress={() => {
+                  if (nextIndex !== undefined) void moveTo(nextIndex);
+                }}
+              />
+            </Stack.Toolbar>
+          ) : null}
         </StudyScreen>
       ) : (
         <FullScreenState

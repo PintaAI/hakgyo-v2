@@ -48,6 +48,7 @@ export function QuizNav({
   onPrevious,
   onNext,
   onOpenList,
+  nextLabel = "Soal berikutnya",
   disabled = false,
 }: {
   answered: number;
@@ -55,6 +56,8 @@ export function QuizNav({
   onPrevious?: () => void;
   onNext?: () => void;
   onOpenList: () => void;
+  /** Where next goes, for screen readers, when it is not simply the next question. */
+  nextLabel?: string;
   disabled?: boolean;
 }) {
   const { colors } = useAppTheme();
@@ -89,7 +92,7 @@ export function QuizNav({
       </Pressable>
       <StepButton
         icon="chevron.right"
-        label="Soal berikutnya"
+        label={nextLabel}
         onPress={disabled ? undefined : onNext}
       />
     </View>

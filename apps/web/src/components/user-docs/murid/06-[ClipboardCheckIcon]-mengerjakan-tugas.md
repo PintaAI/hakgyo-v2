@@ -33,9 +33,9 @@ Beberapa tugas, misalnya simulasi EPS-TOPIK, dibagi menjadi **bagian** seperti *
 
 1. Sebelum bagian dimulai, kamu melihat nama bagian, petunjuknya, jumlah soal, dan waktunya. Tekan **Mulai bagian**. Jika tidak ditekan, bagian dimulai otomatis setelah 1 menit.
 2. Selama bagian berjalan, kamu hanya bisa membuka soal di bagian itu. Waktu yang tersisa tertulis di atas soal.
-3. Jika diizinkan pengajar, kamu bisa menekan **Selesai bagian** di kanan atas untuk lanjut lebih cepat. Saat waktu bagian habis, kamu otomatis pindah ke bagian berikutnya.
+3. Jika diizinkan pengajar, kamu bisa menekan **Selesai bagian** di kanan atas (di aplikasi Android: tepat di atas bar bawah) untuk lanjut lebih cepat. Saat waktu bagian habis, kamu otomatis pindah ke bagian berikutnya.
 4. Bagian yang sudah selesai **tidak bisa dibuka lagi**, jadi periksa jawabanmu sebelum menyelesaikannya.
-5. Di bagian terakhir, tekan **Selesaikan tugas**, **Selesaikan latihan**, atau **Selesaikan tryout** di kanan atas. Tugas juga terkirim otomatis saat waktu bagian terakhir habis.
+5. Di bagian terakhir, tekan **Selesaikan tugas**, **Selesaikan latihan**, atau **Selesaikan tryout** di tempat yang sama. Tugas juga terkirim otomatis saat waktu bagian terakhir habis.
 
 Pengajar bisa menambahkan aturan pada sebuah bagian. Aturannya tertulis di halaman pembuka bagian:
 
@@ -50,7 +50,7 @@ Setelah dinilai, hasilmu juga menunjukkan nilai setiap bagian.
 
 ## Mengirim
 
-1. Tekan **Selesaikan tugas** di kanan atas (untuk latihan dan tryout: **Selesaikan latihan** atau **Selesaikan tryout**). Tombol ini selalu ada di tempat yang sama, jadi kamu bisa mengirim kapan saja.
+1. Tekan **Selesaikan tugas** di kanan atas (untuk latihan dan tryout: **Selesaikan latihan** atau **Selesaikan tryout**). Di aplikasi Android, tombolnya ada tepat di atas bar bawah. Tombol ini selalu ada di tempat yang sama, jadi kamu bisa mengirim kapan saja.
 2. Baca konfirmasinya, termasuk berapa soal yang sudah dijawab. Jawaban yang sudah dikirim tidak bisa diubah. Tekan **Periksa lagi** jika ingin memeriksa dulu.
 3. Tekan **Selesaikan**.
 
