@@ -171,8 +171,15 @@ type MobileSyncActionsValue = {
   }) => Promise<void>;
   /** Flushes the outbox and refreshes the index/bundles (pull-to-refresh). */
   syncNow: (organizationId?: string) => Promise<SyncUpdateResult>;
-  /** Automatic poll: cheap manifest check, full refresh only when changed. */
-  checkForUpdates: (organizationId?: string) => Promise<SyncUpdateResult>;
+  /**
+   * Automatic poll: cheap manifest check, full refresh only when changed.
+   * `manual` skips the poll throttle, for when the server is known to have
+   * changed (a push arrived).
+   */
+  checkForUpdates: (
+    organizationId?: string,
+    options?: { manual?: boolean },
+  ) => Promise<SyncUpdateResult>;
   checkpoint: (organizationId?: string) => Promise<SyncCheckpointResult>;
   /** Server-suggested poll delay from the last manifest, if any. */
   getNextCheckAfterMs: () => number | undefined;
@@ -809,11 +816,11 @@ export function MobileSyncProvider({ children }: { children: ReactNode }) {
         void checkpoint(organizationId).catch(() => undefined);
       },
       syncNow,
-      checkForUpdates: async (organizationId) => {
+      checkForUpdates: async (organizationId, options) => {
         const current = engineRef.current;
         if (!current) return { state: "queued", reason: "unavailable" };
         try {
-          const result = await current.checkForUpdates(organizationId);
+          const result = await current.checkForUpdates(organizationId, options);
           if ("result" in result) await applyCheckpointResults(result);
           setSyncError(queuedSyncError(result));
           return result;
