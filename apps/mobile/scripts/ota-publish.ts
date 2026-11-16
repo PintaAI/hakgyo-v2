@@ -11,6 +11,11 @@
  * differs still counts as matching when the only difference is where bun
  * installed the packages (see `native-fingerprint.ts`).
  *
+ * It then bundles with the `env` block of the channel's eas.json build profile
+ * (`eas update` alone would inline apps/mobile/.env), checks that the bundle
+ * talks to that profile's EXPO_PUBLIC_API_URL and to no tailnet host, and only
+ * then uploads it with `eas update --skip-bundler`.
+ *
  *   bun run --cwd apps/mobile ota:check --channel production
  *   bun run --cwd apps/mobile ota:publish --channel production --message "…"
  *
@@ -18,6 +23,8 @@
  * `--message` defaults to the newest "Yang baru" entry for the runtime
  * (`@hakgyo/shared/release-notes`), which the update shows after it applies.
  */
+import { readdirSync, readFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
 import { parseArgs } from "node:util";
 
 import { releaseNotesUpTo } from "@hakgyo/shared/release-notes";
@@ -26,6 +33,7 @@ import config from "../app.config";
 import { type Fingerprint, nativeDifferences } from "./native-fingerprint";
 
 const PROJECT_DIR = new URL("..", import.meta.url).pathname;
+const DIST_DIR = join(PROJECT_DIR, "dist");
 /** EAS channels; each build profile in eas.json uses the EAS environment of the same name. */
 const CHANNELS = ["development", "preview", "production"] as const;
 const PLATFORMS = ["ios", "android"] as const;
@@ -115,7 +123,44 @@ if (!values.check && !message) {
   );
 }
 
-console.log(`Channel ${channel}, runtime ${runtime}`);
+// `eas update` applies only the EAS environment's variables, not the `env`
+// block of the eas.json build profile, so Expo would inline whatever
+// apps/mobile/.env holds (this machine's tailnet dev server). The export and
+// the upload below get the profile's variables, as the channel's builds did.
+const profileEnv = (
+  (await Bun.file(`${PROJECT_DIR}eas.json`).json()) as {
+    build: Record<string, { env?: Record<string, string> }>;
+  }
+).build[channel]?.env;
+const apiUrl = profileEnv?.EXPO_PUBLIC_API_URL;
+if (!apiUrl) fail(`eas.json has no build.${channel}.env.EXPO_PUBLIC_API_URL.`);
+const buildEnv = { ...process.env, ...profileEnv };
+
+/** Fails unless the platform's bundle talks to the channel's API and nothing else of ours. */
+function checkBundleApiUrl(platform: Platform) {
+  const bundleDir = join(DIST_DIR, "_expo/static/js", platform);
+  const bundles = readdirSync(bundleDir).filter(
+    (file) => !file.endsWith(".map"),
+  );
+  if (bundles.length === 0) fail(`No ${platform} bundle in ${bundleDir}.`);
+  for (const file of bundles) {
+    const text = readFileSync(join(bundleDir, file), "latin1");
+    if (!text.includes(apiUrl!)) {
+      fail(
+        `The ${platform} bundle does not contain ${apiUrl}. Not publishing.`,
+      );
+    }
+    const tailnetHost = text.match(/[a-z0-9-]+\.[a-z0-9-]+\.ts\.net/)?.[0];
+    if (tailnetHost) {
+      fail(
+        `The ${platform} bundle contains the tailnet host ${tailnetHost}. Not publishing.`,
+      );
+    }
+  }
+  console.log(`✓ ${platform}: bundle uses ${apiUrl}`);
+}
+
+console.log(`Channel ${channel}, runtime ${runtime}, API ${apiUrl}`);
 let safe = true;
 for (const platform of platforms) {
   const builds = easJson<Build[]>([
@@ -224,6 +269,29 @@ if (releaseNote) {
 }
 if (values.check) process.exit(0);
 
+// Bundle here instead of inside `eas update`, so the bundle can be checked
+// before anything is uploaded. The arguments are the ones `eas update` passes
+// to `expo export` itself, plus `--clear`: Metro's cache keeps the
+// EXPO_PUBLIC_* values inlined by the previous bundle, whatever the env says now.
+rmSync(DIST_DIR, { recursive: true, force: true });
+const exported = Bun.spawnSync(
+  [
+    "bun",
+    "x",
+    "expo",
+    "export",
+    "--output-dir",
+    DIST_DIR,
+    "--dump-sourcemap",
+    "--dump-assetmap",
+    "--clear",
+    ...platforms.flatMap((platform) => ["--platform", platform]),
+  ],
+  { cwd: PROJECT_DIR, env: buildEnv, stdout: "inherit", stderr: "inherit" },
+);
+if (exported.exitCode !== 0) fail("expo export failed.");
+for (const platform of platforms) checkBundleApiUrl(platform);
+
 const publish = Bun.spawnSync(
   [
     "eas",
@@ -236,8 +304,11 @@ const publish = Bun.spawnSync(
     platformOption ?? "all",
     "--message",
     message,
+    "--skip-bundler",
+    "--input-dir",
+    DIST_DIR,
     "--non-interactive",
   ],
-  { cwd: PROJECT_DIR, stdout: "inherit", stderr: "inherit" },
+  { cwd: PROJECT_DIR, env: buildEnv, stdout: "inherit", stderr: "inherit" },
 );
 process.exit(publish.exitCode ?? 1);
