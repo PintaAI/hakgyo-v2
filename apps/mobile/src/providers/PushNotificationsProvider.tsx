@@ -119,13 +119,17 @@ export function PushNotificationsProvider({
 
   /**
    * Pushes announce changes the Pembaruan drawer derives from sync data, so
-   * pull them in now instead of at the next poll. After a tap, clear the
-   * drawer items about the same change so it is not unread twice.
+   * pull them in now instead of at the next poll. `manual` skips the poll
+   * throttle (15 minutes): an earlier sync must not hide the pushed change.
+   * After a tap, clear the drawer items about the same change so it is not
+   * unread twice.
    */
   const syncPushedChange = useCallback(
     async (data: unknown, opened: boolean) => {
       const organizationId = activeOrganizationId ?? undefined;
-      await checkForUpdates(organizationId).catch(() => undefined);
+      await checkForUpdates(organizationId, { manual: true }).catch(
+        () => undefined,
+      );
       if (!opened) return;
       const entity = getPushedEntity(data);
       const notices =

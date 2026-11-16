@@ -1315,8 +1315,9 @@ export function createMobileSyncEngine({
    * one is skipped unless the index is stale.
    */
   /**
-   * `manual` (pull-to-refresh, "Sync now") always asks the server for the
-   * manifest, ignoring the polling throttle; `force` also refetches the index.
+   * `manual` (pull-to-refresh, "Sync now", a push) always asks the server for
+   * the manifest, ignoring the polling throttle; `force` also refetches the
+   * index.
    */
   async function checkForUpdates(
     organizationId?: string,
