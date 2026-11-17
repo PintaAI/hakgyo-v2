@@ -32,6 +32,7 @@ packages/
   api/                       Type-only export of the web AppRouter contract
   shared/                    Code shared between web and mobile
 docs/                        Design notes and topic documentation
+content/                     Content creation (video series, scripts, storyboards); start at content/README.md
 ```
 
 ## Package Manager and Commands
