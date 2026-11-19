@@ -22,7 +22,7 @@ import {
   type AudioPlayer,
 } from "expo-audio";
 import { router, type Href } from "expo-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -314,7 +314,10 @@ function LetterRow({
 
 function HangeulLetters({ block }: BlockRendererProps) {
   const player = useClipPlayer();
-  const cards = parseHangeulLetterCards(block.props.letters);
+  const cards = useMemo(
+    () => parseHangeulLetterCards(block.props.letters),
+    [block.props.letters],
+  );
   const title = stringProp(block.props, "title");
   const showRomanization = booleanProp(block.props, "showRomanization", true);
   if (!cards.length && !title) return null;
@@ -390,7 +393,10 @@ function ContrastTile({
 
 function HangeulContrast({ block }: BlockRendererProps) {
   const player = useClipPlayer();
-  const rows = parseHangeulContrastRows(block.props.rows);
+  const rows = useMemo(
+    () => parseHangeulContrastRows(block.props.rows),
+    [block.props.rows],
+  );
   const title = stringProp(block.props, "title");
   const instructions = stringProp(block.props, "instructions");
   const showRomanization = booleanProp(block.props, "showRomanization", true);
@@ -448,9 +454,18 @@ const GRID_CELL_STYLE = {
 
 function HangeulSyllableGrid({ block }: BlockRendererProps) {
   const player = useClipPlayer();
-  const consonants = parseJamoList(block.props.consonants);
-  const vowels = parseJamoList(block.props.vowels);
-  const audio = parseHangeulSyllableAudio(block.props.audio);
+  const consonants = useMemo(
+    () => parseJamoList(block.props.consonants),
+    [block.props.consonants],
+  );
+  const vowels = useMemo(
+    () => parseJamoList(block.props.vowels),
+    [block.props.vowels],
+  );
+  const audio = useMemo(
+    () => parseHangeulSyllableAudio(block.props.audio),
+    [block.props.audio],
+  );
   const final = stringProp(block.props, "final").trim();
   const title = stringProp(block.props, "title");
   const showRomanization = booleanProp(block.props, "showRomanization");

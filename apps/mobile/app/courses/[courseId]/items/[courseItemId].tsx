@@ -9,12 +9,14 @@ import { resolveAssessmentEntry, RUNTIME_VERSION } from "@hakgyo/shared";
 import type { MaterialLinkTarget } from "@hakgyo/shared/material-links";
 import { SYNC_PROTOCOL } from "@hakgyo/shared/mobile-sync";
 import {
+  memo,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type ComponentProps,
   type ReactNode,
 } from "react";
 import {
@@ -52,7 +54,11 @@ import {
   formatCountdown,
   readingGuardSeconds,
 } from "../../../../src/lib/reading-time";
-import { useReadingGuard } from "../../../../src/lib/use-reading-guard";
+import {
+  type ReadingGuard,
+  useReadingGuard,
+  useReadingGuardRemaining,
+} from "../../../../src/lib/use-reading-guard";
 import { requirementActionsFor } from "../../../../src/components/learn/requirement-actions";
 import {
   AssessmentFacts,
@@ -302,6 +308,95 @@ function CourseItemContent({
     updatePullEnabledRef.current();
   }, [readingGuard.locked]);
   const vocabulary = item?.vocabularySet;
+  // Recomposed with every change to the learner's progress: kept as the same
+  // object while it says the same, so the rendered content does not re-render.
+  const resourceReferences = useSameWhileEqual(item?.embeddedResources);
+  // Content links run the latest render's handler through a callback that
+  // keeps its identity, for the same reason.
+  const openMaterialLink = (target: MaterialLinkTarget) => {
+    // A section of this material: just scroll there.
+    if (target.materialId === material?.id) {
+      scrollToBlock(target.anchor, true);
+      return;
+    }
+    router.push({
+      pathname: "/material-link",
+      params: {
+        materialId: target.materialId,
+        ...(target.anchor ? { anchor: target.anchor } : {}),
+        courseId: courseId || item?.module.courseId,
+        sourceCourseItemId: courseItemId,
+      },
+    });
+  };
+  const openMaterialLinkRef = useRef(openMaterialLink);
+  openMaterialLinkRef.current = openMaterialLink;
+  const onOpenMaterialLink = useCallback(
+    (target: MaterialLinkTarget) => openMaterialLinkRef.current(target),
+    [],
+  );
+  const onOpenResource = useCallback(
+    (
+      type: "assessment" | "vocabulary",
+      resourceId: string,
+      targetCourseItemId: string | null,
+    ) => {
+      if (type === "vocabulary") {
+        router.push({
+          pathname: "/vocabulary/[vocabularySetId]",
+          params: {
+            vocabularySetId: resourceId,
+            sourceCourseItemId: courseItemId,
+            courseId,
+          },
+        });
+        return;
+      }
+      if (targetCourseItemId) {
+        router.push({
+          pathname: "/courses/[courseId]/items/[courseItemId]",
+          params: { courseId, courseItemId: targetCourseItemId },
+        });
+      }
+    },
+    [courseId, courseItemId],
+  );
+  // A material shows its title and place in the course up here; tugas and
+  // vocabulary screens title themselves.
+  const headerTitle =
+    material && !item?.assessment && !vocabulary ? material.title : null;
+  const headerSubtitle =
+    headerTitle === null
+      ? null
+      : materialPositionLabel(materialPosition(outline.data, courseItemId));
+  // Kept as the same object between renders: Stack.Screen hands every new one
+  // to the navigator.
+  const screenOptions = useMemo(
+    () => ({
+      headerShown: true,
+      headerTitle:
+        headerTitle === null
+          ? ""
+          : () => (
+              <MaterialHeaderTitle
+                title={headerTitle}
+                subtitle={headerSubtitle}
+              />
+            ),
+      headerTitleAlign: "center" as const,
+      headerBackVisible: false,
+      headerShadowVisible: false,
+      headerStyle: {
+        backgroundColor:
+          Platform.OS === "ios" ? "transparent" : colors.background,
+      },
+      headerTintColor: colors.foreground,
+      headerTransparent: Platform.OS === "ios",
+      scrollEdgeEffects:
+        Platform.OS === "ios" ? ({ top: "soft" } as const) : undefined,
+    }),
+    [colors.background, colors.foreground, headerSubtitle, headerTitle],
+  );
   const assessment = assessmentQuery.data;
   const latestAttempt = assessment?.latestStandaloneAttempt;
   const assessmentEntry = resolveAssessmentEntry({
@@ -454,44 +549,8 @@ function CourseItemContent({
       {/* Sidebar trigger replaces the back chevron: the drawer carries the
           course contents, so learners navigate without leaving the screen. */}
       <SidebarToolbarButton accessibilityLabel="Buka daftar isi kurikulum" />
-      <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Button
-          icon={toolbarIcons.home}
-          accessibilityLabel="Buka Hari Ini"
-          // Back to the tabs already below, rather than stacking a second
-          // copy of them (with its own drawer trigger) on top.
-          onPress={() => router.dismissTo("/(home)/(tabs)/home")}
-        />
-      </Stack.Toolbar>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          // A material shows its title and place in the course up here;
-          // tugas and vocabulary screens title themselves.
-          headerTitle:
-            material && !item?.assessment && !vocabulary
-              ? () => (
-                  <MaterialHeaderTitle
-                    title={material.title}
-                    subtitle={materialPositionLabel(
-                      materialPosition(outline.data, courseItemId),
-                    )}
-                  />
-                )
-              : "",
-          headerTitleAlign: "center",
-          headerBackVisible: false,
-          headerShadowVisible: false,
-          headerStyle: {
-            backgroundColor:
-              Platform.OS === "ios" ? "transparent" : colors.background,
-          },
-          headerTintColor: colors.foreground,
-          headerTransparent: Platform.OS === "ios",
-          scrollEdgeEffects:
-            Platform.OS === "ios" ? { top: "soft" } : undefined,
-        }}
-      />
+      <HomeToolbar />
+      <Stack.Screen options={screenOptions} />
 
       {loading ? (
         <FullScreenState kind="loading" message="Memuat materi…" />
@@ -755,60 +814,23 @@ function CourseItemContent({
                 <NativeContentRenderer
                   content={material.content}
                   courseItemId={courseItemId}
-                  resourceReferences={item.embeddedResources}
+                  resourceReferences={resourceReferences}
                   resolveAssetUrl={resolveAssetUrl}
                   onReadingProgress={onReadingProgress}
                   onBlockLayout={onBlockLayout}
-                  onOpenMaterialLink={(target: MaterialLinkTarget) => {
-                    // A section of this material: just scroll there.
-                    if (target.materialId === material.id) {
-                      scrollToBlock(target.anchor, true);
-                      return;
-                    }
-                    router.push({
-                      pathname: "/material-link",
-                      params: {
-                        materialId: target.materialId,
-                        ...(target.anchor ? { anchor: target.anchor } : {}),
-                        courseId: courseId || item.module.courseId,
-                        sourceCourseItemId: courseItemId,
-                      },
-                    });
-                  }}
-                  onOpenResource={(type, resourceId, targetCourseItemId) => {
-                    if (type === "vocabulary") {
-                      router.push({
-                        pathname: "/vocabulary/[vocabularySetId]",
-                        params: {
-                          vocabularySetId: resourceId,
-                          sourceCourseItemId: courseItemId,
-                          courseId,
-                        },
-                      });
-                      return;
-                    }
-                    if (targetCourseItemId) {
-                      router.push({
-                        pathname: "/courses/[courseId]/items/[courseItemId]",
-                        params: { courseId, courseItemId: targetCourseItemId },
-                      });
-                    }
-                  }}
+                  onOpenMaterialLink={onOpenMaterialLink}
+                  onOpenResource={onOpenResource}
                 />
               </View>
               <View className="mt-10">
-                <LearningFooterView
+                <MaterialFooterView
+                  guard={readingGuard}
                   learning={learning}
                   // One "next" row: pulling past the end is how to go on.
                   compact
                   // Pulling past the end continues; the button stays for
                   // screen readers, which cannot pull.
                   continueButton="screenReader"
-                  continueLock={
-                    readingGuard.locked
-                      ? `Baca dulu · ${formatCountdown(readingGuard.remaining)}`
-                      : undefined
-                  }
                   requirementActions={requirementActionsFor(
                     item,
                     { courseId, courseItemId },
@@ -821,8 +843,7 @@ function CourseItemContent({
           {readingGuard.locked ? (
             <ReadingGuardIndicator
               atEnd={pullToContinue.atEnd}
-              remaining={readingGuard.remaining}
-              required={readingGuard.required}
+              guard={readingGuard}
             />
           ) : (
             <PullToContinueIndicator
@@ -839,6 +860,63 @@ function CourseItemContent({
       )}
     </>
   );
+}
+
+/** Back to Hari Ini, in the right of the header. */
+const HomeToolbar = memo(function HomeToolbar() {
+  return (
+    <Stack.Toolbar placement="right">
+      <Stack.Toolbar.Button
+        icon={toolbarIcons.home}
+        accessibilityLabel="Buka Hari Ini"
+        // Back to the tabs already below, rather than stacking a second
+        // copy of them (with its own drawer trigger) on top.
+        onPress={() => router.dismissTo("/(home)/(tabs)/home")}
+      />
+    </Stack.Toolbar>
+  );
+});
+
+/**
+ * A material's footer, holding "continue" while the reading guard counts
+ * down. It re-renders with each second of the countdown; the screen does not.
+ */
+function MaterialFooterView({
+  guard,
+  ...props
+}: Omit<ComponentProps<typeof LearningFooterView>, "continueLock"> & {
+  guard: ReadingGuard;
+}) {
+  const remaining = useReadingGuardRemaining(guard);
+  return (
+    <LearningFooterView
+      {...props}
+      continueLock={
+        guard.locked ? `Baca dulu · ${formatCountdown(remaining)}` : undefined
+      }
+    />
+  );
+}
+
+/**
+ * The same object for as long as `value` holds the same data, so a value
+ * rebuilt on every change elsewhere does not look changed to memoized
+ * children.
+ */
+function useSameWhileEqual<T>(value: T): T {
+  const last = useRef<{ value: T; json: string | undefined; same: T }>(
+    undefined,
+  );
+  if (!last.current || last.current.value !== value) {
+    const json = JSON.stringify(value);
+    last.current = {
+      value,
+      json,
+      same:
+        last.current && last.current.json === json ? last.current.same : value,
+    };
+  }
+  return last.current.same;
 }
 
 /** The class to start a tugas in, when the learner is in more than one. */

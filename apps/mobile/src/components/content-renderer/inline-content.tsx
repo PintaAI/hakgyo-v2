@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Text, type StyleProp, type TextStyle } from "react-native";
 
 import { withOpacity } from "../../theme/colors";
@@ -32,7 +32,7 @@ export function InlineContent({
   style?: StyleProp<TextStyle>;
 }) {
   const { colors, onOpenMaterialLink, onOpenUrl } = useContentRenderer();
-  const nodes = normalizeInlineContent(content);
+  const nodes = useMemo(() => normalizeInlineContent(content), [content]);
   // `withOpacity` returns non-hex colors unchanged; skip the tint then.
   const materialTint = withOpacity(colors.primary, 0.12);
 

@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import type { ReactElement } from "react";
+import { memo, type ReactElement } from "react";
 
 import {
   countUnreadIndicators,
@@ -18,7 +18,7 @@ const TRAILING_GAP = 8;
  * right after it in the same toolbar: a screen can only have one left
  * toolbar, so a second one would replace this button.
  */
-export function SidebarToolbarButton({
+export const SidebarToolbarButton = memo(function SidebarToolbarButton({
   accessibilityLabel = "Buka menu",
   trailing,
 }: {
@@ -61,4 +61,4 @@ export function SidebarToolbarButton({
       ) : null}
     </Stack.Toolbar>
   );
-}
+});

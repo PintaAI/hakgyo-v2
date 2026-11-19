@@ -24,6 +24,10 @@ import { scheduleOnRN } from "react-native-worklets";
 
 import { hapticSelection } from "../../lib/haptics";
 import { formatCountdown } from "../../lib/reading-time";
+import {
+  type ReadingGuard,
+  useReadingGuardRemaining,
+} from "../../lib/use-reading-guard";
 import { useScreenActive } from "../../lib/use-screen-active";
 import { useAppTheme } from "../../providers/AppThemeProvider";
 import { SymbolIcon } from "../ui/symbol-icon";
@@ -629,14 +633,14 @@ export function PullHoldIndicator({
 
 /** While the reading guard holds "next": how long is left to read. */
 export function ReadingGuardIndicator({
-  remaining,
-  required,
+  guard,
   atEnd,
 }: {
-  remaining: number;
-  required: number;
+  guard: ReadingGuard;
   atEnd: SharedValue<boolean>;
 }) {
+  const remaining = useReadingGuardRemaining(guard);
+  const { required } = guard;
   return (
     <PullHoldIndicator
       label={`Baca dulu · ${formatCountdown(remaining)}`}

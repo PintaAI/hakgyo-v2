@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { useScreenActive } from "./use-screen-active";
 import { createUserRecordStore } from "./user-json-store";
@@ -34,11 +34,37 @@ function saveSpentSeconds(
   });
 }
 
+/** The seconds spent, readable without re-rendering whoever holds it. */
+export function createSecondsStore(initial: number) {
+  let value = initial;
+  const listeners = new Set<() => void>();
+  return {
+    get: () => value,
+    set(next: number) {
+      if (next === value) return;
+      value = next;
+      for (const listener of listeners) listener();
+    },
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
+export type ReadingGuard = ReturnType<typeof useReadingGuard>;
+
 /**
  * The reading guard of an open material: counts the seconds the screen is
  * in front of the learner (focused, app in the foreground) up to `required`,
  * continuing from earlier visits. Inactive (a finished material) it is
  * always unlocked.
+ *
+ * The caller re-renders only when `locked` changes; the countdown itself is
+ * read with `useReadingGuardRemaining` by what shows it, so the material
+ * does not re-render every second.
  */
 export function useReadingGuard({
   userId,
@@ -53,38 +79,48 @@ export function useReadingGuard({
 }) {
   const inFront = useScreenActive();
 
-  const [spent, setSpent] = useState(() =>
-    userId ? readSpentSeconds(userId, courseItemId) : 0,
+  const [spent] = useState(() =>
+    createSecondsStore(userId ? readSpentSeconds(userId, courseItemId) : 0),
   );
   // The session may load after the first render: pick up earlier visits.
   useEffect(() => {
     if (!userId) return;
     const saved = readSpentSeconds(userId, courseItemId);
-    setSpent((current) => Math.max(current, saved));
-  }, [courseItemId, userId]);
-  const spentRef = useRef(spent);
-  spentRef.current = spent;
-  const counting =
-    active && Boolean(userId) && inFront && spent < requiredSeconds;
-
-  useEffect(() => {
-    if (!counting) return;
-    const timer = setInterval(() => setSpent((current) => current + 1), 1000);
-    return () => clearInterval(timer);
-  }, [counting]);
+    spent.set(Math.max(spent.get(), saved));
+  }, [courseItemId, spent, userId]);
+  const locked = useSyncExternalStore(
+    spent.subscribe,
+    () => active && spent.get() < requiredSeconds,
+  );
+  const counting = locked && Boolean(userId) && inFront;
 
   // Saved now and then, and when the count stops (left, backgrounded,
   // unlocked), so a crash loses at most a few seconds.
   useEffect(() => {
     if (!userId || !active) return;
-    if (!counting || spent % SAVE_EVERY_SECONDS === 0)
-      saveSpentSeconds(userId, courseItemId, spentRef.current);
+    const save = () => saveSpentSeconds(userId, courseItemId, spent.get());
+    if (!counting) {
+      save();
+      return;
+    }
+    if (spent.get() % SAVE_EVERY_SECONDS === 0) save();
+    const timer = setInterval(() => {
+      spent.set(spent.get() + 1);
+      if (spent.get() % SAVE_EVERY_SECONDS === 0) save();
+    }, 1000);
+    return () => clearInterval(timer);
   }, [active, counting, courseItemId, spent, userId]);
 
-  const locked = active && spent < requiredSeconds;
-  return {
-    locked,
-    remaining: locked ? requiredSeconds - spent : 0,
-    required: requiredSeconds,
-  };
+  return { locked, required: requiredSeconds, spent };
+}
+
+/** The seconds left on a reading guard, re-rendering only its caller. */
+export function useReadingGuardRemaining({
+  locked,
+  required,
+  spent,
+}: ReadingGuard) {
+  return useSyncExternalStore(spent.subscribe, () =>
+    locked ? Math.max(0, required - spent.get()) : 0,
+  );
 }
