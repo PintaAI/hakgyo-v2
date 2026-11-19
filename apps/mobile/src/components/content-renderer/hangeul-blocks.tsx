@@ -22,7 +22,15 @@ import {
   type AudioPlayer,
 } from "expo-audio";
 import { router, type Href } from "expo-router";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -75,27 +83,27 @@ function useClipPlayer(): ClipPlayer {
     [player],
   );
 
-  const fail = (assetId: string) =>
-    setFailedIds((current) => new Set(current).add(assetId));
-
-  return {
-    playing: status.playing ? clip : null,
-    loading,
-    failed: (assetId) => failedIds.has(assetId),
-    toggle: (nextClip, assetId) => {
+  // The status updates many times a second while a clip plays: the player
+  // handed to the rows changes only when what they show does.
+  const latest = useRef({ clip, playing: status.playing, resolve });
+  latest.current = { clip, playing: status.playing, resolve };
+  const toggle = useCallback(
+    (nextClip: string, assetId: string) => {
       if (!assetId) return;
-      if (nextClip === clip && status.playing) {
+      const fail = () =>
+        setFailedIds((current) => new Set(current).add(assetId));
+      if (nextClip === latest.current.clip && latest.current.playing) {
         player.pause();
         return;
       }
       const id = ++request.current;
       setLoading(nextClip);
-      void resolve(assetId).then(
+      void latest.current.resolve(assetId).then(
         (url) => {
           if (id !== request.current) return;
           setLoading(null);
           if (!url) {
-            fail(assetId);
+            fail();
             return;
           }
           if (activePlayer && activePlayer !== player) activePlayer.pause();
@@ -112,11 +120,22 @@ function useClipPlayer(): ClipPlayer {
         () => {
           if (id !== request.current) return;
           setLoading(null);
-          fail(assetId);
+          fail();
         },
       );
     },
-  };
+    [player],
+  );
+  const playing = status.playing ? clip : null;
+  return useMemo(
+    () => ({
+      playing,
+      loading,
+      failed: (assetId: string) => failedIds.has(assetId),
+      toggle,
+    }),
+    [failedIds, loading, playing, toggle],
+  );
 }
 
 function hasClip(player: ClipPlayer, assetId: string) {
@@ -213,7 +232,7 @@ function BlockHeading({
   );
 }
 
-function LetterRow({
+const LetterRow = memo(function LetterRow({
   card,
   clip,
   first,
@@ -310,7 +329,7 @@ function LetterRow({
       </View>
     </View>
   );
-}
+});
 
 function HangeulLetters({ block }: BlockRendererProps) {
   const player = useClipPlayer();
@@ -343,7 +362,7 @@ function HangeulLetters({ block }: BlockRendererProps) {
   );
 }
 
-function ContrastTile({
+const ContrastTile = memo(function ContrastTile({
   clip,
   item,
   player,
@@ -389,7 +408,7 @@ function ContrastTile({
       ) : null}
     </Pressable>
   );
-}
+});
 
 function HangeulContrast({ block }: BlockRendererProps) {
   const player = useClipPlayer();

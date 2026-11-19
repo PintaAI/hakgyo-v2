@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   formatPdfPageLabel,
   formatPdfPageRange,
@@ -73,18 +73,21 @@ function usePageUrl(
 export function PdfPages({ block }: BlockRendererProps) {
   const { resourceReferences, resolveAssetUrl, onReadingProgress } =
     useContentRenderer();
-  const range = readPdfPageRange(block);
+  const range = useMemo(() => readPdfPageRange(block), [block]);
   const book = range
     ? resourceReferences?.pdfBooks?.find((item) => item.id === range.bookId)
     : undefined;
-  const pages =
-    book && range
-      ? book.pages.filter(
-          (page) =>
-            page.pageNumber >= range.startPage &&
-            page.pageNumber <= range.endPage,
-        )
-      : [];
+  const pages = useMemo(
+    () =>
+      book && range
+        ? book.pages.filter(
+            (page) =>
+              page.pageNumber >= range.startPage &&
+              page.pageNumber <= range.endPage,
+          )
+        : [],
+    [book, range],
+  );
   const [width, setWidth] = useState(0);
   const [index, setIndex] = useState(0);
   const [zoomIndex, setZoomIndex] = useState<number | null>(null);
