@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { View } from "react-native";
 
 import { EmptyState } from "../learning-ui";
@@ -9,7 +9,11 @@ import { normalizeContent } from "./normalize";
 import { standardBlockRenderers } from "./standard-blocks";
 import type { NativeContentRendererProps } from "./types";
 
-export function NativeContentRenderer({
+/**
+ * Memoized: a material is long, and its screen re-renders for reasons the
+ * content does not depend on.
+ */
+export const NativeContentRenderer = memo(function NativeContentRenderer({
   content,
   courseItemId,
   emptyState,
@@ -55,4 +59,4 @@ export function NativeContentRenderer({
       )}
     </ContentRendererProvider>
   );
-}
+});
