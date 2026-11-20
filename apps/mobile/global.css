@@ -33,18 +33,12 @@
 }
 
 /*
- * Set twice so the compiler keeps --font-scale a runtime variable: it inlines
- * custom properties set only once, and react-native-css 3.0.7 does not pass
- * withNativewind's `inlineVariables.exclude` on to it from Metro. The colours
- * below stay variables the same way (light and dark).
+ * The compiler inlines custom properties set only once; metro.config.js
+ * excludes --font-scale so it stays a runtime variable. The colours below stay
+ * variables because they are set twice (light and dark).
  */
 :root {
   --font-scale: 1;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --font-scale: 1;
-  }
 }
 
 /* Keep this semantic color contract in sync with apps/web/src/styles/globals.css. */
