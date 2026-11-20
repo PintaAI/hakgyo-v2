@@ -366,7 +366,7 @@ function r2() {
 }
 
 export const publicUrl = (objectKey: string) =>
-  `${(process.env.CLOUDFLARE_R2_PUBLIC_URL ?? "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev").replace(/\/$/, "")}/${objectKey}`;
+  `${(process.env.CLOUDFLARE_R2_PUBLIC_URL ?? "https://cdn.hakgyo.id").replace(/\/$/, "")}/${objectKey}`;
 
 if (import.meta.main) {
   const args = process.argv.slice(2);

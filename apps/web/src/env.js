@@ -75,7 +75,7 @@ export const env = createEnv({
     CLOUDFLARE_R2_PUBLIC_URL: z
       .string()
       .url()
-      .default("https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev"),
+      .default("https://cdn.hakgyo.id"),
     ZOOM_CLIENT_ID: z.string().min(1),
     ZOOM_CLIENT_SECRET: z.string().min(1),
     ZOOM_TOKEN_ENCRYPTION_KEY: z.string().base64(),

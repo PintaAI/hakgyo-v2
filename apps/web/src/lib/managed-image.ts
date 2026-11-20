@@ -26,9 +26,7 @@ const fileNamePattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-(\d+)\.([a-z]+)$/;
 
 export function getPublicR2Url(key: string) {
-  const base =
-    process.env.CLOUDFLARE_R2_PUBLIC_URL ??
-    "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev";
+  const base = process.env.CLOUDFLARE_R2_PUBLIC_URL ?? "https://cdn.hakgyo.id";
   return `${base.replace(/\/$/, "")}/${key}`;
 }
 

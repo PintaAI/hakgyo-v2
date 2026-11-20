@@ -12,8 +12,7 @@ export type UserDocVideo = {
  * Public R2 folder of the guide videos. Keys carry a content hash, so the files
  * are cached as immutable; a re-rendered video gets a new key.
  */
-const guideVideos =
-  "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/guide-videos";
+const guideVideos = "https://cdn.hakgyo.id/guide-videos";
 
 /**
  * Intro videos per guide page, keyed by `audience/slug`. Pages without an
