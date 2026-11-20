@@ -545,7 +545,9 @@ function useComposedItem<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [bundle, courseItemId, learner],
   );
-  previous.current = local;
+  // Kept across a moment without an item (an index reload), so the item
+  // after it still shares with the one before.
+  if (local !== undefined) previous.current = local;
   const localResolved = course.resolved && resolved;
   const needsOnline = enabled && localResolved && local === undefined;
   useRequestBundle(course.courseId, needsOnline);

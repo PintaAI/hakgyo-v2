@@ -471,6 +471,51 @@ const GRID_CELL_STYLE = {
   minWidth: GRID_CELL_WIDTH,
 } as const;
 
+/** One syllable of the grid, re-rendering only when its own state does. */
+const SyllableCell = memo(function SyllableCell({
+  assetId,
+  clip,
+  player,
+  showRomanization,
+  syllable,
+}: {
+  assetId: string;
+  clip: string;
+  player: ClipPlayer;
+  showRomanization: boolean;
+  syllable: string | null;
+}) {
+  const playable = Boolean(syllable) && hasClip(player, assetId);
+  const playing = player.playing === clip;
+  return (
+    <Pressable
+      accessibilityLabel={
+        syllable ? (playable ? `Putar ${syllable}` : syllable) : "Tidak ada"
+      }
+      accessibilityRole={playable ? "button" : "text"}
+      className={`items-center justify-center gap-0.5 active:opacity-60 ${playing ? "bg-primary/15" : ""}`}
+      disabled={!playable}
+      onPress={() => player.toggle(clip, assetId)}
+      style={GRID_CELL_STYLE}
+    >
+      {player.loading === clip ? (
+        <ActivityIndicator size="small" />
+      ) : (
+        <Text
+          className={`text-xl font-bold ${syllable ? (playable ? "text-primary" : "text-foreground") : "text-muted-foreground"}`}
+        >
+          {syllable ?? "–"}
+        </Text>
+      )}
+      {showRomanization && syllable ? (
+        <Text className="text-[10px] text-muted-foreground">
+          {romanizeHangeulSyllable(syllable)}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+});
+
 function HangeulSyllableGrid({ block }: BlockRendererProps) {
   const player = useClipPlayer();
   const consonants = useMemo(
@@ -559,45 +604,16 @@ function HangeulSyllableGrid({ block }: BlockRendererProps) {
                 key={rowIndex}
                 style={{ height: cellHeight }}
               >
-                {syllables.map((syllable, index) => {
-                  const assetId = syllable ? (audio.get(syllable) ?? "") : "";
-                  const clip = `${rowIndex}:${index}`;
-                  const playable =
-                    Boolean(syllable) && hasClip(player, assetId);
-                  const playing = player.playing === clip;
-                  return (
-                    <Pressable
-                      accessibilityLabel={
-                        syllable
-                          ? playable
-                            ? `Putar ${syllable}`
-                            : syllable
-                          : "Tidak ada"
-                      }
-                      accessibilityRole={playable ? "button" : "text"}
-                      className={`items-center justify-center gap-0.5 active:opacity-60 ${playing ? "bg-primary/15" : ""}`}
-                      disabled={!playable}
-                      key={index}
-                      onPress={() => player.toggle(clip, assetId)}
-                      style={GRID_CELL_STYLE}
-                    >
-                      {player.loading === clip ? (
-                        <ActivityIndicator size="small" />
-                      ) : (
-                        <Text
-                          className={`text-xl font-bold ${syllable ? (playable ? "text-primary" : "text-foreground") : "text-muted-foreground"}`}
-                        >
-                          {syllable ?? "–"}
-                        </Text>
-                      )}
-                      {showRomanization && syllable ? (
-                        <Text className="text-[10px] text-muted-foreground">
-                          {romanizeHangeulSyllable(syllable)}
-                        </Text>
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
+                {syllables.map((syllable, index) => (
+                  <SyllableCell
+                    assetId={syllable ? (audio.get(syllable) ?? "") : ""}
+                    clip={`${rowIndex}:${index}`}
+                    key={index}
+                    player={player}
+                    showRomanization={showRomanization}
+                    syllable={syllable}
+                  />
+                ))}
               </View>
             ))}
           </View>
