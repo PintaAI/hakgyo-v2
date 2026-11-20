@@ -308,11 +308,8 @@ function CourseItemContent({
     updatePullEnabledRef.current();
   }, [readingGuard.locked]);
   const vocabulary = item?.vocabularySet;
-  // Recomposed with every change to the learner's progress: kept as the same
-  // object while it says the same, so the rendered content does not re-render.
-  const resourceReferences = useSameWhileEqual(item?.embeddedResources);
   // Content links run the latest render's handler through a callback that
-  // keeps its identity, for the same reason.
+  // keeps its identity, so the rendered content does not re-render.
   const openMaterialLink = (target: MaterialLinkTarget) => {
     // A section of this material: just scroll there.
     if (target.materialId === material?.id) {
@@ -814,7 +811,7 @@ function CourseItemContent({
                 <NativeContentRenderer
                   content={material.content}
                   courseItemId={courseItemId}
-                  resourceReferences={resourceReferences}
+                  resourceReferences={item.embeddedResources}
                   resolveAssetUrl={resolveAssetUrl}
                   onReadingProgress={onReadingProgress}
                   onBlockLayout={onBlockLayout}
@@ -896,27 +893,6 @@ function MaterialFooterView({
       }
     />
   );
-}
-
-/**
- * The same object for as long as `value` holds the same data, so a value
- * rebuilt on every change elsewhere does not look changed to memoized
- * children.
- */
-function useSameWhileEqual<T>(value: T): T {
-  const last = useRef<{ value: T; json: string | undefined; same: T }>(
-    undefined,
-  );
-  if (!last.current || last.current.value !== value) {
-    const json = JSON.stringify(value);
-    last.current = {
-      value,
-      json,
-      same:
-        last.current && last.current.json === json ? last.current.same : value,
-    };
-  }
-  return last.current.same;
 }
 
 /** The class to start a tugas in, when the learner is in more than one. */

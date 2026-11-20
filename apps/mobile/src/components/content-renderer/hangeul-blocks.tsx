@@ -22,7 +22,15 @@ import {
   type AudioPlayer,
 } from "expo-audio";
 import { router, type Href } from "expo-router";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -75,27 +83,27 @@ function useClipPlayer(): ClipPlayer {
     [player],
   );
 
-  const fail = (assetId: string) =>
-    setFailedIds((current) => new Set(current).add(assetId));
-
-  return {
-    playing: status.playing ? clip : null,
-    loading,
-    failed: (assetId) => failedIds.has(assetId),
-    toggle: (nextClip, assetId) => {
+  // The status updates many times a second while a clip plays: the player
+  // handed to the rows changes only when what they show does.
+  const latest = useRef({ clip, playing: status.playing, resolve });
+  latest.current = { clip, playing: status.playing, resolve };
+  const toggle = useCallback(
+    (nextClip: string, assetId: string) => {
       if (!assetId) return;
-      if (nextClip === clip && status.playing) {
+      const fail = () =>
+        setFailedIds((current) => new Set(current).add(assetId));
+      if (nextClip === latest.current.clip && latest.current.playing) {
         player.pause();
         return;
       }
       const id = ++request.current;
       setLoading(nextClip);
-      void resolve(assetId).then(
+      void latest.current.resolve(assetId).then(
         (url) => {
           if (id !== request.current) return;
           setLoading(null);
           if (!url) {
-            fail(assetId);
+            fail();
             return;
           }
           if (activePlayer && activePlayer !== player) activePlayer.pause();
@@ -112,11 +120,22 @@ function useClipPlayer(): ClipPlayer {
         () => {
           if (id !== request.current) return;
           setLoading(null);
-          fail(assetId);
+          fail();
         },
       );
     },
-  };
+    [player],
+  );
+  const playing = status.playing ? clip : null;
+  return useMemo(
+    () => ({
+      playing,
+      loading,
+      failed: (assetId: string) => failedIds.has(assetId),
+      toggle,
+    }),
+    [failedIds, loading, playing, toggle],
+  );
 }
 
 function hasClip(player: ClipPlayer, assetId: string) {
@@ -213,7 +232,7 @@ function BlockHeading({
   );
 }
 
-function LetterRow({
+const LetterRow = memo(function LetterRow({
   card,
   clip,
   first,
@@ -310,7 +329,7 @@ function LetterRow({
       </View>
     </View>
   );
-}
+});
 
 function HangeulLetters({ block }: BlockRendererProps) {
   const player = useClipPlayer();
@@ -343,7 +362,7 @@ function HangeulLetters({ block }: BlockRendererProps) {
   );
 }
 
-function ContrastTile({
+const ContrastTile = memo(function ContrastTile({
   clip,
   item,
   player,
@@ -389,7 +408,7 @@ function ContrastTile({
       ) : null}
     </Pressable>
   );
-}
+});
 
 function HangeulContrast({ block }: BlockRendererProps) {
   const player = useClipPlayer();
@@ -451,6 +470,51 @@ const GRID_CELL_STYLE = {
   flexBasis: GRID_CELL_WIDTH,
   minWidth: GRID_CELL_WIDTH,
 } as const;
+
+/** One syllable of the grid, re-rendering only when its own state does. */
+const SyllableCell = memo(function SyllableCell({
+  assetId,
+  clip,
+  player,
+  showRomanization,
+  syllable,
+}: {
+  assetId: string;
+  clip: string;
+  player: ClipPlayer;
+  showRomanization: boolean;
+  syllable: string | null;
+}) {
+  const playable = Boolean(syllable) && hasClip(player, assetId);
+  const playing = player.playing === clip;
+  return (
+    <Pressable
+      accessibilityLabel={
+        syllable ? (playable ? `Putar ${syllable}` : syllable) : "Tidak ada"
+      }
+      accessibilityRole={playable ? "button" : "text"}
+      className={`items-center justify-center gap-0.5 active:opacity-60 ${playing ? "bg-primary/15" : ""}`}
+      disabled={!playable}
+      onPress={() => player.toggle(clip, assetId)}
+      style={GRID_CELL_STYLE}
+    >
+      {player.loading === clip ? (
+        <ActivityIndicator size="small" />
+      ) : (
+        <Text
+          className={`text-xl font-bold ${syllable ? (playable ? "text-primary" : "text-foreground") : "text-muted-foreground"}`}
+        >
+          {syllable ?? "–"}
+        </Text>
+      )}
+      {showRomanization && syllable ? (
+        <Text className="text-[10px] text-muted-foreground">
+          {romanizeHangeulSyllable(syllable)}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+});
 
 function HangeulSyllableGrid({ block }: BlockRendererProps) {
   const player = useClipPlayer();
@@ -540,45 +604,16 @@ function HangeulSyllableGrid({ block }: BlockRendererProps) {
                 key={rowIndex}
                 style={{ height: cellHeight }}
               >
-                {syllables.map((syllable, index) => {
-                  const assetId = syllable ? (audio.get(syllable) ?? "") : "";
-                  const clip = `${rowIndex}:${index}`;
-                  const playable =
-                    Boolean(syllable) && hasClip(player, assetId);
-                  const playing = player.playing === clip;
-                  return (
-                    <Pressable
-                      accessibilityLabel={
-                        syllable
-                          ? playable
-                            ? `Putar ${syllable}`
-                            : syllable
-                          : "Tidak ada"
-                      }
-                      accessibilityRole={playable ? "button" : "text"}
-                      className={`items-center justify-center gap-0.5 active:opacity-60 ${playing ? "bg-primary/15" : ""}`}
-                      disabled={!playable}
-                      key={index}
-                      onPress={() => player.toggle(clip, assetId)}
-                      style={GRID_CELL_STYLE}
-                    >
-                      {player.loading === clip ? (
-                        <ActivityIndicator size="small" />
-                      ) : (
-                        <Text
-                          className={`text-xl font-bold ${syllable ? (playable ? "text-primary" : "text-foreground") : "text-muted-foreground"}`}
-                        >
-                          {syllable ?? "–"}
-                        </Text>
-                      )}
-                      {showRomanization && syllable ? (
-                        <Text className="text-[10px] text-muted-foreground">
-                          {romanizeHangeulSyllable(syllable)}
-                        </Text>
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
+                {syllables.map((syllable, index) => (
+                  <SyllableCell
+                    assetId={syllable ? (audio.get(syllable) ?? "") : ""}
+                    clip={`${rowIndex}:${index}`}
+                    key={index}
+                    player={player}
+                    showRomanization={showRomanization}
+                    syllable={syllable}
+                  />
+                ))}
               </View>
             ))}
           </View>

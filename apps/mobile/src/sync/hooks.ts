@@ -20,7 +20,12 @@ import {
   type CourseBundle,
   type LearnerState,
 } from "@hakgyo/shared/mobile-sync";
-import { useQueries, useQuery, type QueryClient } from "@tanstack/react-query";
+import {
+  replaceEqualDeep,
+  useQueries,
+  useQuery,
+  type QueryClient,
+} from "@tanstack/react-query";
 import { getQueryKey } from "@trpc/react-query";
 import {
   createContext,
@@ -28,6 +33,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
 } from "react";
 
 import { api } from "../lib/trpc";
@@ -493,16 +499,17 @@ function useLocalCourseContent(courseId: string | undefined, enabled: boolean) {
     courseId,
     enabled && Boolean(structure.data),
   );
+  // From the organization id, not the index: the index changes with every
+  // sync, and a new bundle would recompose every open item.
+  const organizationId = structure.data
+    ? organizationFor(index.data, structure.data.courseId)?.id
+    : undefined;
   const bundle = useMemo(
     () =>
       structure.data && content.data
-        ? toBundle(
-            structure.data,
-            content.data,
-            organizationFor(index.data, structure.data.courseId)?.id,
-          )
+        ? toBundle(structure.data, content.data, organizationId)
         : undefined,
-    [content.data, index.data, structure.data],
+    [content.data, organizationId, structure.data],
   );
   const resolved =
     !enabled ||
@@ -523,13 +530,24 @@ function useComposedItem<T>(
     course.courseId,
     enabled && course.resolved,
   );
+  // The learner state changes with every sync. Parts of the item that compose
+  // the same keep their identity, so memoized screens skip them.
+  const previous = useRef<T | null | undefined>(undefined);
   const local = useMemo(
     () =>
-      bundle && learner ? composeSafely(() => run(bundle, learner)) : undefined,
+      replaceEqualDeep(
+        previous.current,
+        bundle && learner
+          ? composeSafely(() => run(bundle, learner))
+          : undefined,
+      ),
     // `run` is a fresh closure each render; its inputs are the deps below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [bundle, courseItemId, learner],
   );
+  // Kept across a moment without an item (an index reload), so the item
+  // after it still shares with the one before.
+  if (local !== undefined) previous.current = local;
   const localResolved = course.resolved && resolved;
   const needsOnline = enabled && localResolved && local === undefined;
   useRequestBundle(course.courseId, needsOnline);
