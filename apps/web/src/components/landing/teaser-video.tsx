@@ -14,7 +14,7 @@ import {
 } from "~/components/ui/dialog";
 import { cn } from "~/lib/utils";
 
-const media = "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/marketing";
+const media = "https://cdn.hakgyo.id/marketing";
 const teaser = {
   src: `${media}/hakgyo-teaser-v2.mp4`,
   /** The 9:16 cut, for phones in portrait. */

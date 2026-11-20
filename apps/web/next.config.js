@@ -34,6 +34,10 @@ const config = {
     // Uploads get a new random key, so an optimized image never changes.
     minimumCacheTTL: 31 * 24 * 60 * 60,
     remotePatterns: [
+      // The R2 bucket's custom domain. r2.dev is blocked in Indonesia.
+      { protocol: "https", hostname: "cdn.hakgyo.id" },
+      // URLs saved before the custom domain still point at r2.dev; the
+      // optimizer fetches them server-side, outside Indonesia.
       {
         protocol: "https",
         hostname: "pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev",

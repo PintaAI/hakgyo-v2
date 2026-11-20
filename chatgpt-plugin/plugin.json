@@ -42,7 +42,7 @@
         "logoDark": "./assets/logo-dark.png"
       },
       "review": {
-        "demo_recording_url": "https://pub-3fd0ad0a99684361b69ca3270ed168c8.r2.dev/hakgyo-media/video/794bb3de-hakgyo-chatgpt-walkthrough.mp4",
+        "demo_recording_url": "https://cdn.hakgyo.id/hakgyo-media/video/794bb3de-hakgyo-chatgpt-walkthrough.mp4",
         "test_cases": {
           "positive": [
             {
