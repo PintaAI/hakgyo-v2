@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Text, View } from "react-native";
 
 import { inlinePlainText } from "./normalize";
@@ -14,7 +15,7 @@ function UnsupportedBlock({ block }: { block: ContentBlock }) {
   ) : null;
 }
 
-export function BlockTree({
+export const BlockTree = memo(function BlockTree({
   blocks,
   depth = 0,
 }: {
@@ -61,4 +62,4 @@ export function BlockTree({
       })}
     </View>
   );
-}
+});

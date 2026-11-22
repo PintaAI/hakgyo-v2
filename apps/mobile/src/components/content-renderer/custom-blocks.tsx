@@ -1,4 +1,5 @@
 import { getReadableForeground } from "@hakgyo/shared";
+import { useMemo } from "react";
 import { Text, View } from "react-native";
 
 import { HeroTile } from "../hero-tile";
@@ -311,16 +312,24 @@ function LessonPage({ block }: BlockRendererProps) {
 
 function Grammar({ block }: BlockRendererProps) {
   const accent = accentFor(stringProp(block.props, "theme"), "amber");
-  const rules = parseJsonArray(block.props.ruleRows, (row) => ({
-    condition: typeof row.condition === "string" ? row.condition : "",
-    form: typeof row.form === "string" ? row.form : "",
-    example: typeof row.example === "string" ? row.example : "",
-  }));
-  const examples = parseJsonArray(block.props.examples, (example) => ({
-    before: typeof example.before === "string" ? example.before : "",
-    emphasis: typeof example.emphasis === "string" ? example.emphasis : "",
-    after: typeof example.after === "string" ? example.after : "",
-  }));
+  const rules = useMemo(
+    () =>
+      parseJsonArray(block.props.ruleRows, (row) => ({
+        condition: typeof row.condition === "string" ? row.condition : "",
+        form: typeof row.form === "string" ? row.form : "",
+        example: typeof row.example === "string" ? row.example : "",
+      })),
+    [block.props.ruleRows],
+  );
+  const examples = useMemo(
+    () =>
+      parseJsonArray(block.props.examples, (example) => ({
+        before: typeof example.before === "string" ? example.before : "",
+        emphasis: typeof example.emphasis === "string" ? example.emphasis : "",
+        after: typeof example.after === "string" ? example.after : "",
+      })),
+    [block.props.examples],
+  );
 
   // Optional fields (the number, the Korean text, examples, a tip) are left
   // out when empty, for example in Hangeul Mastery rule cards.
@@ -653,11 +662,18 @@ function CultureSection({ section }: { section: MobileCultureSection }) {
 function Culture({ block }: BlockRendererProps) {
   const accent = accentFor(stringProp(block.props, "theme"), "teal");
   const accentForeground = getReadableForeground(accent);
-  const sections = parseCultureSections(block.props.sections);
-  const checklist = parseJsonArray(block.props.checklistItems, (item) => ({
-    ko: typeof item.ko === "string" ? item.ko : "",
-    en: typeof item.en === "string" ? item.en : "",
-  }));
+  const sections = useMemo(
+    () => parseCultureSections(block.props.sections),
+    [block.props.sections],
+  );
+  const checklist = useMemo(
+    () =>
+      parseJsonArray(block.props.checklistItems, (item) => ({
+        ko: typeof item.ko === "string" ? item.ko : "",
+        en: typeof item.en === "string" ? item.en : "",
+      })),
+    [block.props.checklistItems],
+  );
   const showBanner = booleanProp(block.props, "showBanner", true);
   const showChecklist = booleanProp(block.props, "showChecklist", true);
   const centered =
@@ -768,6 +784,69 @@ function Culture({ block }: BlockRendererProps) {
   );
 }
 
+/** A conversation's lists, from the JSON its props keep them in. */
+function parseConversation(props: Record<string, unknown>) {
+  const lines = parseJsonArray(props.lines, (line) => ({
+    speaker: typeof line.speaker === "string" ? line.speaker : "",
+    korean: typeof line.korean === "string" ? line.korean : "",
+    translation: typeof line.translation === "string" ? line.translation : "",
+  }));
+  const questions = parseJsonArray(props.questions, (question) => ({
+    korean: typeof question.korean === "string" ? question.korean : "",
+    translation:
+      typeof question.translation === "string" ? question.translation : "",
+  }));
+  const expressions = parseJsonArray(
+    props.practiceExpressions,
+    (expression) => ({
+      korean: typeof expression.korean === "string" ? expression.korean : "",
+      translation:
+        typeof expression.translation === "string"
+          ? expression.translation
+          : "",
+    }),
+  );
+  const practiceDialogue = parseJsonArray(props.practiceDialogue, (line) => ({
+    speaker: typeof line.speaker === "string" ? line.speaker : "",
+    korean: typeof line.korean === "string" ? line.korean : "",
+  }));
+  const usefulExpressionDialogue = parseJsonArray(
+    props.usefulExpressionDialogue,
+    (line) => ({
+      speaker: typeof line.speaker === "string" ? line.speaker : "",
+      korean: typeof line.korean === "string" ? line.korean : "",
+      translation: typeof line.translation === "string" ? line.translation : "",
+    }),
+  );
+  const pronunciationExamples = parseJsonArray(
+    props.pronunciationExamples,
+    (example) => ({
+      korean: typeof example.korean === "string" ? example.korean : "",
+      pronunciation:
+        typeof example.pronunciation === "string" ? example.pronunciation : "",
+    }),
+  );
+  return {
+    lines,
+    visibleQuestions: questions.filter(
+      (question) => filled(question.korean) || filled(question.translation),
+    ),
+    visibleExpressions: expressions.filter(
+      (expression) =>
+        filled(expression.korean) || filled(expression.translation),
+    ),
+    visiblePracticeDialogue: practiceDialogue.filter((line) =>
+      filled(line.korean),
+    ),
+    visibleUsefulDialogue: usefulExpressionDialogue.filter(
+      (line) => filled(line.korean) || filled(line.translation),
+    ),
+    visiblePronunciationExamples: pronunciationExamples.filter(
+      (example) => filled(example.korean) || filled(example.pronunciation),
+    ),
+  };
+}
+
 function Conversation({ block }: BlockRendererProps) {
   const accent = accentFor(stringProp(block.props, "theme"), "violet");
   const accentForeground = getReadableForeground(accent);
@@ -780,69 +859,19 @@ function Conversation({ block }: BlockRendererProps) {
     sectionVariant === "useful-expression" || sectionVariant === "both";
   const showPronunciation =
     sectionVariant === "pronunciation" || sectionVariant === "both";
-  const lines = parseJsonArray(block.props.lines, (line) => ({
-    speaker: typeof line.speaker === "string" ? line.speaker : "",
-    korean: typeof line.korean === "string" ? line.korean : "",
-    translation: typeof line.translation === "string" ? line.translation : "",
-  }));
-  const questions = parseJsonArray(block.props.questions, (question) => ({
-    korean: typeof question.korean === "string" ? question.korean : "",
-    translation:
-      typeof question.translation === "string" ? question.translation : "",
-  }));
-  const expressions = parseJsonArray(
-    block.props.practiceExpressions,
-    (expression) => ({
-      korean: typeof expression.korean === "string" ? expression.korean : "",
-      translation:
-        typeof expression.translation === "string"
-          ? expression.translation
-          : "",
-    }),
-  );
-  const practiceDialogue = parseJsonArray(
-    block.props.practiceDialogue,
-    (line) => ({
-      speaker: typeof line.speaker === "string" ? line.speaker : "",
-      korean: typeof line.korean === "string" ? line.korean : "",
-    }),
-  );
-  const usefulExpressionDialogue = parseJsonArray(
-    block.props.usefulExpressionDialogue,
-    (line) => ({
-      speaker: typeof line.speaker === "string" ? line.speaker : "",
-      korean: typeof line.korean === "string" ? line.korean : "",
-      translation: typeof line.translation === "string" ? line.translation : "",
-    }),
-  );
-  const pronunciationExamples = parseJsonArray(
-    block.props.pronunciationExamples,
-    (example) => ({
-      korean: typeof example.korean === "string" ? example.korean : "",
-      pronunciation:
-        typeof example.pronunciation === "string" ? example.pronunciation : "",
-    }),
-  );
+  const {
+    lines,
+    visibleQuestions,
+    visibleExpressions,
+    visiblePracticeDialogue,
+    visibleUsefulDialogue,
+    visiblePronunciationExamples,
+  } = useMemo(() => parseConversation(block.props), [block.props]);
   const contextAssetId = stringProp(block.props, "assetId");
   const practiceAssetId = stringProp(block.props, "practiceAssetId");
   const text = (name: string) => stringProp(block.props, name);
   const audioTrack = text("audioTrack");
   const number = text("number");
-  const visibleQuestions = questions.filter(
-    (question) => filled(question.korean) || filled(question.translation),
-  );
-  const visibleExpressions = expressions.filter(
-    (expression) => filled(expression.korean) || filled(expression.translation),
-  );
-  const visiblePracticeDialogue = practiceDialogue.filter((line) =>
-    filled(line.korean),
-  );
-  const visibleUsefulDialogue = usefulExpressionDialogue.filter(
-    (line) => filled(line.korean) || filled(line.translation),
-  );
-  const visiblePronunciationExamples = pronunciationExamples.filter(
-    (example) => filled(example.korean) || filled(example.pronunciation),
-  );
   // Optional parts left blank by the author are hidden rather than shown as empty panels.
   const showTip =
     booleanProp(block.props, "showTip", true) &&
