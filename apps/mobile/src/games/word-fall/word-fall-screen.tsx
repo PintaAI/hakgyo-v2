@@ -19,15 +19,17 @@ import Animated, {
   FadeIn,
   FadeOut,
   interpolate,
-  ZoomIn,
+  FadeInUp,
   runOnJS,
   useAnimatedReaction,
   useAnimatedStyle,
+  useFrameCallback,
   useReducedMotion,
   useSharedValue,
   withRepeat,
   withSequence,
   withTiming,
+  type FrameInfo,
   type SharedValue,
 } from "react-native-reanimated";
 
@@ -47,6 +49,8 @@ import { useGameExitGuard } from "../game-navigation";
 import {
   addWordFallReviewItem,
   analyzeTyping,
+  blastForCombo,
+  SHIP_BLAST,
   answerOptionsForWord,
   answerTextForWord,
   bestTypingAnswer,
@@ -55,13 +59,12 @@ import {
   destroyedForLevel,
   fallDurationForLevel,
   isWordFallInputEditable,
-  knockbackDelayMs,
   levelForDestroyed,
   maximumActiveWords,
   pointsForWord,
   promptTextForWord,
   wordFallResult,
-  pushStrengthForLevel,
+  shotImpulseForLevel,
   selectWordTarget,
   spawnIntervalForLevel,
   type WordFallAnswerMode,
@@ -70,39 +73,63 @@ import {
   type WordFallReviewItem,
   type WordFallWord,
 } from "./engine";
+import {
+  addBody,
+  createWorld,
+  cruiseSpeed,
+  fallProgress,
+  findBody,
+  holdBody,
+  knockBack,
+  massForAnswer,
+  explode,
+  removeBody,
+  setBodySize,
+  stepWorld,
+  type WordFallArena,
+  type WordFallWorld,
+} from "./physics";
+import {
+  WordFallEffects,
+  type Shot,
+  type WordFallEffectsHandle,
+} from "./word-fall-effects";
+import { WordFallBackdrop } from "./word-fall-backdrop";
+import { useWordFallSfx } from "./word-fall-sfx";
 import { SymbolIcon } from "../../components/ui/symbol-icon";
-import { hapticError, hapticSuccess } from "../../lib/haptics";
+import type { SymbolName } from "../../components/ui/symbol-names";
+import { hapticError, hapticImpact, hapticSuccess } from "../../lib/haptics";
 
 type FallingWord = {
   id: string;
   word: WordFallWord;
   /** The meaning being typed; switches to whichever one the input matches. */
   answer: string;
-  spawnX: number;
-  duration: number;
-  impactAt: number;
   matched: number;
-  hitVersion: number;
-  knockbackTotal: number;
   comboAtCompletion?: number;
   completed: boolean;
   powerUp?: WordFallPowerUp;
   /** A word of the warm-up wave: its answer shows in full while it falls. */
   warmup?: boolean;
+  /**
+   * Its answer was shown at some point of this fall (warm-up, or Intip while
+   * it was on screen): typing it is recognising the word, not recalling it.
+   */
+  answerSeen: boolean;
+  /** Intip was used on it: its answer shows for the rest of this fall. */
+  revealed?: boolean;
 };
 
-type Point = { x: number; y: number };
 type FieldSize = { width: number; height: number };
-type ProjectileModel = {
-  id: number;
-  targetId: string;
-  character: string;
-  color: string;
-  from: Point;
-  to: Point;
-  pushStrength: number;
+type WordPosition = {
+  id: string;
+  x: number;
+  y: number;
+  halfWidth: number;
+  halfHeight: number;
 };
-type BurstModel = { id: number; at: Point; color: string };
+/** How often the words' positions are copied to the JS thread. */
+const POSITION_SYNC_MS = 66;
 
 const START_Y = -72;
 const PLAYER_BOTTOM = 120;
@@ -124,12 +151,11 @@ const LESSON_MAX_ACTIVE_WORDS = 2;
  * hidden falls again, ahead of the others, at most this many more times.
  */
 const MAX_RETRIES = 3;
-/** How long a missed word shows its answer beside the ship. */
-const MISSED_ANSWER_MS = 3_000;
+/** How long a missed word stays up, with its answer, to memorise. */
+const MISSED_ANSWER_MS = 4_500;
 const MAX_HEALTH = 6;
 const FORCE_REWARD_CHARGES = 10;
 const MAX_FORCE_CHARGES = 20;
-const REVEAL_DURATION_MS = 6_000;
 const MAX_REVEAL_CHARGES = 5;
 
 function shuffledWords<T>(items: readonly T[]) {
@@ -150,12 +176,13 @@ function powerUpForRoll(roll: number): WordFallPowerUp | undefined {
   return "reveal";
 }
 
+/** A power-up's name, the same on the word, its chip and its button. */
 function powerUpLabel(powerUp: WordFallPowerUp) {
-  if (powerUp === "shield") return "SHIELD";
-  if (powerUp === "freeze") return "FREEZE";
-  if (powerUp === "heart") return "+HEART";
-  if (powerUp === "force") return "FORCE";
-  return "REVEAL";
+  if (powerUp === "shield") return "Perisai";
+  if (powerUp === "freeze") return "Beku";
+  if (powerUp === "heart") return "Nyawa";
+  if (powerUp === "force") return "Tenaga";
+  return "Intip";
 }
 
 function powerUpColor(powerUp: WordFallPowerUp, colors: ThemeColors) {
@@ -174,22 +201,21 @@ function playerCenterY(field: FieldSize, playerLift = 0) {
   );
 }
 
-function entityPosition(
-  entity: FallingWord,
-  field: FieldSize,
-  playerLift = 0,
-): Point {
-  const elapsed = Date.now() - (entity.impactAt - entity.duration);
-  const progress = Math.max(0, Math.min(1, elapsed / entity.duration));
-  const player = {
-    x: field.width / 2,
-    y: playerCenterY(field, playerLift),
-  };
+/** The field as the physics sees it: the walls, the spawn line and the ship. */
+function arenaFor(field: FieldSize, playerLift = 0): WordFallArena {
+  "worklet";
   return {
-    x: entity.spawnX + (player.x - entity.spawnX) * progress,
-    y: START_Y + (player.y - START_Y) * progress,
+    width: field.width,
+    shipX: field.width / 2,
+    shipY: playerCenterY(field, playerLift),
+    spawnY: START_Y,
   };
 }
+
+/** A word turns red and pulses from this far along its fall. */
+const DANGER_FROM = 0.72;
+/** A word's height before it is measured. */
+const ESTIMATED_HALF_HEIGHT = 26;
 
 /**
  * The player's flying saucer, in the colors of the Hujan Kata icon (shades of
@@ -207,7 +233,7 @@ const Ship = memo(function Ship({
     [colors.primary],
   );
   return (
-    <>
+    <View style={styles.ship}>
       <Animated.View style={[styles.shipTurret, aim]}>
         <View style={[styles.shipBarrel, { backgroundColor: palette.main }]} />
       </Animated.View>
@@ -217,61 +243,67 @@ const Ship = memo(function Ship({
         <View style={[styles.shipLight, { backgroundColor: palette.light }]} />
         <View style={[styles.shipLight, { backgroundColor: palette.light }]} />
       </View>
-    </>
+    </View>
   );
 });
 
+/**
+ * A falling word, drawn where its body is in the physics world. It only
+ * re-renders when what it shows changes; the movement is on the UI thread.
+ */
 const FallingWordView = memo(function FallingWordView({
   entity,
   field,
   mode,
   playerLift,
   mistyped,
-  paused,
-  revealed,
-  onImpact,
+  targeted,
+  onPress,
+  world,
+  hits,
 }: {
   entity: FallingWord;
   field: FieldSize;
   mode: WordFallAnswerMode;
   playerLift: SharedValue<number>;
   mistyped: string;
-  paused: boolean;
-  revealed: boolean;
-  onImpact: (id: string) => void;
+  /** The word the ship is aiming at. */
+  targeted: boolean;
+  /** Tapped: the game aims at it, or uses Intip on it. */
+  onPress: (id: string) => void;
+  world: SharedValue<WordFallWorld>;
+  /** How often each word has been hit, by id; a new hit flashes and shakes it. */
+  hits: SharedValue<Record<string, number>>;
 }) {
   const { colors } = useAppTheme();
   const reducedMotion = useReducedMotion();
-  const progress = useSharedValue(0);
   const hit = useSharedValue(0);
   const dangerPulse = useSharedValue(0);
-  const appliedKnockback = useRef(0);
-  const playerX = field.width / 2;
+  const entityId = entity.id;
   const entityColor = entity.powerUp
     ? powerUpColor(entity.powerUp, colors)
     : colors.primary;
 
-  useEffect(() => {
-    if (paused) {
-      cancelAnimation(progress);
-      return;
-    }
-    const remaining = Math.max(0, 1 - progress.value);
-    progress.value = withTiming(
-      1,
-      {
-        duration: Math.max(1, entity.duration * remaining),
-        easing: Easing.linear,
-      },
-      (finished) => {
-        if (finished) runOnJS(onImpact)(entity.id);
-      },
-    );
-    return () => cancelAnimation(progress);
-  }, [entity.duration, entity.id, onImpact, paused, progress]);
+  // The body collides at the word's real size, not the spawn estimate.
+  const onSurfaceLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      const { width, height } = event.nativeEvent.layout;
+      world.modify((current) => {
+        "worklet";
+        setBodySize(current, entityId, width / 2, height / 2);
+        return current;
+      });
+    },
+    [entityId, world],
+  );
 
   useAnimatedReaction(
-    () => !paused && progress.value > 0.72,
+    () => {
+      const body = findBody(world.value, entityId);
+      return body
+        ? fallProgress(body, arenaFor(field, playerLift.value)) > DANGER_FROM
+        : false;
+    },
     (inDanger, wasInDanger) => {
       if (inDanger === wasInDanger) return;
       if (!inDanger) {
@@ -296,86 +328,49 @@ const FallingWordView = memo(function FallingWordView({
   );
   useEffect(() => () => cancelAnimation(dangerPulse), [dangerPulse]);
 
-  useEffect(() => {
-    const pushDistance = entity.knockbackTotal - appliedKnockback.current;
-    appliedKnockback.current = entity.knockbackTotal;
-    if (pushDistance <= 0) return;
-
-    const playerY = playerCenterY(field, playerLift.value);
-    const pathDistance = Math.max(
-      1,
-      Math.hypot(playerX - entity.spawnX, playerY - START_Y),
+  const animatedStyle = useAnimatedStyle(() => {
+    const body = findBody(world.value, entityId);
+    const shake = interpolate(
+      hit.value,
+      [0, 0.2, 0.4, 0.6, 0.8, 1],
+      [0, -2, 2, -3, 3, 0],
     );
-    const pushedProgress = Math.max(
-      0,
-      progress.value - pushDistance / pathDistance,
-    );
-
-    cancelAnimation(progress);
-    progress.value = withTiming(
-      pushedProgress,
-      { duration: 110, easing: Easing.out(Easing.cubic) },
-      (finished) => {
-        if (!finished || paused) return;
-        progress.value = withTiming(
-          1,
-          {
-            duration: Math.max(1, entity.duration * (1 - pushedProgress)),
-            easing: Easing.linear,
-          },
-          (reachedPlayer) => {
-            if (reachedPlayer) runOnJS(onImpact)(entity.id);
-          },
-        );
-      },
-    );
-  }, [
-    entity.duration,
-    entity.id,
-    entity.knockbackTotal,
-    entity.spawnX,
-    field.height,
-    onImpact,
-    paused,
-    playerLift,
-    playerX,
-    progress,
-  ]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateX:
-          entity.spawnX +
-          (playerX - entity.spawnX) * progress.value -
-          field.width / 2,
-      },
-      {
-        translateY:
-          START_Y +
-          (playerCenterY(field, playerLift.value) - START_Y) * progress.value,
-      },
-      {
-        translateX: interpolate(
-          hit.value,
-          [0, 0.2, 0.4, 0.6, 0.8, 1],
-          [0, -1, 1, -2, 2, 0],
-        ),
-      },
-    ],
-  }));
-  useEffect(() => {
-    if (entity.hitVersion === 0) return;
-    cancelAnimation(hit);
-    hit.value = 1;
-    hit.value = withTiming(0, {
-      duration: 240,
-      easing: Easing.out(Easing.quad),
-    });
-  }, [entity.hitVersion, hit]);
+    // Not in the world yet (it is added a frame after the view) or already
+    // gone from it (it reached the ship): nothing to show.
+    return {
+      opacity: body ? 1 : 0,
+      transform: [
+        { translateX: (body ? body.x - field.width / 2 : 0) + shake },
+        { translateY: body ? body.y - body.halfHeight : START_Y },
+        { rotateZ: `${body && !reducedMotion ? body.angle : 0}rad` },
+        // A hit squeezes the word for a moment.
+        { scale: 1 - hit.value * 0.06 },
+      ],
+    };
+  });
+  // On the UI thread: a hit never re-renders the word.
+  useAnimatedReaction(
+    () => hits.value[entityId] ?? 0,
+    (count, previous) => {
+      if (previous === null || count <= previous) return;
+      cancelAnimation(hit);
+      hit.value = 1;
+      hit.value = withTiming(0, {
+        duration: 240,
+        easing: Easing.out(Easing.quad),
+      });
+    },
+  );
   const hitStyle = useAnimatedStyle(() => ({ opacity: hit.value }));
   const dangerStyle = useAnimatedStyle(() => {
-    const proximity = Math.max(0, Math.min(1, (progress.value - 0.72) / 0.28));
+    const body = findBody(world.value, entityId);
+    const progress = body
+      ? fallProgress(body, arenaFor(field, playerLift.value))
+      : 0;
+    const proximity = Math.max(
+      0,
+      Math.min(1, (progress - DANGER_FROM) / (1 - DANGER_FROM)),
+    );
     return {
       opacity: proximity * (0.28 + dangerPulse.value * 0.52),
       transform: [
@@ -393,24 +388,38 @@ const FallingWordView = memo(function FallingWordView({
   const hiddenStart = entity.matched + mistypedLength;
   const hiddenAnswer = answerCharacters
     .slice(hiddenStart)
-    .map((character, offset) =>
-      revealed || entity.warmup || character.trim() === "" ? character : "•",
+    .map((character) =>
+      entity.revealed || entity.warmup || character.trim() === ""
+        ? character
+        : "•",
     )
     .join("");
 
   return (
     <Animated.View
-      accessibilityLabel={`${prompt}, ${answer}`}
+      pointerEvents="box-none"
       style={[styles.wordEntity, { width: field.width }, animatedStyle]}
     >
-      <View
+      <Pressable
+        accessibilityHint="Ketuk untuk membidik kata ini"
+        accessibilityLabel={
+          entity.revealed || entity.warmup ? `${prompt}, ${answer}` : prompt
+        }
+        accessibilityRole="button"
+        accessibilityState={{ selected: targeted }}
+        hitSlop={8}
+        onLayout={onSurfaceLayout}
+        onPress={() => onPress(entityId)}
         style={[
           styles.wordSurface,
           {
             backgroundColor: colors.card,
-            borderColor: entity.powerUp
-              ? withOpacity(entityColor, 0.6)
-              : colors.border,
+            borderColor: targeted
+              ? entityColor
+              : entity.powerUp
+                ? withOpacity(entityColor, 0.6)
+                : colors.border,
+            borderWidth: targeted ? 1.5 : StyleSheet.hairlineWidth,
             maxWidth: Math.max(0, field.width - 16),
           },
         ]}
@@ -462,219 +471,59 @@ const FallingWordView = memo(function FallingWordView({
           ) : null}
           <Text style={{ color: colors.mutedForeground }}>{hiddenAnswer}</Text>
         </Text>
-      </View>
+      </Pressable>
     </Animated.View>
   );
 });
 
-const Projectile = memo(function Projectile({
-  projectile,
-  onDone,
+/** A power-up in effect, in the header: its icon and how many are left. */
+function HeaderBadge({
+  powerUp,
+  icon,
+  count,
 }: {
-  projectile: ProjectileModel;
-  onDone: (projectile: ProjectileModel) => void;
+  powerUp: WordFallPowerUp;
+  icon: SymbolName;
+  count?: number;
 }) {
-  const progress = useSharedValue(0);
-  useEffect(() => {
-    progress.value = withTiming(
-      1,
-      { duration: 300, easing: Easing.out(Easing.quad) },
-      (finished) => {
-        if (finished) runOnJS(onDone)(projectile);
-      },
-    );
-    return () => cancelAnimation(progress);
-  }, [onDone, progress, projectile.id]);
-  const animatedStyle = useAnimatedStyle(() => {
-    const deltaX = projectile.to.x - projectile.from.x;
-    const deltaY = projectile.to.y - projectile.from.y;
-    const distance = Math.max(1, Math.hypot(deltaX, deltaY));
-    const letterLead = interpolate(progress.value, [0, 0.85, 1], [11, 11, 0]);
-
-    return {
-      opacity: interpolate(progress.value, [0, 0.8, 1], [1, 1, 0]),
-      transform: [
-        {
-          translateX:
-            projectile.from.x +
-            deltaX * progress.value +
-            (deltaX / distance) * letterLead,
-        },
-        {
-          translateY:
-            projectile.from.y +
-            deltaY * progress.value +
-            (deltaY / distance) * letterLead,
-        },
-        { scale: interpolate(progress.value, [0, 1], [1, 0.45]) },
-      ],
-    };
-  });
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      pointerEvents="none"
-      style={styles.projectileLayer}
-    >
-      <ProjectileBeam
-        color={projectile.color}
-        length={90}
-        opacity={0.24}
-        progress={progress}
-        projectile={projectile}
-        thickness={8}
-      />
-      <ProjectileBeam
-        color={projectile.color}
-        length={76}
-        opacity={0.9}
-        progress={progress}
-        projectile={projectile}
-        thickness={2}
-      />
-      <Animated.View style={[styles.projectile, animatedStyle]}>
-        <Text style={[styles.projectileText, { color: projectile.color }]}>
-          {projectile.character}
-        </Text>
-      </Animated.View>
-    </View>
-  );
-});
-
-function ProjectileBeam({
-  color,
-  length,
-  opacity,
-  progress,
-  projectile,
-  thickness,
-}: {
-  color: string;
-  length: number;
-  opacity: number;
-  progress: SharedValue<number>;
-  projectile: ProjectileModel;
-  thickness: number;
-}) {
-  const deltaX = projectile.to.x - projectile.from.x;
-  const deltaY = projectile.to.y - projectile.from.y;
-  const distance = Math.max(1, Math.hypot(deltaX, deltaY));
-  const unitX = deltaX / distance;
-  const unitY = deltaY / distance;
-  const angle = `${Math.atan2(deltaY, deltaX)}rad`;
-  const animatedStyle = useAnimatedStyle(() => {
-    const currentX = projectile.from.x + deltaX * progress.value;
-    const currentY = projectile.from.y + deltaY * progress.value;
-    const visibleLength = Math.min(length, distance * progress.value);
-    const centerX = currentX - (unitX * visibleLength) / 2;
-    const centerY = currentY - (unitY * visibleLength) / 2;
-    const startFade = Math.min(1, progress.value / 0.12);
-    const endFade = Math.min(1, (1 - progress.value) / 0.12);
-
-    return {
-      opacity: opacity * startFade * endFade,
-      transform: [
-        { translateX: centerX - length / 2 },
-        { translateY: centerY - thickness / 2 },
-        { rotateZ: angle },
-        { scaleX: visibleLength / length },
-      ],
-    };
-  });
-
+  const { colors } = useAppTheme();
+  const color = powerUpColor(powerUp, colors);
   return (
     <Animated.View
-      style={[
-        styles.projectileBeam,
-        {
-          backgroundColor: color,
-          borderRadius: thickness / 2,
-          height: thickness,
-          width: length,
-        },
-        animatedStyle,
-      ]}
-    />
+      entering={FadeIn.duration(180)}
+      exiting={FadeOut.duration(180)}
+      accessibilityLabel={`${powerUpLabel(powerUp)}${count ? ` ${count}` : ""}`}
+      style={styles.headerBadge}
+    >
+      <SymbolIcon name={icon} size={14} tintColor={color} weight="bold" />
+      {count ? (
+        <Text style={[styles.headerBadgeCount, { color }]}>{count}</Text>
+      ) : null}
+    </Animated.View>
   );
 }
 
-const Burst = memo(function Burst({
-  burst,
-  onDone,
-}: {
-  burst: BurstModel;
-  onDone: (id: number) => void;
-}) {
-  const progress = useSharedValue(0);
+/** One line that runs out as the countdown does. */
+function CountdownBar({ durationMs }: { durationMs: number }) {
+  const { colors } = useAppTheme();
+  const left = useSharedValue(1);
   useEffect(() => {
-    progress.value = withTiming(1, { duration: 360 }, (finished) => {
-      if (finished) runOnJS(onDone)(burst.id);
-    });
-    return () => cancelAnimation(progress);
-  }, [burst.id, onDone, progress]);
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: 1 - progress.value,
-    transform: [
-      { translateX: burst.at.x - 18 },
-      { translateY: burst.at.y - 18 },
-      { scale: interpolate(progress.value, [0, 1], [0.35, 2.4]) },
-    ],
+    left.value = withTiming(0, { duration: durationMs, easing: Easing.linear });
+    return () => cancelAnimation(left);
+  }, [durationMs, left]);
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scaleX: left.value }],
   }));
   return (
-    <>
+    <View style={[styles.countdownTrack, { backgroundColor: colors.border }]}>
       <Animated.View
-        pointerEvents="none"
-        style={[styles.burst, { borderColor: burst.color }, animatedStyle]}
+        style={[
+          styles.countdownFill,
+          { backgroundColor: colors.primary },
+          style,
+        ]}
       />
-      {SPARK_ANGLES.map((angle) => (
-        <Spark
-          key={angle}
-          angle={angle}
-          at={burst.at}
-          color={burst.color}
-          progress={progress}
-        />
-      ))}
-    </>
-  );
-});
-
-/** Six sparks thrown out of a burst, one every 60°, offset a little. */
-const SPARK_ANGLES = [15, 75, 135, 195, 255, 315];
-const SPARK_SIZE = 5;
-const SPARK_DISTANCE = 30;
-
-function Spark({
-  angle,
-  at,
-  color,
-  progress,
-}: {
-  angle: number;
-  at: Point;
-  color: string;
-  progress: SharedValue<number>;
-}) {
-  const radians = (angle * Math.PI) / 180;
-  const style = useAnimatedStyle(() => {
-    // Ease-out: fast from the burst, slowing as it fades.
-    const t = progress.value;
-    const travel = (1 - (1 - t) * (1 - t)) * SPARK_DISTANCE;
-    return {
-      opacity: 1 - progress.value,
-      transform: [
-        { translateX: at.x - SPARK_SIZE / 2 + Math.cos(radians) * travel },
-        { translateY: at.y - SPARK_SIZE / 2 + Math.sin(radians) * travel },
-        { scale: 1 - progress.value * 0.5 },
-      ],
-    };
-  });
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[styles.spark, { backgroundColor: color }, style]}
-    />
+    </View>
   );
 }
 
@@ -684,7 +533,35 @@ function levelDetail(level: number) {
   return `~${fallSeconds} dtk per kata · maks. ${maxWords} sekaligus`;
 }
 
+type GameTimer = {
+  callback: () => void;
+  /** Milliseconds of play left before it fires. */
+  remaining: number;
+  startedAt: number;
+  handle?: ReturnType<typeof setTimeout>;
+};
+
+function armGameTimer(timers: Set<GameTimer>, timer: GameTimer) {
+  timer.startedAt = Date.now();
+  timer.handle = setTimeout(() => {
+    timers.delete(timer);
+    timer.callback();
+  }, timer.remaining);
+}
+
+function haltGameTimer(timer: GameTimer) {
+  if (timer.handle === undefined) return;
+  clearTimeout(timer.handle);
+  timer.handle = undefined;
+  timer.remaining = Math.max(
+    0,
+    timer.remaining - (Date.now() - timer.startedAt),
+  );
+}
+
 const COUNTDOWN_FROM = 3;
+/** How long reaching a new level shows. */
+const LEVEL_BANNER_MS = 1_800;
 const COUNTDOWN_STEP_MS = 700;
 
 export function LevelSelector({
@@ -774,7 +651,13 @@ const WordFallHeader = memo(function WordFallHeader({
   phase,
   score,
   lessonTitle,
+  shield,
+  frozen,
+  forceCharges,
 }: {
+  shield: number;
+  frozen: boolean;
+  forceCharges: number;
   combo: number;
   health: number;
   level: number;
@@ -810,10 +693,21 @@ const WordFallHeader = memo(function WordFallHeader({
             }
             style={styles.headerStats}
           >
+            {shield > 0 ? (
+              <HeaderBadge count={shield} icon="shield.fill" powerUp="shield" />
+            ) : null}
+            {frozen ? <HeaderBadge icon="snowflake" powerUp="freeze" /> : null}
+            {forceCharges > 0 ? (
+              <HeaderBadge
+                count={forceCharges}
+                icon="bolt.fill"
+                powerUp="force"
+              />
+            ) : null}
             {lessonTitle ? null : (
               <Text style={[styles.health, { color: colors.destructive }]}>
                 {"♥".repeat(health)}
-                {"♡".repeat(MAX_HEALTH - health)}
+                {"♡".repeat(Math.max(0, STARTING_HEALTH - health))}
               </Text>
             )}
             <Text style={[styles.headerMetric, { color: colors.foreground }]}>
@@ -892,7 +786,8 @@ export function WordFallScreen({
   const retryCountsRef = useRef(new Map<string, number>());
   /** A lesson round's falls still to come: each word warm, then hidden. */
   const lessonQueueRef = useRef<{ wordId: string; warmup: boolean }[]>([]);
-  const revealedRef = useRef(false);
+  /** The word the learner tapped: it stays the target until it is gone. */
+  const pinnedTargetRef = useRef<string | null>(null);
   /** The last word that reached the ship, shown with its answer for a moment. */
   const [missed, setMissed] = useState<{
     key: string;
@@ -904,7 +799,6 @@ export function WordFallScreen({
   const completedSessionIdRef = useRef("");
   const mountedRef = useRef(true);
   const idRef = useRef(0);
-  const effectIdRef = useRef(0);
   const timersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
   const [phase, setPhase] = useState<WordFallPhase>("ready");
   const [field, setField] = useState<FieldSize>({ width: 0, height: 0 });
@@ -913,7 +807,9 @@ export function WordFallScreen({
   const [shield, setShield] = useState(0);
   const [forceCharges, setForceCharges] = useState(0);
   const [revealCharges, setRevealCharges] = useState(0);
-  const [revealed, setRevealed] = useState(false);
+  /** Intip is armed: the next word tapped shows its answer. */
+  const [pickingReveal, setPickingReveal] = useState(false);
+  const pickingRevealRef = useRef(false);
   const [score, setScore] = useState(0);
   const [destroyed, setDestroyed] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -922,21 +818,56 @@ export function WordFallScreen({
   );
   const [input, setInput] = useState("");
   const [lockedTargetId, setLockedTargetId] = useState<string | null>(null);
-  const [projectiles, setProjectiles] = useState<ProjectileModel[]>([]);
-  const [bursts, setBursts] = useState<BurstModel[]>([]);
+  const effectsRef = useRef<WordFallEffectsHandle>(null);
   const [frozen, setFrozen] = useState(false);
   const [pendingReportCount, setPendingReportCount] = useState(0);
   // Chosen in Latihan's source sheet before the game opens; the answer
   // language can change again before "Main lagi".
-  const [{ startLevel, answerMode }, updateSettings] = useWordFallSettings();
+  const [{ startLevel, answerMode, sound }, updateSettings] =
+    useWordFallSettings();
+  const playSound = useWordFallSfx(sound);
   const setAnswerMode = useCallback(
     (mode: WordFallAnswerMode) => updateSettings({ answerMode: mode }),
     [updateSettings],
   );
   const playerLift = useSharedValue(0);
+  /** Every falling word's position and speed (see `physics.ts`). */
+  const world = useSharedValue<WordFallWorld>(createWorld());
+  const hits = useSharedValue<Record<string, number>>({});
+  const syncClock = useSharedValue(0);
   const playerRecoil = useSharedValue(0);
   const wrongInputPulse = useSharedValue(0);
   const level = levelForDestroyed(destroyed);
+  const reducedMotion = useReducedMotion();
+  /** The input as last typed, to tell a new letter from a deleted one. */
+  const typedRef = useRef("");
+  useEffect(() => {
+    typedRef.current = input;
+  }, [input]);
+
+  // A big blast shakes the field for a moment (not under Reduce Motion).
+  const fieldShake = useSharedValue(0);
+  const fieldShakeStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: fieldShake.value },
+      { translateY: fieldShake.value * -0.5 },
+    ],
+  }));
+  const shakeField = useCallback(() => {
+    if (reducedMotion) return;
+    cancelAnimation(fieldShake);
+    fieldShake.value = withSequence(
+      withTiming(6, { duration: 35 }),
+      withTiming(-5, { duration: 45 }),
+      withTiming(3, { duration: 45 }),
+      withTiming(-2, { duration: 45 }),
+      withTiming(0, { duration: 60, easing: Easing.out(Easing.quad) }),
+    );
+  }, [fieldShake, reducedMotion]);
+
+  // Reaching a new level shows it for a moment, with what changes.
+  const [levelBanner, setLevelBanner] = useState<number | null>(null);
+  const shownLevelRef = useRef(level);
   const playerPositionStyle = useAnimatedStyle(() => ({
     transform: [
       {
@@ -982,6 +913,7 @@ export function WordFallScreen({
       if (mistakeActiveRef.current) return;
       mistakeActiveRef.current = true;
       hapticError();
+      playSound("wrong");
       if (word) mistakeWordIdsRef.current.add(word.id);
       if (word)
         setReviewItems((current) =>
@@ -989,7 +921,7 @@ export function WordFallScreen({
         );
       resetCombo();
     },
-    [resetCombo],
+    [playSound, resetCombo],
   );
 
   const schedule = useCallback((callback: () => void, delay: number) => {
@@ -1001,7 +933,28 @@ export function WordFallScreen({
     return timer;
   }, []);
 
+  // Timers of the game itself (a power-up running out, a word bursting, the
+  // missed answer leaving): a pause stops their clocks too.
+  const gameTimersRef = useRef(new Set<GameTimer>());
+  const gamePausedRef = useRef(false);
+  const scheduleInGame = useCallback((callback: () => void, delay: number) => {
+    const timer: GameTimer = { callback, remaining: delay, startedAt: 0 };
+    gameTimersRef.current.add(timer);
+    if (!gamePausedRef.current) armGameTimer(gameTimersRef.current, timer);
+  }, []);
+  useEffect(() => {
+    const paused = phase === "paused";
+    gamePausedRef.current = paused;
+    for (const timer of gameTimersRef.current) {
+      if (paused) haltGameTimer(timer);
+      else if (timer.handle === undefined)
+        armGameTimer(gameTimersRef.current, timer);
+    }
+  }, [phase]);
+
   const clearTimers = useCallback(() => {
+    for (const timer of gameTimersRef.current) haltGameTimer(timer);
+    gameTimersRef.current.clear();
     for (const timer of timersRef.current) clearTimeout(timer);
     timersRef.current.clear();
   }, []);
@@ -1013,6 +966,20 @@ export function WordFallScreen({
     },
     [clearTimers],
   );
+
+  useEffect(() => {
+    const previous = shownLevelRef.current;
+    if (level === previous) return;
+    shownLevelRef.current = level;
+    // A lesson has no levels; a new game starting lower is no level-up.
+    if (lesson || phase !== "running" || level < previous) return;
+    setLevelBanner(level);
+    playSound("level");
+    schedule(
+      () => setLevelBanner((current) => (current === level ? null : current)),
+      LEVEL_BANNER_MS,
+    );
+  }, [lesson, level, phase, playSound, schedule]);
 
   const exit = useGameExitGuard({
     active: phase === "running",
@@ -1048,7 +1015,9 @@ export function WordFallScreen({
     (entity) => entity.id === lockedTargetId && !entity.completed,
   );
   const unmatchedInput = !lockedTarget && input ? input : "";
+  const liftRef = useRef(0);
   useEffect(() => {
+    liftRef.current = unmatchedInput ? MISTAKE_PLAYER_LIFT : 0;
     playerLift.value = withTiming(unmatchedInput ? MISTAKE_PLAYER_LIFT : 0, {
       duration: 160,
       easing: Easing.out(Easing.cubic),
@@ -1067,12 +1036,13 @@ export function WordFallScreen({
       easing: Easing.out(Easing.quad),
     });
   }, [unmatchedInput, wrongInputPulse]);
-  const targetSpawnX = lockedTarget?.spawnX ?? field.width / 2;
+  const lockedBodyId = lockedTarget?.id;
   const playerRotationStyle = useAnimatedStyle(() => {
-    const playerY = playerCenterY(field, playerLift.value);
-    const horizontalDistance = targetSpawnX - field.width / 2;
-    const verticalDistance = playerY - START_Y;
-    const angle = Math.atan2(horizontalDistance, verticalDistance);
+    const arena = arenaFor(field, playerLift.value);
+    const body = lockedBodyId ? findBody(world.value, lockedBodyId) : undefined;
+    const angle = body
+      ? Math.atan2(body.x - arena.shipX, arena.shipY - body.y)
+      : 0;
     return { transform: [{ rotateZ: `${angle}rad` }] };
   });
   const lockedTyping = lockedTarget
@@ -1083,59 +1053,64 @@ export function WordFallScreen({
       ? Array.from(input).slice(lockedTyping.correctCharacters).join("")
       : "";
 
-  const addBurst = useCallback((at: Point, color: string) => {
-    const burst = { id: ++effectIdRef.current, at, color };
-    setBursts((current) => [...current, burst]);
+  /**
+   * Where each word was a moment ago, copied from the physics world a few
+   * times a second. Reading a shared value from this thread waits for the UI
+   * thread; the game logic reads this copy instead, on every key press.
+   */
+  const positionsRef = useRef(new Map<string, WordPosition>());
+  const syncPositions = useCallback((positions: readonly WordPosition[]) => {
+    const next = new Map<string, WordPosition>();
+    for (const position of positions) next.set(position.id, position);
+    // A word spawned since the copy was made keeps where it started.
+    for (const entity of entitiesRef.current) {
+      const known = positionsRef.current.get(entity.id);
+      if (known && !next.has(entity.id)) next.set(entity.id, known);
+    }
+    positionsRef.current = next;
   }, []);
+  const bodyPoint = useCallback(
+    (id: string) => positionsRef.current.get(id),
+    [],
+  );
+  /** The ship's place, without asking the UI thread for its lift. */
+  const shipPoint = useCallback(
+    () => ({
+      x: field.width / 2,
+      y: playerCenterY(field, liftRef.current),
+    }),
+    [field],
+  );
 
-  const handleProjectileDone = useCallback(
-    (projectile: ProjectileModel) => {
-      setProjectiles((current) =>
-        current.filter((item) => item.id !== projectile.id),
-      );
+  /** A shot reached its word: it is knocked back, if it is still falling. */
+  const handleHit = useCallback(
+    (projectile: Shot) => {
       if (
         !entitiesRef.current.some((entity) => entity.id === projectile.targetId)
       )
-        return;
-      const playerY = playerCenterY(field, playerLift.value);
-      commitEntities(
-        entitiesRef.current.map((entity) => {
-          if (entity.id !== projectile.targetId) return entity;
-
-          const pathDistance = Math.max(
-            1,
-            Math.hypot(field.width / 2 - entity.spawnX, playerY - START_Y),
-          );
-          const elapsed = Date.now() - (entity.impactAt - entity.duration);
-          const currentProgress = Math.max(
-            0,
-            Math.min(1, elapsed / entity.duration),
-          );
-          const appliedPush = Math.min(
-            projectile.pushStrength,
-            pathDistance * currentProgress,
-          );
-
-          return {
-            ...entity,
-            hitVersion: entity.hitVersion + 1,
-            impactAt:
-              entity.impactAt +
-              knockbackDelayMs(entity.duration, pathDistance, appliedPush),
-            knockbackTotal: entity.knockbackTotal + appliedPush,
-          };
-        }),
-      );
+        return false;
+      hapticImpact("light");
+      const { targetId, pushStrength, offset, from, to } = projectile;
+      // Pushed the way the shot was going.
+      const direction = { x: to.x - from.x, y: to.y - from.y };
+      world.modify((current) => {
+        "worklet";
+        knockBack(current, targetId, pushStrength, direction, offset);
+        return current;
+      });
+      hits.modify((current) => {
+        "worklet";
+        current[targetId] = (current[targetId] ?? 0) + 1;
+        return current;
+      });
+      return true;
     },
-    [commitEntities, field, playerLift],
+    [hits, world],
   );
-
-  const removeBurst = useCallback((id: number) => {
-    setBursts((current) => current.filter((item) => item.id !== id));
-  }, []);
 
   const clearTargetInput = useCallback(
     (id: string) => {
+      if (pinnedTargetRef.current === id) pinnedTargetRef.current = null;
       if (lockedTargetRef.current !== id) return;
       setLockedTarget(null);
       setInput("");
@@ -1149,7 +1124,7 @@ export function WordFallScreen({
   }, []);
 
   /**
-   * One attempt per fall. A fall with its answer showing (warm-up, Reveal)
+   * One attempt per fall. A fall with its answer showing (warm-up, Intip)
    * counts as recognising the word, not recalling it, so it never makes the
    * word learned on its own.
    */
@@ -1210,14 +1185,32 @@ export function WordFallScreen({
     (id: string) => {
       const entity = entitiesRef.current.find((item) => item.id === id);
       if (!entity || entity.completed) return;
-      // A word that reaches the ship counts as wrong.
+      // A word that reaches the ship counts as wrong, and blows up on it:
+      // the words around are thrown back up, which buys a moment to type.
       hapticError();
+      playSound("lost");
+      playSound("blast");
+      const ship = shipPoint();
+      effectsRef.current?.burst(ship, colors.destructive, {
+        blast: SHIP_BLAST.radius,
+      });
+      world.modify((current) => {
+        "worklet";
+        explode(
+          current,
+          ship.x,
+          ship.y,
+          SHIP_BLAST.radius,
+          SHIP_BLAST.strength,
+        );
+        return current;
+      });
       commitEntities(entitiesRef.current.filter((item) => item.id !== id));
       clearTargetInput(id);
       setReviewItems((current) =>
         addWordFallReviewItem(current, entity.word, "missed"),
       );
-      const answerShown = Boolean(entity.warmup) || revealedRef.current;
+      const answerShown = entity.answerSeen;
       reportWord(entity, "INCORRECT", answerShown);
       if (!entity.warmup) queueRetry(entity.word.id);
       mistakeActiveRef.current = false;
@@ -1228,7 +1221,7 @@ export function WordFallScreen({
         prompt: promptTextForWord(entity.word, answerMode),
         answer: entity.answer,
       });
-      schedule(
+      scheduleInGame(
         () =>
           setMissed((current) => (current?.key === entity.id ? null : current)),
         MISSED_ANSWER_MS,
@@ -1247,19 +1240,24 @@ export function WordFallScreen({
     [
       answerMode,
       clearTargetInput,
+      colors.destructive,
       commitEntities,
       endGame,
       lesson,
+      playSound,
       queueRetry,
       reportWord,
       resetCombo,
-      schedule,
+      scheduleInGame,
+      shipPoint,
+      world,
     ],
   );
 
   const applyPowerUp = useCallback(
     (powerUp: WordFallPowerUp | undefined) => {
       if (!powerUp) return;
+      playSound("powerup");
       if (powerUp === "shield") {
         shieldRef.current = Math.min(2, shieldRef.current + 1);
         setShield(shieldRef.current);
@@ -1280,7 +1278,7 @@ export function WordFallScreen({
       }
       if (powerUp === "freeze") {
         setFrozen(true);
-        schedule(() => setFrozen(false), 2_500);
+        scheduleInGame(() => setFrozen(false), 2_500);
         return;
       }
       if (powerUp === "reveal") {
@@ -1292,48 +1290,114 @@ export function WordFallScreen({
         return;
       }
     },
-    [schedule],
+    [playSound, scheduleInGame],
   );
 
-  const activateReveal = useCallback(() => {
-    if (phase !== "running" || revealed) return;
-    if (revealChargesRef.current <= 0) return;
-    revealChargesRef.current -= 1;
-    setRevealCharges(revealChargesRef.current);
-    setRevealed(true);
-    revealedRef.current = true;
-    schedule(() => {
-      setRevealed(false);
-      revealedRef.current = false;
-    }, REVEAL_DURATION_MS);
+  const setRevealPicking = useCallback((picking: boolean) => {
+    pickingRevealRef.current = picking;
+    setPickingReveal(picking);
+  }, []);
+  /** The Intip button: arms it (the next word tapped is shown), or disarms. */
+  const toggleReveal = useCallback(() => {
+    if (phase !== "running" || revealChargesRef.current <= 0) return;
+    setRevealPicking(!pickingRevealRef.current);
     focusInput();
-  }, [focusInput, phase, revealed, schedule]);
+  }, [focusInput, phase, setRevealPicking]);
+
+  /**
+   * A word was tapped. With Intip armed it shows its answer for the rest of
+   * its fall; otherwise the ship aims at it and stays on it, and tapping it
+   * again lets the game pick the target as before.
+   */
+  const handleWordPress = useCallback(
+    (id: string) => {
+      if (phase !== "running") return;
+      const entity = entitiesRef.current.find((item) => item.id === id);
+      if (!entity || entity.completed) return;
+      if (pickingRevealRef.current) {
+        setRevealPicking(false);
+        if (revealChargesRef.current <= 0 || entity.revealed) return;
+        revealChargesRef.current -= 1;
+        setRevealCharges(revealChargesRef.current);
+        commitEntities(
+          entitiesRef.current.map((item) =>
+            item.id === id
+              ? { ...item, revealed: true, answerSeen: true }
+              : item,
+          ),
+        );
+        playSound("powerup");
+        return;
+      }
+      hapticImpact("light");
+      const unpin = pinnedTargetRef.current === id;
+      const previous = lockedTargetRef.current;
+      pinnedTargetRef.current = unpin ? null : id;
+      mistakeActiveRef.current = false;
+      typedRef.current = "";
+      setInput("");
+      setLockedTarget(unpin ? null : id);
+      // What was typed at another word is dropped with the switch.
+      if (previous)
+        commitEntities(
+          entitiesRef.current.map((item) =>
+            item.id === previous && !item.completed
+              ? { ...item, matched: 0 }
+              : item,
+          ),
+        );
+    },
+    [commitEntities, phase, playSound, setLockedTarget, setRevealPicking],
+  );
 
   const finishWord = useCallback(
     (id: string) => {
       const entity = entitiesRef.current.find((item) => item.id === id);
       if (!entity) return;
-      addBurst(
-        entityPosition(entity, field, playerLift.value),
-        entity.powerUp ? powerUpColor(entity.powerUp, colors) : colors.primary,
+      const at = bodyPoint(id);
+      // A streak makes a bigger blast, which throws the words next to it aside.
+      const blast = blastForCombo(
+        entity.comboAtCompletion,
+        Boolean(entity.powerUp),
       );
+      if (at)
+        effectsRef.current?.burst(
+          { x: at.x, y: at.y },
+          entity.powerUp
+            ? powerUpColor(entity.powerUp, colors)
+            : colors.primary,
+          { blast: blast.radius },
+        );
+      playSound(blast.big ? "blastBig" : "blast");
+      if (blast.big) {
+        hapticImpact("heavy");
+        shakeField();
+      }
+      world.modify((current) => {
+        "worklet";
+        removeBody(current, id);
+        if (at) explode(current, at.x, at.y, blast.radius, blast.strength);
+        return current;
+      });
       commitEntities(entitiesRef.current.filter((item) => item.id !== id));
-      setScore(
-        (current) =>
-          current +
-          pointsForWord(
-            entity.word,
-            level,
-            entity.comboAtCompletion,
-            answerMode,
-            entity.answer,
-          ),
+      const points = pointsForWord(
+        entity.answer,
+        level,
+        entity.comboAtCompletion,
       );
+      setScore((current) => current + points);
+      // What it was worth, rising from where it was.
+      if (at)
+        effectsRef.current?.burst(
+          { x: at.x, y: at.y - at.halfHeight },
+          colors.foreground,
+          { points },
+        );
       setDestroyed((current) => current + 1);
       const result = wordFallResult(
         mistakeWordIdsRef.current.has(entity.word.id),
       );
-      const answerShown = Boolean(entity.warmup) || revealedRef.current;
+      const answerShown = entity.answerSeen;
       reportWord(entity, result, answerShown);
       if (result === "INCORRECT" && !entity.warmup) queueRetry(entity.word.id);
       else if (result === "CORRECT" && !answerShown)
@@ -1343,16 +1407,16 @@ export function WordFallScreen({
       applyPowerUp(entity.powerUp);
     },
     [
-      addBurst,
       answerMode,
       applyPowerUp,
+      bodyPoint,
+      shakeField,
       colors,
       commitEntities,
-      field,
       level,
-      playerLift,
       queueRetry,
       reportWord,
+      world,
     ],
   );
 
@@ -1416,18 +1480,29 @@ export function WordFallScreen({
       id: `word-${++idRef.current}`,
       word,
       answer,
-      spawnX: half + Math.random() * availableWidth,
-      duration,
-      impactAt: Date.now() + duration,
       matched: 0,
-      hitVersion: 0,
-      knockbackTotal: 0,
       completed: false,
       powerUp: powerUpForRoll(Math.random()),
       warmup,
+      answerSeen: warmup,
     };
+    const body = {
+      id: entity.id,
+      x: half + Math.random() * availableWidth,
+      y: START_Y,
+      halfWidth: estimatedWidth / 2,
+      halfHeight: ESTIMATED_HALF_HEIGHT,
+      mass: massForAnswer(Array.from(answer).length),
+      cruise: cruiseSpeed(arenaFor(field), duration),
+    };
+    positionsRef.current.set(body.id, body);
+    world.modify((current) => {
+      "worklet";
+      addBody(current, body);
+      return current;
+    });
     commitEntities([...current, entity]);
-  }, [answerMode, commitEntities, field, lesson, level, usableWords]);
+  }, [answerMode, commitEntities, field, lesson, level, usableWords, world]);
 
   useEffect(() => {
     if (phase !== "running" || frozen || !field.width || !field.height) return;
@@ -1436,11 +1511,51 @@ export function WordFallScreen({
     return () => clearInterval(timer);
   }, [field.height, field.width, frozen, level, phase, spawnWord]);
 
+  // The words move only while this runs: a pause or Beku stops the world
+  // where it is, and it goes on from there.
+  // Memoized: a new callback is registered again, which drops a frame.
+  const stepFrame = useCallback(
+    (frame: FrameInfo) => {
+      "worklet";
+      const elapsed = frame.timeSincePreviousFrame;
+      if (elapsed === null) return;
+      const arena = arenaFor(field, playerLift.value);
+      syncClock.value += elapsed;
+      const sync = syncClock.value >= POSITION_SYNC_MS;
+      if (sync) syncClock.value = 0;
+      world.modify((current) => {
+        "worklet";
+        stepWorld(current, elapsed / 1000, arena);
+        if (sync || current.impacted.length > 0)
+          runOnJS(syncPositions)(
+            current.bodies.map((body) => ({
+              id: body.id,
+              x: body.x,
+              y: body.y,
+              halfWidth: body.halfWidth,
+              halfHeight: body.halfHeight,
+            })),
+          );
+        for (const id of current.impacted) runOnJS(handleImpact)(id);
+        return current;
+      });
+    },
+    [field, handleImpact, playerLift, syncClock, syncPositions, world],
+  );
+  const simulation = useFrameCallback(stepFrame, false);
+  const simulating =
+    phase === "running" && !frozen && field.width > 0 && field.height > 0;
+  useEffect(() => {
+    simulation.setActive(simulating);
+  }, [simulating, simulation]);
+
   const resetGame = useCallback(() => {
     clearTimers();
     cancelAnimation(playerRecoil);
     playerRecoil.value = 0;
     entitiesRef.current = [];
+    world.value = createWorld();
+    positionsRef.current = new Map();
     lockedTargetRef.current = null;
     healthRef.current = STARTING_HEALTH;
     shieldRef.current = 0;
@@ -1452,7 +1567,8 @@ export function WordFallScreen({
     introducedIdsRef.current.clear();
     retryIdsRef.current = [];
     retryCountsRef.current.clear();
-    revealedRef.current = false;
+    pinnedTargetRef.current = null;
+    pickingRevealRef.current = false;
     // A lesson drops every word with its answer first, then each hidden.
     lessonQueueRef.current = lesson
       ? [
@@ -1464,14 +1580,15 @@ export function WordFallScreen({
         ]
       : [];
     setMissed(null);
+    setLevelBanner(null);
     setEntities([]);
-    setProjectiles([]);
-    setBursts([]);
+    effectsRef.current?.clear();
+    hits.value = {};
     setHealth(STARTING_HEALTH);
     setShield(0);
     setForceCharges(0);
     setRevealCharges(0);
-    setRevealed(false);
+    setPickingReveal(false);
     setScore(0);
     setDestroyed(destroyedForLevel(startLevel));
     setCombo(0);
@@ -1490,6 +1607,7 @@ export function WordFallScreen({
     playerRecoil,
     startLevel,
     usableWords,
+    world,
   ]);
 
   const pauseGame = useCallback(() => {
@@ -1559,6 +1677,8 @@ export function WordFallScreen({
   const handleInput = useCallback(
     (value: string) => {
       if (phase !== "running") return;
+      // The nearest matching word is the target.
+      const shipY = shipPoint().y;
       const targetId =
         lockedTargetRef.current ??
         selectWordTarget(
@@ -1568,7 +1688,7 @@ export function WordFallScreen({
               answerOptionsForWord(entity.word, answerMode).map((answer) => ({
                 id: entity.id,
                 answer,
-                impactAt: entity.impactAt,
+                distance: shipY - (bodyPoint(entity.id)?.y ?? START_Y),
               })),
             ),
           value,
@@ -1578,6 +1698,7 @@ export function WordFallScreen({
       );
       if (!target) {
         setInput(value);
+        pinnedTargetRef.current = null;
         if (value) registerMistake();
         else {
           mistakeActiveRef.current = false;
@@ -1592,10 +1713,38 @@ export function WordFallScreen({
       );
       const analysis = analyzeTyping(answer, value, target.matched);
       setInput(value);
-      if (value.length > 0) setLockedTarget(target.id);
+      // A tapped target stays the target with nothing typed.
+      if (value.length > 0 || pinnedTargetRef.current === target.id)
+        setLockedTarget(target.id);
       else setLockedTarget(null);
       if (analysis.mistake) registerMistake(target.word);
       else mistakeActiveRef.current = false;
+
+      // A new wrong letter flies at the word and glances off it.
+      const typedLonger =
+        Array.from(value).length > Array.from(typedRef.current).length;
+      typedRef.current = value;
+      if (analysis.mistake && typedLonger) {
+        const from = { x: field.width / 2, y: shipY };
+        const hit = bodyPoint(target.id);
+        const offset = Math.random() * 1.6 - 0.8;
+        const miss: Shot = {
+          targetId: target.id,
+          character: Array.from(value).at(-1) ?? "",
+          color: colors.destructive,
+          from,
+          to: hit
+            ? {
+                x: hit.x + offset * hit.halfWidth * 0.7,
+                y: hit.y + hit.halfHeight * 0.6,
+              }
+            : from,
+          pushStrength: 0,
+          offset,
+          miss: true,
+        };
+        effectsRef.current?.shoot([miss]);
+      }
 
       if (
         (analysis.correctCharacters !== target.matched ||
@@ -1616,11 +1765,8 @@ export function WordFallScreen({
           target.matched,
           analysis.correctCharacters,
         );
-        const to = entityPosition(target, field, playerLift.value);
-        const from = {
-          x: field.width / 2,
-          y: playerCenterY(field, playerLift.value),
-        };
+        const from = { x: field.width / 2, y: shipY };
+        const hit = bodyPoint(target.id);
         const boostedShots = Math.min(
           forceChargesRef.current,
           gainedCharacters.length,
@@ -1646,18 +1792,25 @@ export function WordFallScreen({
             easing: Easing.out(Easing.cubic),
           }),
         );
-        const shots = gainedCharacters.map((character, index) => ({
-          id: ++effectIdRef.current,
-          targetId: target.id,
-          character,
-          color: target.powerUp
-            ? powerUpColor(target.powerUp, colors)
-            : colors.primary,
-          from,
-          to: { x: to.x + index * 3, y: to.y },
-          pushStrength: pushStrengthForLevel(level, index < boostedShots),
-        }));
-        setProjectiles((current) => [...current, ...shots]);
+        const shots = gainedCharacters.map((character, index) => {
+          // Each letter hits somewhere along the word, so it rocks unevenly.
+          const offset = Math.random() * 1.8 - 0.9;
+          return {
+            targetId: target.id,
+            character,
+            color: target.powerUp
+              ? powerUpColor(target.powerUp, colors)
+              : colors.primary,
+            from,
+            to: hit
+              ? { x: hit.x + offset * hit.halfWidth * 0.8, y: hit.y }
+              : from,
+            pushStrength: shotImpulseForLevel(level, index < boostedShots),
+            offset,
+          };
+        });
+        effectsRef.current?.shoot(shots);
+        playSound("shot");
       }
 
       if (analysis.completed) {
@@ -1677,13 +1830,23 @@ export function WordFallScreen({
             : entity,
         );
         commitEntities(next);
+        if (pinnedTargetRef.current === target.id)
+          pinnedTargetRef.current = null;
+        // It stops where it was hit until it bursts.
+        const completedId = target.id;
+        world.modify((current) => {
+          "worklet";
+          holdBody(current, completedId);
+          return current;
+        });
         setInput("");
         setLockedTarget(null);
-        schedule(() => finishWord(target.id), 540);
+        scheduleInGame(() => finishWord(target.id), 540);
       }
     },
     [
       answerMode,
+      bodyPoint,
       commitEntities,
       colors,
       field,
@@ -1693,8 +1856,9 @@ export function WordFallScreen({
       playerLift,
       playerRecoil,
       registerMistake,
-      schedule,
+      scheduleInGame,
       setLockedTarget,
+      world,
     ],
   );
 
@@ -1723,6 +1887,9 @@ export function WordFallScreen({
         phase={phase}
         score={score}
         lessonTitle={lesson?.title}
+        shield={shield}
+        frozen={frozen}
+        forceCharges={forceCharges}
       />
       <TextInput
         ref={inputRef}
@@ -1738,104 +1905,18 @@ export function WordFallScreen({
         value={input}
       />
 
-      <View onLayout={onFieldLayout} style={styles.field}>
-        {shield > 0 || frozen || forceCharges > 0 || revealed ? (
-          <View style={styles.activePowerUps}>
-            {shield > 0 ? (
-              <View
-                style={[
-                  styles.statusChip,
-                  {
-                    backgroundColor: withOpacity(
-                      powerUpColor("shield", colors),
-                      0.14,
-                    ),
-                    borderColor: powerUpColor("shield", colors),
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.statusChipText,
-                    { color: powerUpColor("shield", colors) },
-                  ]}
-                >
-                  Shield ×{shield}
-                </Text>
-              </View>
-            ) : null}
-            {frozen ? (
-              <View
-                style={[
-                  styles.statusChip,
-                  {
-                    backgroundColor: withOpacity(
-                      powerUpColor("freeze", colors),
-                      0.14,
-                    ),
-                    borderColor: powerUpColor("freeze", colors),
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.statusChipText,
-                    { color: powerUpColor("freeze", colors) },
-                  ]}
-                >
-                  Beku
-                </Text>
-              </View>
-            ) : null}
-            {forceCharges > 0 ? (
-              <View
-                style={[
-                  styles.statusChip,
-                  {
-                    backgroundColor: withOpacity(
-                      powerUpColor("force", colors),
-                      0.14,
-                    ),
-                    borderColor: powerUpColor("force", colors),
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.statusChipText,
-                    { color: powerUpColor("force", colors) },
-                  ]}
-                >
-                  Force ×{forceCharges}
-                </Text>
-              </View>
-            ) : null}
-            {revealed ? (
-              <View
-                style={[
-                  styles.statusChip,
-                  {
-                    backgroundColor: withOpacity(
-                      powerUpColor("reveal", colors),
-                      0.14,
-                    ),
-                    borderColor: powerUpColor("reveal", colors),
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.statusChipText,
-                    { color: powerUpColor("reveal", colors) },
-                  ]}
-                >
-                  Membuka
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        ) : null}
-
+      <Animated.View
+        onLayout={onFieldLayout}
+        style={[styles.field, fieldShakeStyle]}
+      >
+        <WordFallBackdrop
+          color={colors.foreground}
+          height={field.height}
+          lineBottom={PLAYER_BOTTOM + PLAYER_SIZE / 2}
+          lineColor={withOpacity(colors.primary, 0.3)}
+          moving={simulating}
+          width={field.width}
+        />
         {entities.map((entity) => (
           <FallingWordView
             key={entity.id}
@@ -1843,40 +1924,35 @@ export function WordFallScreen({
             field={field}
             mode={answerMode}
             mistyped={entity.id === lockedTargetId ? mistyped : ""}
-            onImpact={handleImpact}
-            paused={phase !== "running" || frozen || entity.completed}
             playerLift={playerLift}
-            revealed={revealed}
+            hits={hits}
+            onPress={handleWordPress}
+            targeted={entity.id === lockedTargetId && !entity.completed}
+            world={world}
           />
         ))}
-        {projectiles.map((projectile) => (
-          <Projectile
-            key={projectile.id}
-            onDone={handleProjectileDone}
-            projectile={projectile}
-          />
-        ))}
-        {bursts.map((burst) => (
-          <Burst burst={burst} key={burst.id} onDone={removeBurst} />
-        ))}
+        <WordFallEffects onHit={handleHit} ref={effectsRef} />
 
-        {/* Out of the ship's row, so its width never moves the ship. */}
-        <View pointerEvents="none" style={styles.missedSide}>
+        {/* The word that got through, at the top where nothing is typed. */}
+        <View pointerEvents="none" style={styles.missedRow}>
           {missed ? (
             <Animated.View
               key={missed.key}
-              entering={FadeIn.duration(160)}
-              exiting={FadeOut.duration(240)}
+              entering={FadeInUp.duration(240)}
+              exiting={FadeOut.duration(320)}
               accessibilityLiveRegion="polite"
-              accessibilityLabel={`Terlewat: ${missed.prompt}, ${missed.answer}`}
+              accessibilityLabel={`Hafalkan: ${missed.prompt} artinya ${missed.answer}`}
               style={[
-                styles.missedAnswer,
+                styles.missedCard,
                 {
-                  backgroundColor: withOpacity(colors.destructive, 0.12),
+                  backgroundColor: colors.card,
                   borderColor: withOpacity(colors.destructive, 0.5),
                 },
               ]}
             >
+              <Text style={[styles.missedLabel, { color: colors.destructive }]}>
+                Hafalkan ini
+              </Text>
               <Text
                 numberOfLines={1}
                 style={[styles.missedPrompt, { color: colors.foreground }]}
@@ -1885,7 +1961,7 @@ export function WordFallScreen({
               </Text>
               <Text
                 numberOfLines={2}
-                style={[styles.missedText, { color: colors.destructive }]}
+                style={[styles.missedText, { color: colors.mutedForeground }]}
               >
                 {missed.answer}
               </Text>
@@ -1923,55 +1999,94 @@ export function WordFallScreen({
         ) : null}
         {revealCharges > 0 && phase === "running" ? (
           <Pressable
-            accessibilityLabel={`Aktifkan bantuan, sisa ${revealCharges}`}
+            accessibilityHint="Lalu ketuk kata yang jawabannya ingin kamu lihat"
+            accessibilityLabel={`Intip jawaban, sisa ${revealCharges}`}
             accessibilityRole="button"
-            accessibilityState={{ disabled: revealed }}
-            disabled={revealed}
-            onPress={activateReveal}
+            accessibilityState={{ selected: pickingReveal }}
+            onPress={toggleReveal}
             style={({ pressed }) => [
               styles.revealButton,
               {
-                backgroundColor: withOpacity(
-                  powerUpColor("reveal", colors),
-                  revealed ? 0.07 : 0.16,
-                ),
+                backgroundColor: pickingReveal
+                  ? powerUpColor("reveal", colors)
+                  : withOpacity(powerUpColor("reveal", colors), 0.16),
                 borderColor: powerUpColor("reveal", colors),
-                opacity: pressed || revealed ? 0.6 : 1,
+                opacity: pressed ? 0.6 : 1,
               },
             ]}
           >
             <Text
               style={[
                 styles.revealButtonText,
-                { color: powerUpColor("reveal", colors) },
+                {
+                  color: pickingReveal
+                    ? colors.background
+                    : powerUpColor("reveal", colors),
+                },
               ]}
             >
-              Reveal ×{revealCharges}
+              {pickingReveal
+                ? "Ketuk sebuah kata"
+                : `${powerUpLabel("reveal")} ×${revealCharges}`}
             </Text>
           </Pressable>
         ) : null}
-      </View>
+      </Animated.View>
+
+      {levelBanner ? (
+        <View pointerEvents="none" style={styles.levelBanner}>
+          <Animated.View
+            key={levelBanner}
+            entering={FadeInUp.duration(260)}
+            exiting={FadeOut.duration(320)}
+            accessibilityLiveRegion="polite"
+            accessibilityLabel={`Naik ke level ${levelBanner}`}
+            style={[
+              styles.levelPill,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.levelPillTitle, { color: colors.primary }]}>
+              Level {levelBanner}
+            </Text>
+            <Text
+              style={[
+                styles.levelPillDetail,
+                { color: colors.mutedForeground },
+              ]}
+            >
+              {levelDetail(levelBanner)}
+            </Text>
+          </Animated.View>
+        </View>
+      ) : null}
 
       {countdown ? (
         <Animated.View
-          entering={FadeIn.duration(160)}
-          exiting={FadeOut.duration(160)}
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(200)}
           pointerEvents="none"
           style={styles.countdown}
         >
+          {/* Keyed by the number: one fades out as the next fades in. */}
+          <View style={styles.countdownNumberBox}>
+            <Animated.Text
+              key={countdown}
+              entering={FadeIn.duration(200)}
+              exiting={FadeOut.duration(140)}
+              style={[styles.countdownNumber, { color: colors.foreground }]}
+            >
+              {countdown}
+            </Animated.Text>
+          </View>
+          <CountdownBar durationMs={COUNTDOWN_FROM * COUNTDOWN_STEP_MS} />
           <Text
-            style={[styles.countdownLabel, { color: colors.mutedForeground }]}
+            style={[styles.countdownHint, { color: colors.mutedForeground }]}
           >
-            Bersiap
+            {answerMode === "ID"
+              ? "Ketik arti kata yang jatuh"
+              : "Ketik kata Korea dari arti yang jatuh"}
           </Text>
-          {/* Keyed by the number, so each one pops in. */}
-          <Animated.Text
-            key={countdown}
-            entering={ZoomIn.springify().damping(12)}
-            style={[styles.countdownNumber, { color: colors.foreground }]}
-          >
-            {countdown}
-          </Animated.Text>
         </Animated.View>
       ) : null}
       {/* Pausing opens the same sheet the round ends on. Closing it any way
@@ -1981,7 +2096,15 @@ export function WordFallScreen({
           eyebrow="Hujan kata"
           title="Dijeda"
           mark={{ value: String(score), label: "poin" }}
-          facts={[{ icon: "flame.fill", text: `Level ${level}` }]}
+          facts={[
+            { icon: "flame.fill", text: `Level ${level}` },
+            {
+              icon: sound ? "speaker.fill" : "speaker.slash.fill",
+              text: sound ? "Suara: nyala" : "Suara: mati",
+              accessibilityHint: "Nyalakan atau matikan efek suara",
+              onPress: () => updateSettings({ sound: !sound }),
+            },
+          ]}
           primary={{
             eyebrow: "Lanjutkan",
             title: "Kembali ke permainan",
@@ -2065,17 +2188,54 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  countdownLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
+  levelBanner: {
+    alignItems: "center",
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 96,
   },
-  countdownNumber: {
-    fontSize: 64,
+  levelPill: {
+    alignItems: "center",
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  levelPillTitle: {
+    fontSize: 13,
     fontVariant: ["tabular-nums"],
     fontWeight: "800",
   },
+  levelPillDetail: { fontSize: 12, fontWeight: "500" },
+  countdownNumberBox: {
+    alignItems: "center",
+    height: 72,
+    justifyContent: "center",
+    width: 120,
+  },
+  countdownNumber: {
+    fontSize: 56,
+    fontVariant: ["tabular-nums"],
+    fontWeight: "700",
+    position: "absolute",
+  },
+  countdownTrack: {
+    borderRadius: 1.5,
+    height: 3,
+    marginTop: 10,
+    overflow: "hidden",
+    width: 96,
+  },
+  countdownFill: {
+    borderRadius: 1.5,
+    height: 3,
+    transformOrigin: "left center",
+    width: 96,
+  },
+  countdownHint: { fontSize: 14, fontWeight: "500", marginTop: 16 },
   screen: { flex: 1 },
   field: { flex: 1, overflow: "hidden" },
   headerStats: { alignItems: "center", flexDirection: "row", gap: 9 },
@@ -2130,7 +2290,12 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
   },
-  powerUpLabel: { fontSize: 8, fontWeight: "900", letterSpacing: 1 },
+  powerUpLabel: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
   term: { fontSize: 20, fontWeight: "800", textAlign: "center" },
   indonesianPrompt: { fontSize: 16, lineHeight: 20 },
   definition: {
@@ -2148,23 +2313,31 @@ const styles = StyleSheet.create({
     right: 0,
   },
   // Left of the ship, right-aligned up to it, bottom-aligned with it.
-  missedSide: {
-    alignItems: "flex-end",
-    bottom: PLAYER_BOTTOM,
-    left: 12,
-    paddingRight: PLAYER_SIZE / 2 + 12,
+  missedRow: {
+    alignItems: "center",
+    left: 16,
     position: "absolute",
-    right: "50%",
+    right: 16,
+    top: 10,
+    zIndex: 5,
   },
-  missedAnswer: {
-    borderRadius: 12,
+  missedCard: {
+    alignItems: "center",
+    borderRadius: 14,
     borderWidth: 1,
+    gap: 1,
     maxWidth: "100%",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  missedPrompt: { fontSize: 13, fontWeight: "800" },
-  missedText: { fontSize: 13, fontWeight: "700" },
+  missedLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  missedPrompt: { fontSize: 17, fontWeight: "800" },
+  missedText: { fontSize: 14, fontWeight: "600", textAlign: "center" },
   player: {
     alignItems: "center",
     height: PLAYER_SIZE,
@@ -2172,6 +2345,7 @@ const styles = StyleSheet.create({
     width: PLAYER_SIZE,
   },
   // The ship, drawn inside the player's square and spilling past its sides.
+  ship: { height: PLAYER_SIZE, width: PLAYER_SIZE },
   shipTurret: {
     height: 28,
     left: PLAYER_SIZE / 2 - 14,
@@ -2232,60 +2406,12 @@ const styles = StyleSheet.create({
     height: 38,
     width: 40,
   },
-  projectile: {
-    alignItems: "center",
-    height: 24,
-    justifyContent: "center",
-    left: -12,
-    position: "absolute",
-    top: -12,
-    width: 24,
+  headerBadge: { alignItems: "center", flexDirection: "row", gap: 2 },
+  headerBadgeCount: {
+    fontSize: 12,
+    fontVariant: ["tabular-nums"],
+    fontWeight: "800",
   },
-  projectileLayer: {
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-  projectileText: { fontSize: 17, fontWeight: "900", textAlign: "center" },
-  projectileBeam: {
-    left: 0,
-    position: "absolute",
-    top: 0,
-  },
-  spark: {
-    borderRadius: SPARK_SIZE / 2,
-    height: SPARK_SIZE,
-    left: 0,
-    position: "absolute",
-    top: 0,
-    width: SPARK_SIZE,
-  },
-  burst: {
-    borderRadius: 18,
-    borderWidth: 2,
-    height: 36,
-    left: 0,
-    position: "absolute",
-    top: 0,
-    width: 36,
-  },
-  activePowerUps: {
-    flexDirection: "row",
-    gap: 8,
-    left: 12,
-    position: "absolute",
-    top: 12,
-    zIndex: 10,
-  },
-  statusChip: {
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  statusChipText: { fontSize: 11, fontWeight: "800" },
   revealButton: {
     alignItems: "center",
     borderRadius: 999,

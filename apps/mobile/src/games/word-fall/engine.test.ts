@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
 import {
+  blastForCombo,
   addWordFallReviewItem,
   analyzeTyping,
   answerOptionsForWord,
@@ -11,12 +12,11 @@ import {
   destroyedForLevel,
   fallDurationForLevel,
   isWordFallInputEditable,
-  knockbackDelayMs,
   levelForDestroyed,
   maximumActiveWords,
   pointsForWord,
   promptTextForWord,
-  pushStrengthForLevel,
+  shotImpulseForLevel,
   selectWordTarget,
   wordFallResult,
 } from "./engine";
@@ -29,16 +29,16 @@ describe("word fall engine", () => {
 
   test("targets a farther word when its answer matches the typed prefix", () => {
     const candidates = [
-      { id: "near", answer: "apple", impactAt: 100 },
-      { id: "far", answer: "banana", impactAt: 200 },
+      { id: "near", answer: "apple", distance: 100 },
+      { id: "far", answer: "banana", distance: 200 },
     ];
     expect(selectWordTarget(candidates, "b")).toBe("far");
   });
 
   test("uses proximity only to break ties between matching answers", () => {
     const candidates = [
-      { id: "far", answer: "apricot", impactAt: 200 },
-      { id: "near", answer: "apple", impactAt: 100 },
+      { id: "far", answer: "apricot", distance: 200 },
+      { id: "near", answer: "apple", distance: 100 },
     ];
     expect(selectWordTarget(candidates, "a")).toBe("near");
   });
@@ -98,7 +98,7 @@ describe("word fall engine", () => {
     expect(answerTextForWord(word, "KR")).toBe("한국");
     expect(
       selectWordTarget(
-        [{ id: word.id, answer: answerTextForWord(word, "KR"), impactAt: 1 }],
+        [{ id: word.id, answer: answerTextForWord(word, "KR"), distance: 1 }],
         "한",
       ),
     ).toBe(word.id);
@@ -132,11 +132,11 @@ describe("word fall engine", () => {
     expect(bestTypingAnswer(options, "x", "kapal")).toBe("kapal");
     expect(
       selectWordTarget(
-        options.map((answer) => ({ id: word.id, answer, impactAt: 1 })),
+        options.map((answer) => ({ id: word.id, answer, distance: 1 })),
         "kap",
       ),
     ).toBe(word.id);
-    expect(pointsForWord(word, 1, 1, "ID", "kapal")).toBe(50);
+    expect(pointsForWord("kapal", 1, 1)).toBe(50);
   });
 
   test("tracks the correct prefix and blocks progress after a mistake", () => {
@@ -179,18 +179,27 @@ describe("word fall engine", () => {
     );
   });
 
-  test("keeps baseline level-one knockback subtle", () => {
-    const baselinePush = pushStrengthForLevel(1, false);
-    const levelOneDelay = knockbackDelayMs(
-      fallDurationForLevel(1, 0.5),
-      700,
-      baselinePush,
-    );
+  test("a plain shot pushes, a Force shot throws", () => {
+    const plain = shotImpulseForLevel(1, false);
 
-    expect(levelOneDelay).toBeLessThanOrEqual(200);
-    expect(pushStrengthForLevel(1, true)).toBeGreaterThanOrEqual(
-      baselinePush * 5,
+    expect(plain).toBeGreaterThan(0);
+    expect(shotImpulseForLevel(30, false)).toBeGreaterThan(plain);
+    expect(shotImpulseForLevel(99, false)).toBe(shotImpulseForLevel(50, false));
+    expect(shotImpulseForLevel(1, true)).toBeGreaterThanOrEqual(
+      shotImpulseForLevel(99, false) * 2,
     );
+  });
+
+  test("a streak makes the blast bigger, up to a limit", () => {
+    const first = blastForCombo(1);
+    const streak = blastForCombo(6);
+
+    expect(streak.radius).toBeGreaterThan(first.radius);
+    expect(streak.strength).toBeGreaterThan(first.strength);
+    expect(blastForCombo(99).radius).toBe(blastForCombo(50).radius);
+    expect(first.big).toBe(false);
+    expect(blastForCombo(5).big).toBe(true);
+    expect(blastForCombo(1, true).big).toBe(true);
   });
 
   test("grows the combo multiplier gradually and caps it", () => {
@@ -199,8 +208,8 @@ describe("word fall engine", () => {
     expect(comboMultiplier(1)).toBe(1);
     expect(comboMultiplier(4)).toBeCloseTo(1.3);
     expect(comboMultiplier(99)).toBe(3);
-    expect(pointsForWord(word, 1, 4)).toBe(78);
-    expect(pointsForWord(word, 1, 4, "KR")).toBe(26);
+    expect(pointsForWord("school", 1, 4)).toBe(78);
+    expect(pointsForWord("학교", 1, 4)).toBe(26);
   });
 
   test("deduplicates recap vocabulary while preserving review reasons", () => {

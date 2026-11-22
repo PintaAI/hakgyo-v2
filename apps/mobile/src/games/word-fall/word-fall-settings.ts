@@ -5,11 +5,14 @@ import type { WordFallAnswerMode } from "./engine";
 
 /**
  * Hujan Kata's settings, chosen in Latihan's source sheet and kept on this
- * device: the language answers are typed in and the starting level.
+ * device: the language answers are typed in, the starting level and whether
+ * sound effects play.
  */
 type WordFallSettings = {
   answerMode: WordFallAnswerMode;
   startLevel: number;
+  /** Sound effects; off keeps the game silent whatever the phone is set to. */
+  sound: boolean;
 };
 
 const MAX_START_LEVEL = 10;
@@ -19,7 +22,11 @@ export const START_LEVEL_OPTIONS = Array.from(
 );
 
 const KEY = "hakgyo:word-fall-settings:v1";
-const DEFAULTS: WordFallSettings = { answerMode: "ID", startLevel: 1 };
+const DEFAULTS: WordFallSettings = {
+  answerMode: "ID",
+  startLevel: 1,
+  sound: true,
+};
 
 function readWordFallSettings(): WordFallSettings {
   try {
@@ -34,6 +41,7 @@ function readWordFallSettings(): WordFallSettings {
         START_LEVEL_OPTIONS.includes(record.startLevel)
           ? record.startLevel
           : 1,
+      sound: record.sound !== false,
     };
   } catch {
     return DEFAULTS;

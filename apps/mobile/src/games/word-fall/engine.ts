@@ -243,7 +243,8 @@ export function bestTypingAnswer(
 export type TypingTargetCandidate = {
   id: string;
   answer: string;
-  impactAt: number;
+  /** How far the word is from the ship; the nearest match is the target. */
+  distance: number;
 };
 
 export function selectWordTarget(
@@ -259,7 +260,7 @@ export function selectWordTarget(
         analysis.correctCharacters > 0 ||
         analysis.composing;
       if (!matches) return selected;
-      return !selected || candidate.impactAt < selected.impactAt
+      return !selected || candidate.distance < selected.distance
         ? candidate
         : selected;
     },
@@ -288,38 +289,60 @@ export function fallDurationForLevel(level: number, random = Math.random()) {
   return Math.round(base * (0.95 + random * 0.1));
 }
 
-export function pushStrengthForLevel(level: number, powered: boolean) {
-  if (powered) return 30;
+/**
+ * The impulse of one shot, in px/s given to a word of mass 1 (see
+ * `knockBack` in `physics.ts`). A plain shot stops a falling word and lifts
+ * it a little, a bit harder at higher levels where words fall faster; a
+ * Force shot throws it back.
+ */
+export function shotImpulseForLevel(level: number, powered: boolean) {
+  if (powered) return 240;
   const safeLevel = Math.max(1, Math.floor(level));
-  return Math.min(8, 4 + Math.floor((safeLevel - 1) / 3));
-}
-
-export function knockbackDelayMs(
-  fallDuration: number,
-  pathDistance: number,
-  pushDistance: number,
-) {
-  return (
-    Math.max(0, fallDuration) *
-    (Math.max(0, pushDistance) / Math.max(1, pathDistance))
-  );
+  return Math.min(95, 60 + (safeLevel - 1) * 3);
 }
 
 export function comboMultiplier(combo: number) {
   return Math.min(3, 1 + Math.max(0, Math.floor(combo) - 1) * 0.1);
 }
 
-export function pointsForWord(
-  word: WordFallWord,
-  level: number,
-  combo = 1,
-  mode: WordFallAnswerMode = "ID",
-  answer = answerTextForWord(word, mode),
-) {
+/** Points for clearing a word by typing `answer` (a meaning, or the Korean term in KR mode). */
+export function pointsForWord(answer: string, level: number, combo = 1) {
   const basePoints =
     Math.max(1, Array.from(answer).length) * 10 * Math.max(1, level);
   return Math.round(basePoints * comboMultiplier(combo));
 }
+
+/** A destroyed word's blast at combo 1: its reach in px and its push at the centre in px/s. */
+const BLAST_RADIUS = 130;
+const BLAST_STRENGTH = 320;
+/** Each combo step past the first adds this share, up to `MAX_BLAST_SCALE`. */
+const BLAST_SCALE_PER_COMBO = 0.06;
+const MAX_BLAST_SCALE = 1.6;
+/** From this combo on, a blast is big: the screen shakes. */
+const BIG_BLAST_COMBO = 5;
+
+/**
+ * The blast of a word destroyed at `combo`: a streak makes it reach further
+ * and push harder, so the combo shows on the field. A word carrying a
+ * power-up always blasts big.
+ */
+export function blastForCombo(combo = 1, powerUp = false) {
+  const scale = Math.min(
+    MAX_BLAST_SCALE,
+    1 + Math.max(0, Math.floor(combo) - 1) * BLAST_SCALE_PER_COMBO,
+  );
+  return {
+    radius: BLAST_RADIUS * scale,
+    strength: BLAST_STRENGTH * scale,
+    big: powerUp || combo >= BIG_BLAST_COMBO,
+  };
+}
+
+/**
+ * The blast of a word that reaches the ship: wider and harder than a word's
+ * own, so the words right behind it are thrown back up.
+ */
+export const SHIP_BLAST = { radius: 180, strength: 460 };
 
 export function wordFallResult(hadMistake: boolean) {
   return hadMistake ? ("INCORRECT" as const) : ("CORRECT" as const);

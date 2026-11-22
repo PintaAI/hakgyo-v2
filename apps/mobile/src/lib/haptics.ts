@@ -25,6 +25,17 @@ export function hapticError() {
   );
 }
 
+/** A hit in a game: light for a small one, heavy for a big one. */
+export function hapticImpact(weight: "light" | "medium" | "heavy") {
+  const style =
+    weight === "heavy"
+      ? Haptics.ImpactFeedbackStyle.Heavy
+      : weight === "medium"
+        ? Haptics.ImpactFeedbackStyle.Medium
+        : Haptics.ImpactFeedbackStyle.Light;
+  Haptics.impactAsync(style).catch(quiet);
+}
+
 /** A light tap, for a press that moves the learner on. */
 export function hapticTap() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(quiet);
