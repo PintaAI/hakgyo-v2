@@ -53,7 +53,7 @@ const platforms: {
     steps: androidBeta
       ? [
           {
-            text: "Gabung grup Hakgyo Beta Testers dengan akun Google yang dipakai di Play Store ponselmu.",
+            text: "Buka di Chrome, masuk dengan akun Google yang dipakai di Play Store ponselmu, lalu gabung grup Hakgyo Beta Testers.",
             link: { href: androidBeta.group, label: "Gabung grup" },
           },
           {
