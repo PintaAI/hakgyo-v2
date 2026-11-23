@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 import Image from "next/image";
 import { SmartphoneIcon } from "lucide-react";
 
-import { mobileAppStoreLinks } from "~/lib/mobile-app";
+import { appInstallGuidePath, mobileAppStoreLinks } from "~/lib/mobile-app";
 import { cn } from "~/lib/utils";
 
 /**
@@ -20,9 +20,10 @@ const downloads = [
   },
   {
     platform: "Android",
-    note: "Unduh file APK",
-    shortNote: "File APK",
-    href: mobileAppStoreLinks.androidApk,
+    note: "Beta lewat Google Play",
+    shortNote: "Google Play",
+    // The Play beta takes three steps, so the button opens them.
+    href: mobileAppStoreLinks.androidBeta ? appInstallGuidePath : null,
     icon: (
       <Image
         src="/brands/android-head.svg"

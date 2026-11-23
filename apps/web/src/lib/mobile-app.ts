@@ -1,20 +1,34 @@
 // Learning happens in the native app; the web only hands learners over to it.
 // Store links stay null until the app is published, which renders the store
 // badges as "Segera hadir". Until the store listings exist, iPhone users join
-// the public TestFlight beta and Android users install the EAS preview APK,
-// copied to R2 under `app-releases/android/`.
+// the public TestFlight beta and Android users join the Google Play closed
+// test: they join the Google Group the test is shared with, opt in as a
+// tester, then install from Google Play.
 export const mobileAppStoreLinks: {
   appStore: string | null;
   playStore: string | null;
   testFlight: string | null;
-  androidApk: string | null;
+  androidBeta: {
+    /** Public Google Group; only its members can opt in. */
+    group: string;
+    /** Play opt-in page, where a group member becomes a tester. */
+    optIn: string;
+    /** The listing, which installs only for testers until release. */
+    install: string;
+  } | null;
 } = {
   appStore: null,
   playStore: null,
   testFlight: "https://testflight.apple.com/join/yGEtbK2q",
-  androidApk:
-    "https://cdn.hakgyo.id/app-releases/android/hakgyo-1.0.2-preview-2d296bb1.apk",
+  androidBeta: {
+    group: "https://groups.google.com/g/hakgyo-beta-testers",
+    optIn: "https://play.google.com/apps/testing/com.rorez.hakgyo",
+    install: "https://play.google.com/store/apps/details?id=com.rorez.hakgyo",
+  },
 };
+
+/** The install steps on the app page, which the Android beta needs. */
+export const appInstallGuidePath = "/aplikasi#pasang";
 
 export const mobileAppScheme = "hakgyo";
 
