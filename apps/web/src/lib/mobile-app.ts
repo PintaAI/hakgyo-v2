@@ -9,7 +9,10 @@ export const mobileAppStoreLinks: {
   playStore: string | null;
   testFlight: string | null;
   androidBeta: {
-    /** Public Google Group; only its members can opt in. */
+    /**
+     * Public Google Group; only its members can opt in. Its about page, since
+     * the group home tells a signed-out visitor they have no permission.
+     */
     group: string;
     /** Play opt-in page, where a group member becomes a tester. */
     optIn: string;
@@ -21,7 +24,7 @@ export const mobileAppStoreLinks: {
   playStore: null,
   testFlight: "https://testflight.apple.com/join/yGEtbK2q",
   androidBeta: {
-    group: "https://groups.google.com/g/hakgyo-beta-testers",
+    group: "https://groups.google.com/g/hakgyo-beta-testers/about",
     optIn: "https://play.google.com/apps/testing/com.rorez.hakgyo",
     install: "https://play.google.com/store/apps/details?id=com.rorez.hakgyo",
   },
