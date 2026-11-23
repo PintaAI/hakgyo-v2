@@ -5,7 +5,11 @@ import type {
   LandingRevisionSource,
 } from "../../../generated/prisma/client";
 import { env } from "~/env";
-import { appHandoffPath, mobileAppStoreLinks } from "~/lib/mobile-app";
+import {
+  appHandoffPath,
+  appInstallGuidePath,
+  mobileAppStoreLinks,
+} from "~/lib/mobile-app";
 import { organizationPublicSlugSchema } from "~/lib/organization-landing";
 import { getPublicR2Url } from "~/lib/managed-image";
 import type { db } from "~/server/db";
@@ -184,8 +188,13 @@ function buildLandingPolicy(
         : []),
     ...(mobileAppStoreLinks.playStore
       ? [{ url: mobileAppStoreLinks.playStore, label: "Google Play" }]
-      : mobileAppStoreLinks.androidApk
-        ? [{ url: mobileAppStoreLinks.androidApk, label: "Android beta (APK)" }]
+      : mobileAppStoreLinks.androidBeta
+        ? [
+            {
+              url: appUrl(appInstallGuidePath),
+              label: "Android beta on Google Play (how to join)",
+            },
+          ]
         : []),
   ];
   const assetOrigins = [

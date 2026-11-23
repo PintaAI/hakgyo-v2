@@ -1,10 +1,11 @@
-import { mobileAppStoreLinks } from "~/lib/mobile-app";
+import { appInstallGuidePath, mobileAppStoreLinks } from "~/lib/mobile-app";
 import { cn } from "~/lib/utils";
 
 /**
  * App Store and Google Play links, or "Segera hadir" placeholders while
  * `mobileAppStoreLinks` has no URL for a store. Before the store listings
- * exist, the badges link to the TestFlight beta and the Android APK.
+ * exist, the badges link to the TestFlight beta and the steps that join the
+ * Android beta on Google Play.
  */
 export function StoreBadges({ className }: { className?: string }) {
   const stores = [
@@ -19,16 +20,16 @@ export function StoreBadges({ className }: { className?: string }) {
           action: "Beta iPhone di",
           href: mobileAppStoreLinks.testFlight,
         },
-    mobileAppStoreLinks.playStore || !mobileAppStoreLinks.androidApk
+    mobileAppStoreLinks.playStore || !mobileAppStoreLinks.androidBeta
       ? {
           name: "Google Play",
           action: "Unduh di",
           href: mobileAppStoreLinks.playStore,
         }
       : {
-          name: "Unduh APK",
-          action: "Beta Android",
-          href: mobileAppStoreLinks.androidApk,
+          name: "Google Play",
+          action: "Beta Android di",
+          href: appInstallGuidePath,
         },
   ];
 

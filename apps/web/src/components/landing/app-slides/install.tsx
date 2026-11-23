@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
 import { SmartphoneIcon } from "lucide-react";
 
@@ -6,23 +7,38 @@ import { mobileAppStoreLinks } from "~/lib/mobile-app";
 import { reveal } from "../reveal";
 import { Slide, SlideHeading } from "../slide";
 
-const platforms = [
+type Step = { text: string; link?: { href: string; label: string } };
+
+const androidBeta = mobileAppStoreLinks.androidBeta;
+
+const platforms: {
+  name: string;
+  icon: ReactNode;
+  steps: Step[];
+  action?: { href: string; label: string };
+}[] = [
   {
     name: "iPhone",
-    href: mobileAppStoreLinks.testFlight,
-    action: "Buka TestFlight",
     icon: <SmartphoneIcon className="size-6" aria-hidden="true" />,
     steps: [
-      "Ketuk Unduh untuk iPhone di halaman ini.",
-      "Pasang aplikasi TestFlight dari App Store, lalu kembali ke halaman ini.",
-      "Ketuk lagi Unduh untuk iPhone, lalu Terima dan Pasang.",
-      "Buka Hakgyo dan masuk dengan akunmu.",
+      { text: "Ketuk Unduh untuk iPhone di halaman ini." },
+      {
+        text: "Pasang aplikasi TestFlight dari App Store, lalu kembali ke halaman ini.",
+      },
+      { text: "Ketuk lagi Unduh untuk iPhone, lalu Terima dan Pasang." },
+      { text: "Buka Hakgyo dan masuk dengan akunmu." },
     ],
+    ...(mobileAppStoreLinks.testFlight
+      ? {
+          action: {
+            href: mobileAppStoreLinks.testFlight,
+            label: "Buka TestFlight",
+          },
+        }
+      : {}),
   },
   {
     name: "Android",
-    href: mobileAppStoreLinks.androidApk,
-    action: "Unduh APK",
     icon: (
       <Image
         src="/brands/android-head.svg"
@@ -32,12 +48,25 @@ const platforms = [
         className="h-auto w-8"
       />
     ),
-    steps: [
-      "Ketuk Unduh untuk Android, lalu tunggu file APK selesai terunduh.",
-      "Buka file Hakgyo dari notifikasi unduhan.",
-      "Jika diminta, izinkan browser memasang aplikasi, lalu ketuk Pasang.",
-      "Buka Hakgyo dan masuk dengan akunmu.",
-    ],
+    // The Play beta is a closed test: only members of its Google Group can
+    // opt in, and only testers can install from the listing.
+    steps: androidBeta
+      ? [
+          {
+            text: "Gabung grup Hakgyo Beta Testers dengan akun Google yang dipakai di Play Store ponselmu.",
+            link: { href: androidBeta.group, label: "Gabung grup" },
+          },
+          {
+            text: "Buka halaman pengujian, lalu ketuk Jadi penguji.",
+            link: { href: androidBeta.optIn, label: "Jadi penguji" },
+          },
+          {
+            text: "Pasang Hakgyo dari Google Play.",
+            link: { href: androidBeta.install, label: "Buka Google Play" },
+          },
+          { text: "Buka Hakgyo dan masuk dengan akunmu." },
+        ]
+      : [{ text: "Versi Android segera hadir." }],
   },
 ];
 
@@ -54,7 +83,7 @@ export function AppInstallSlide() {
         className="max-w-4xl"
       />
       <div className="mt-6 grid gap-3 sm:mt-12 md:grid-cols-2 md:gap-4">
-        {platforms.map(({ name, href, action, icon, steps }, index) => (
+        {platforms.map(({ name, icon, steps, action }, index) => (
           <section
             key={name}
             {...reveal(3 + index)}
@@ -73,23 +102,34 @@ export function AppInstallSlide() {
               </h3>
             </div>
             <ol className="mt-4 grid gap-2.5 sm:mt-8 sm:gap-4">
-              {steps.map((step, stepIndex) => (
-                <li key={step} className="flex gap-3">
+              {steps.map(({ text, link }, stepIndex) => (
+                <li key={text} className="flex gap-3">
                   <span className="text-muted-foreground w-5 shrink-0 font-mono text-xs leading-6 sm:text-sm">
                     0{stepIndex + 1}
                   </span>
                   <span className="text-muted-foreground text-sm leading-6 sm:text-base sm:leading-7">
-                    {step}
+                    {text}
+                    {link ? (
+                      <>
+                        {" "}
+                        <a
+                          href={link.href}
+                          className="text-primary font-medium whitespace-nowrap underline-offset-4 hover:underline"
+                        >
+                          {link.label}
+                        </a>
+                      </>
+                    ) : null}
                   </span>
                 </li>
               ))}
             </ol>
-            {href ? (
+            {action ? (
               <a
-                href={href}
+                href={action.href}
                 className="text-primary mt-4 self-start text-sm font-medium underline-offset-4 hover:underline sm:mt-8"
               >
-                {action}
+                {action.label}
               </a>
             ) : null}
           </section>

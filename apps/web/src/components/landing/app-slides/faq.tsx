@@ -17,8 +17,12 @@ const questions = [
     "Aplikasi masih versi beta. TestFlight adalah aplikasi resmi Apple untuk mencoba aplikasi sebelum rilis di App Store.",
   ],
   [
-    "Aman memasang APK di luar Google Play?",
-    "File APK diunduh langsung dari server Hakgyo. Android meminta izin memasang aplikasi dari browser; izin ini bisa dimatikan lagi setelah Hakgyo terpasang.",
+    "Kenapa versi Android harus gabung grup dulu?",
+    "Aplikasi masih versi beta di Google Play. Selama beta, Google hanya mengizinkan anggota grup penguji untuk memasangnya. Grupnya terbuka, siapa saja boleh bergabung.",
+  ],
+  [
+    "Sudah memasang Hakgyo dari file APK?",
+    "Buka dulu aplikasinya saat online supaya progresmu terkirim, lalu hapus aplikasinya dan pasang lagi dari Google Play. Progresmu tetap ada di akunmu.",
   ],
   [
     "Bisa belajar tanpa internet?",
