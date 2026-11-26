@@ -21,6 +21,10 @@ const questions = [
     "Aplikasi masih versi beta di Google Play. Selama beta, Google hanya mengizinkan anggota grup penguji untuk memasangnya. Grupnya terbuka, siapa saja boleh bergabung.",
   ],
   [
+    "Google Play bilang item tidak ditemukan?",
+    "Artinya Google Play belum mengenalimu sebagai penguji. Pastikan langkah Jadi penguji sudah menampilkan Anda adalah penguji, lalu di Play Store ketuk foto profil di kanan atas dan pilih akun Google yang sama dengan yang dipakai untuk gabung grup. Jika baru saja gabung, tunggu beberapa menit, tutup Play Store, lalu buka link Google Play lagi.",
+  ],
+  [
     "Sudah memasang Hakgyo dari file APK?",
     "Buka dulu aplikasinya saat online supaya progresmu terkirim, lalu hapus aplikasinya dan pasang lagi dari Google Play. Progresmu tetap ada di akunmu.",
   ],

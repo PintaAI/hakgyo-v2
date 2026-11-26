@@ -57,11 +57,13 @@ const platforms: {
             link: { href: androidBeta.group, label: "Gabung grup" },
           },
           {
-            text: "Buka halaman pengujian, lalu ketuk Jadi penguji.",
+            text: "Buka halaman pengujian dengan akun yang sama, ketuk Jadi penguji (Become a tester), lalu tunggu sampai muncul Anda adalah penguji (You are a tester).",
             link: { href: androidBeta.optIn, label: "Jadi penguji" },
           },
           {
-            text: "Pasang Hakgyo dari Google Play.",
+            // "Item not found" here means Play uses another account or the
+            // opt-in was skipped; the listing exists only for testers.
+            text: "Pasang Hakgyo dari Google Play. Di Play Store, ketuk foto profil di kanan atas dan pastikan akunnya sama dengan akun di langkah 1 dan 2.",
             link: { href: androidBeta.install, label: "Buka Google Play" },
           },
           { text: "Buka Hakgyo dan masuk dengan akunmu." },
