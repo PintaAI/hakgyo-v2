@@ -56,8 +56,10 @@ describe("word fall engine", () => {
       "utf8",
     );
     expect(screenSource).toContain("<KeyboardAvoidingView");
+    // Android too: edge to edge, the window does not resize for the keyboard.
+    expect(screenSource).toContain('behavior="padding"');
     expect(screenSource).toContain(
-      'behavior={Platform.OS === "ios" ? "padding" : undefined}',
+      "keyboardVerticalOffset={keyboardVerticalOffset}",
     );
   });
 

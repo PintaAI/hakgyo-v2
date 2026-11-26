@@ -1862,6 +1862,21 @@ export function WordFallScreen({
     ],
   );
 
+  // The app draws edge to edge, so Android does not resize the window for
+  // the keyboard: the board shrinks above it here, as on iOS. The keyboard's
+  // top comes in window coordinates and the avoiding view's frame relative to
+  // this screen, which starts below the status bar and header on Android.
+  const screenRef = useRef<View>(null);
+  const [keyboardVerticalOffset, setKeyboardVerticalOffset] = useState(0);
+  const measureScreenOffset = useCallback(() => {
+    if (Platform.OS !== "android") return;
+    screenRef.current?.measureInWindow((_x, y) => {
+      setKeyboardVerticalOffset((current) =>
+        Math.abs(current - y) < 1 ? current : y,
+      );
+    });
+  }, []);
+
   const onFieldLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
     setField((current) =>
@@ -1873,308 +1888,318 @@ export function WordFallScreen({
   }, []);
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <View
+      ref={screenRef}
+      collapsable={false}
+      onLayout={measureScreenOffset}
       style={[styles.screen, { backgroundColor: colors.background }]}
     >
-      <WordFallHeader
-        combo={combo}
-        health={health}
-        level={level}
-        locked={pendingReportCount > 0}
-        onExit={exit}
-        onPause={pauseGame}
-        phase={phase}
-        score={score}
-        lessonTitle={lesson?.title}
-        shield={shield}
-        frozen={frozen}
-        forceCharges={forceCharges}
-      />
-      <TextInput
-        ref={inputRef}
-        accessibilityLabel={`Ketik ${answerMode === "ID" ? "arti dalam bahasa Indonesia" : "kata Koreanya"}`}
-        autoCapitalize="none"
-        autoCorrect={false}
-        caretHidden
-        editable={isWordFallInputEditable(phase)}
-        onChangeText={handleInput}
-        spellCheck={false}
-        submitBehavior="submit"
-        style={styles.hiddenInput}
-        value={input}
-      />
-
-      <Animated.View
-        onLayout={onFieldLayout}
-        style={[styles.field, fieldShakeStyle]}
+      <KeyboardAvoidingView
+        behavior="padding"
+        keyboardVerticalOffset={keyboardVerticalOffset}
+        style={styles.screen}
       >
-        <WordFallBackdrop
-          color={colors.foreground}
-          height={field.height}
-          lineBottom={PLAYER_BOTTOM + PLAYER_SIZE / 2}
-          lineColor={withOpacity(colors.primary, 0.3)}
-          moving={simulating}
-          width={field.width}
+        <WordFallHeader
+          combo={combo}
+          health={health}
+          level={level}
+          locked={pendingReportCount > 0}
+          onExit={exit}
+          onPause={pauseGame}
+          phase={phase}
+          score={score}
+          lessonTitle={lesson?.title}
+          shield={shield}
+          frozen={frozen}
+          forceCharges={forceCharges}
         />
-        {entities.map((entity) => (
-          <FallingWordView
-            key={entity.id}
-            entity={entity}
-            field={field}
-            mode={answerMode}
-            mistyped={entity.id === lockedTargetId ? mistyped : ""}
-            playerLift={playerLift}
-            hits={hits}
-            onPress={handleWordPress}
-            targeted={entity.id === lockedTargetId && !entity.completed}
-            world={world}
-          />
-        ))}
-        <WordFallEffects onHit={handleHit} ref={effectsRef} />
+        <TextInput
+          ref={inputRef}
+          accessibilityLabel={`Ketik ${answerMode === "ID" ? "arti dalam bahasa Indonesia" : "kata Koreanya"}`}
+          autoCapitalize="none"
+          autoCorrect={false}
+          caretHidden
+          editable={isWordFallInputEditable(phase)}
+          onChangeText={handleInput}
+          spellCheck={false}
+          submitBehavior="submit"
+          style={styles.hiddenInput}
+          value={input}
+        />
 
-        {/* The word that got through, at the top where nothing is typed. */}
-        <View pointerEvents="none" style={styles.missedRow}>
-          {missed ? (
+        <Animated.View
+          onLayout={onFieldLayout}
+          style={[styles.field, fieldShakeStyle]}
+        >
+          <WordFallBackdrop
+            color={colors.foreground}
+            height={field.height}
+            lineBottom={PLAYER_BOTTOM + PLAYER_SIZE / 2}
+            lineColor={withOpacity(colors.primary, 0.3)}
+            moving={simulating}
+            width={field.width}
+          />
+          {entities.map((entity) => (
+            <FallingWordView
+              key={entity.id}
+              entity={entity}
+              field={field}
+              mode={answerMode}
+              mistyped={entity.id === lockedTargetId ? mistyped : ""}
+              playerLift={playerLift}
+              hits={hits}
+              onPress={handleWordPress}
+              targeted={entity.id === lockedTargetId && !entity.completed}
+              world={world}
+            />
+          ))}
+          <WordFallEffects onHit={handleHit} ref={effectsRef} />
+
+          {/* The word that got through, at the top where nothing is typed. */}
+          <View pointerEvents="none" style={styles.missedRow}>
+            {missed ? (
+              <Animated.View
+                key={missed.key}
+                entering={FadeInUp.duration(240)}
+                exiting={FadeOut.duration(320)}
+                accessibilityLiveRegion="polite"
+                accessibilityLabel={`Hafalkan: ${missed.prompt} artinya ${missed.answer}`}
+                style={[
+                  styles.missedCard,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: withOpacity(colors.destructive, 0.5),
+                  },
+                ]}
+              >
+                <Text
+                  style={[styles.missedLabel, { color: colors.destructive }]}
+                >
+                  Hafalkan ini
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.missedPrompt, { color: colors.foreground }]}
+                >
+                  {missed.prompt}
+                </Text>
+                <Text
+                  numberOfLines={2}
+                  style={[styles.missedText, { color: colors.mutedForeground }]}
+                >
+                  {missed.answer}
+                </Text>
+              </Animated.View>
+            ) : null}
+          </View>
+          {/* Centred by layout, not by the measured field, so the ship sits
+            bottom centre even before (or without) a fresh measurement. */}
+          <View pointerEvents="box-none" style={styles.playerRow}>
             <Animated.View
-              key={missed.key}
-              entering={FadeInUp.duration(240)}
+              accessibilityLabel="Pemain"
+              style={[styles.player, playerPositionStyle]}
+            >
+              <Ship aim={playerRotationStyle} />
+              {unmatchedInput ? (
+                <Text
+                  numberOfLines={1}
+                  style={[styles.unmatchedInput, { color: colors.destructive }]}
+                >
+                  {unmatchedInput}
+                </Text>
+              ) : null}
+            </Animated.View>
+          </View>
+          {shield > 0 ? (
+            <View pointerEvents="none" style={styles.playerShieldRow}>
+              <Animated.View
+                style={[
+                  styles.playerShield,
+                  { borderColor: powerUpColor("shield", colors) },
+                  playerShieldPositionStyle,
+                ]}
+              />
+            </View>
+          ) : null}
+          {revealCharges > 0 && phase === "running" ? (
+            <Pressable
+              accessibilityHint="Lalu ketuk kata yang jawabannya ingin kamu lihat"
+              accessibilityLabel={`Intip jawaban, sisa ${revealCharges}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: pickingReveal }}
+              onPress={toggleReveal}
+              style={({ pressed }) => [
+                styles.revealButton,
+                {
+                  backgroundColor: pickingReveal
+                    ? powerUpColor("reveal", colors)
+                    : withOpacity(powerUpColor("reveal", colors), 0.16),
+                  borderColor: powerUpColor("reveal", colors),
+                  opacity: pressed ? 0.6 : 1,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.revealButtonText,
+                  {
+                    color: pickingReveal
+                      ? colors.background
+                      : powerUpColor("reveal", colors),
+                  },
+                ]}
+              >
+                {pickingReveal
+                  ? "Ketuk sebuah kata"
+                  : `${powerUpLabel("reveal")} ×${revealCharges}`}
+              </Text>
+            </Pressable>
+          ) : null}
+        </Animated.View>
+
+        {levelBanner ? (
+          <View pointerEvents="none" style={styles.levelBanner}>
+            <Animated.View
+              key={levelBanner}
+              entering={FadeInUp.duration(260)}
               exiting={FadeOut.duration(320)}
               accessibilityLiveRegion="polite"
-              accessibilityLabel={`Hafalkan: ${missed.prompt} artinya ${missed.answer}`}
+              accessibilityLabel={`Naik ke level ${levelBanner}`}
               style={[
-                styles.missedCard,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: withOpacity(colors.destructive, 0.5),
-                },
+                styles.levelPill,
+                { backgroundColor: colors.card, borderColor: colors.border },
               ]}
             >
-              <Text style={[styles.missedLabel, { color: colors.destructive }]}>
-                Hafalkan ini
+              <Text style={[styles.levelPillTitle, { color: colors.primary }]}>
+                Level {levelBanner}
               </Text>
               <Text
-                numberOfLines={1}
-                style={[styles.missedPrompt, { color: colors.foreground }]}
+                style={[
+                  styles.levelPillDetail,
+                  { color: colors.mutedForeground },
+                ]}
               >
-                {missed.prompt}
-              </Text>
-              <Text
-                numberOfLines={2}
-                style={[styles.missedText, { color: colors.mutedForeground }]}
-              >
-                {missed.answer}
+                {levelDetail(levelBanner)}
               </Text>
             </Animated.View>
-          ) : null}
-        </View>
-        {/* Centred by layout, not by the measured field, so the ship sits
-            bottom centre even before (or without) a fresh measurement. */}
-        <View pointerEvents="box-none" style={styles.playerRow}>
-          <Animated.View
-            accessibilityLabel="Pemain"
-            style={[styles.player, playerPositionStyle]}
-          >
-            <Ship aim={playerRotationStyle} />
-            {unmatchedInput ? (
-              <Text
-                numberOfLines={1}
-                style={[styles.unmatchedInput, { color: colors.destructive }]}
-              >
-                {unmatchedInput}
-              </Text>
-            ) : null}
-          </Animated.View>
-        </View>
-        {shield > 0 ? (
-          <View pointerEvents="none" style={styles.playerShieldRow}>
-            <Animated.View
-              style={[
-                styles.playerShield,
-                { borderColor: powerUpColor("shield", colors) },
-                playerShieldPositionStyle,
-              ]}
-            />
           </View>
         ) : null}
-        {revealCharges > 0 && phase === "running" ? (
-          <Pressable
-            accessibilityHint="Lalu ketuk kata yang jawabannya ingin kamu lihat"
-            accessibilityLabel={`Intip jawaban, sisa ${revealCharges}`}
-            accessibilityRole="button"
-            accessibilityState={{ selected: pickingReveal }}
-            onPress={toggleReveal}
-            style={({ pressed }) => [
-              styles.revealButton,
+
+        {countdown ? (
+          <Animated.View
+            entering={FadeIn.duration(200)}
+            exiting={FadeOut.duration(200)}
+            pointerEvents="none"
+            style={styles.countdown}
+          >
+            {/* Keyed by the number: one fades out as the next fades in. */}
+            <View style={styles.countdownNumberBox}>
+              <Animated.Text
+                key={countdown}
+                entering={FadeIn.duration(200)}
+                exiting={FadeOut.duration(140)}
+                style={[styles.countdownNumber, { color: colors.foreground }]}
+              >
+                {countdown}
+              </Animated.Text>
+            </View>
+            <CountdownBar durationMs={COUNTDOWN_FROM * COUNTDOWN_STEP_MS} />
+            <Text
+              style={[styles.countdownHint, { color: colors.mutedForeground }]}
+            >
+              {answerMode === "ID"
+                ? "Ketik arti kata yang jatuh"
+                : "Ketik kata Korea dari arti yang jatuh"}
+            </Text>
+          </Animated.View>
+        ) : null}
+        {/* Pausing opens the same sheet the round ends on. Closing it any way
+          but "Keluar" goes on with the round. */}
+        {phase === "paused" ? (
+          <GameResultSheet
+            eyebrow="Hujan kata"
+            title="Dijeda"
+            mark={{ value: String(score), label: "poin" }}
+            facts={[
+              { icon: "flame.fill", text: `Level ${level}` },
               {
-                backgroundColor: pickingReveal
-                  ? powerUpColor("reveal", colors)
-                  : withOpacity(powerUpColor("reveal", colors), 0.16),
-                borderColor: powerUpColor("reveal", colors),
-                opacity: pressed ? 0.6 : 1,
+                icon: sound ? "speaker.fill" : "speaker.slash.fill",
+                text: sound ? "Suara: nyala" : "Suara: mati",
+                accessibilityHint: "Nyalakan atau matikan efek suara",
+                onPress: () => updateSettings({ sound: !sound }),
               },
             ]}
-          >
-            <Text
-              style={[
-                styles.revealButtonText,
-                {
-                  color: pickingReveal
-                    ? colors.background
-                    : powerUpColor("reveal", colors),
-                },
-              ]}
-            >
-              {pickingReveal
-                ? "Ketuk sebuah kata"
-                : `${powerUpLabel("reveal")} ×${revealCharges}`}
-            </Text>
-          </Pressable>
+            primary={{
+              eyebrow: "Lanjutkan",
+              title: "Kembali ke permainan",
+              meta: "Kata yang sedang jatuh menunggumu",
+              pill: "Lanjut",
+              onPress: fromSheet(resumeGame),
+            }}
+            secondary={{
+              label: "Keluar",
+              onPress: exit,
+              disabled: pendingReportCount > 0,
+            }}
+            onDismiss={fromSheet(resumeGame)}
+          />
         ) : null}
-      </Animated.View>
-
-      {levelBanner ? (
-        <View pointerEvents="none" style={styles.levelBanner}>
-          <Animated.View
-            key={levelBanner}
-            entering={FadeInUp.duration(260)}
-            exiting={FadeOut.duration(320)}
-            accessibilityLiveRegion="polite"
-            accessibilityLabel={`Naik ke level ${levelBanner}`}
-            style={[
-              styles.levelPill,
-              { backgroundColor: colors.card, borderColor: colors.border },
+        {/* In Latihan the round ends on the sheet; a lesson goes on instead. */}
+        {phase === "gameover" && !lesson ? (
+          <GameResultSheet
+            courseId={courseId}
+            courseItemId={sourceCourseItemId}
+            xp={sessionXp?.()}
+            // Endless: the top score on this set is the record to beat.
+            best={
+              vocabularySetId
+                ? { scope: `word-fall:${vocabularySetId}`, value: score }
+                : undefined
+            }
+            eyebrow="Hujan kata"
+            title={`Sampai level ${level}`}
+            mark={{ value: String(score), label: "poin" }}
+            facts={[
+              { icon: "checkmark.seal.fill", text: `${answered} kata dijawab` },
+              {
+                icon: "keyboard.fill",
+                text: answerMode === "ID" ? "Jawab: Indonesia" : "Jawab: Korea",
+                accessibilityHint: "Ganti bahasa jawaban ronde berikutnya",
+                onPress: () => setAnswerMode(answerMode === "ID" ? "KR" : "ID"),
+              },
             ]}
-          >
-            <Text style={[styles.levelPillTitle, { color: colors.primary }]}>
-              Level {levelBanner}
-            </Text>
-            <Text
-              style={[
-                styles.levelPillDetail,
-                { color: colors.mutedForeground },
-              ]}
-            >
-              {levelDetail(levelBanner)}
-            </Text>
-          </Animated.View>
-        </View>
-      ) : null}
-
-      {countdown ? (
-        <Animated.View
-          entering={FadeIn.duration(200)}
-          exiting={FadeOut.duration(200)}
-          pointerEvents="none"
-          style={styles.countdown}
-        >
-          {/* Keyed by the number: one fades out as the next fades in. */}
-          <View style={styles.countdownNumberBox}>
-            <Animated.Text
-              key={countdown}
-              entering={FadeIn.duration(200)}
-              exiting={FadeOut.duration(140)}
-              style={[styles.countdownNumber, { color: colors.foreground }]}
-            >
-              {countdown}
-            </Animated.Text>
-          </View>
-          <CountdownBar durationMs={COUNTDOWN_FROM * COUNTDOWN_STEP_MS} />
-          <Text
-            style={[styles.countdownHint, { color: colors.mutedForeground }]}
-          >
-            {answerMode === "ID"
-              ? "Ketik arti kata yang jatuh"
-              : "Ketik kata Korea dari arti yang jatuh"}
-          </Text>
-        </Animated.View>
-      ) : null}
-      {/* Pausing opens the same sheet the round ends on. Closing it any way
-          but "Keluar" goes on with the round. */}
-      {phase === "paused" ? (
-        <GameResultSheet
-          eyebrow="Hujan kata"
-          title="Dijeda"
-          mark={{ value: String(score), label: "poin" }}
-          facts={[
-            { icon: "flame.fill", text: `Level ${level}` },
-            {
-              icon: sound ? "speaker.fill" : "speaker.slash.fill",
-              text: sound ? "Suara: nyala" : "Suara: mati",
-              accessibilityHint: "Nyalakan atau matikan efek suara",
-              onPress: () => updateSettings({ sound: !sound }),
-            },
-          ]}
-          primary={{
-            eyebrow: "Lanjutkan",
-            title: "Kembali ke permainan",
-            meta: "Kata yang sedang jatuh menunggumu",
-            pill: "Lanjut",
-            onPress: fromSheet(resumeGame),
-          }}
-          secondary={{
-            label: "Keluar",
-            onPress: exit,
-            disabled: pendingReportCount > 0,
-          }}
-          onDismiss={fromSheet(resumeGame)}
-        />
-      ) : null}
-      {/* In Latihan the round ends on the sheet; a lesson goes on instead. */}
-      {phase === "gameover" && !lesson ? (
-        <GameResultSheet
-          courseId={courseId}
-          courseItemId={sourceCourseItemId}
-          xp={sessionXp?.()}
-          // Endless: the top score on this set is the record to beat.
-          best={
-            vocabularySetId
-              ? { scope: `word-fall:${vocabularySetId}`, value: score }
-              : undefined
-          }
-          eyebrow="Hujan kata"
-          title={`Sampai level ${level}`}
-          mark={{ value: String(score), label: "poin" }}
-          facts={[
-            { icon: "checkmark.seal.fill", text: `${answered} kata dijawab` },
-            {
-              icon: "keyboard.fill",
-              text: answerMode === "ID" ? "Jawab: Indonesia" : "Jawab: Korea",
-              accessibilityHint: "Ganti bahasa jawaban ronde berikutnya",
-              onPress: () => setAnswerMode(answerMode === "ID" ? "KR" : "ID"),
-            },
-          ]}
-          review={{
-            title: "Perlu diulang",
-            rows: reviewItems.map((item) => ({
-              key: item.word.id,
-              title: item.word.term,
-              detail: displayMeanings(item.word.meanings),
-              trailing: (
-                <Text className="text-right text-[10px] font-extrabold text-destructive">
-                  {item.reasons
-                    .map((reason) =>
-                      reason === "missed" ? "Terlewat" : "Salah ketik",
-                    )
-                    .join(" · ")}
-                </Text>
-              ),
-            })),
-          }}
-          primary={{
-            eyebrow: "Main lagi",
-            title: `Mulai dari level ${startLevel}`,
-            meta:
-              answerMode === "ID"
-                ? "Lihat kata Korea, ketik artinya"
-                : "Lihat arti Indonesia, ketik kata Koreanya",
-            pill: "Mulai",
-            onPress: fromSheet(resetGame),
-          }}
-          secondary={{ label: "Selesai", onPress: exit }}
-        />
-      ) : null}
-    </KeyboardAvoidingView>
+            review={{
+              title: "Perlu diulang",
+              rows: reviewItems.map((item) => ({
+                key: item.word.id,
+                title: item.word.term,
+                detail: displayMeanings(item.word.meanings),
+                trailing: (
+                  <Text className="text-right text-[10px] font-extrabold text-destructive">
+                    {item.reasons
+                      .map((reason) =>
+                        reason === "missed" ? "Terlewat" : "Salah ketik",
+                      )
+                      .join(" · ")}
+                  </Text>
+                ),
+              })),
+            }}
+            primary={{
+              eyebrow: "Main lagi",
+              title: `Mulai dari level ${startLevel}`,
+              meta:
+                answerMode === "ID"
+                  ? "Lihat kata Korea, ketik artinya"
+                  : "Lihat arti Indonesia, ketik kata Koreanya",
+              pill: "Mulai",
+              onPress: fromSheet(resetGame),
+            }}
+            secondary={{ label: "Selesai", onPress: exit }}
+          />
+        ) : null}
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
