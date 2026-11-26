@@ -21,6 +21,10 @@ const questions = [
     "Aplikasi masih versi beta di Google Play. Selama beta, Google hanya mengizinkan anggota grup penguji untuk memasangnya. Grupnya terbuka, siapa saja boleh bergabung.",
   ],
   [
+    "Halaman pengujian tidak menampilkan tombol Jadi penguji?",
+    "Berarti akun yang sedang kamu pakai belum masuk grup penguji. Di Chrome, ketuk foto profil di kanan atas untuk melihat akunnya, ganti ke akun Google yang dipakai di Play Store, lalu ulangi dari langkah Gabung grup.",
+  ],
+  [
     "Google Play bilang item tidak ditemukan?",
     "Artinya Google Play belum mengenalimu sebagai penguji. Pastikan langkah Jadi penguji sudah menampilkan Anda adalah penguji, lalu di Play Store ketuk foto profil di kanan atas dan pilih akun Google yang sama dengan yang dipakai untuk gabung grup. Jika baru saja gabung, tunggu beberapa menit, tutup Play Store, lalu buka link Google Play lagi.",
   ],
